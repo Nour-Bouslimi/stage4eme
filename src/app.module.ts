@@ -7,9 +7,11 @@ import { ChatModule } from './modules/chat/chat.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
 import { RatingsModule } from './modules/ratings/ratings.module';
 import { GeolocationModule } from './modules/geolocation/geolocation.module';
+import { ConfigModule } from '@nestjs/config';
 
 @Module({
   imports: [
+    ConfigModule.forRoot({ isGlobal: true }), // ← charge le .env partout
     TypeOrmModule.forRoot({
       type: 'postgres',
       host: process.env.DB_HOST || 'localhost',

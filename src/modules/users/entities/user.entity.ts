@@ -56,8 +56,8 @@ export class Utilisateur {
   @Column({ nullable: true })
   immatriculationVehicule: string;
 
-  @Column('text', { array: true, nullable: true })
-  photosVehicule: string[];
+  @Column({ nullable: true })
+  photoVehicule: string;
 
   @Column({ type: 'numeric', nullable: true })
   poidsMaxKg: number;
@@ -65,6 +65,7 @@ export class Utilisateur {
   @Column({ type: 'numeric', nullable: true })
   volumeMaxM3: number;
 
+  //Zone de couverture
   @Column({ type: 'numeric', nullable: true })
   rayonServiceKm: number;
 
@@ -73,7 +74,7 @@ export class Utilisateur {
 
   @Column({ type: 'numeric', default: 0 })
   noteMoyenne: number;
-
+//Nombre d'évaluations reçues
   @Column({ default: 0 })
   totalNotes: number;
 
@@ -82,7 +83,7 @@ export class Utilisateur {
 
   @Column({ type: 'numeric', nullable: true })
   longitudeActuelle: number;
-
+//Indique si le livreur est en ligne ou hors ligne
   @Column({ default: true })
   estEnLigne: boolean;
 
@@ -97,7 +98,7 @@ export class Utilisateur {
 
   @Column({ nullable: true })
   derniereActivite: Date;
-
+//Timestamp dernière position
   @Column({ nullable: true })
   derniereMiseAJourPosition: Date;
 

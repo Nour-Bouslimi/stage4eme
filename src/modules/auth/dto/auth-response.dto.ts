@@ -1,4 +1,4 @@
 export class AuthResponseDto {
-  accessToken: string;
+  accessToken?: string;
   expiresIn?: number;
 }

@@ -27,10 +27,21 @@ export class UsersService {
       email: dto.email,
       motDePasseHash: hash,
       telephone: dto.telephone,
+      cin: dto.cin,
+      photoCin: dto.photoCin,
       typeVehicule: dto.typeVehicule,
+      immatriculationVehicule: dto.immatriculationVehicule,
+      photoVehicule: dto.photoVehicule,
       poidsMaxKg: dto.poidsMaxKg,
+      volumeMaxM3: dto.volumeMaxM3,
+      rayonServiceKm: dto.rayonServiceKm,
+      statutDisponibilite: dto.statutDisponibilite || StatutDisponibilite.DISPONIBLE,
+      noteMoyenne: dto.noteMoyenne || 0,
+      totalNotes: dto.totalNotes || 0,
+      latitudeActuelle: dto.latitudeActuelle,
+      longitudeActuelle: dto.longitudeActuelle,
+      estEnLigne: typeof dto.estEnLigne === 'boolean' ? dto.estEnLigne : true,
       role: 'LIVREUR',
-      estEnLigne: true,
     } as any);
     return this.usersRepository.save(u);
   }
@@ -53,6 +64,13 @@ export class UsersService {
       user.estEnLigne = Boolean(estEnLigne);
       user.statutDisponibilite = user.estEnLigne ? StatutDisponibilite.DISPONIBLE : StatutDisponibilite.HORS_LIGNE;
     }
+    return this.usersRepository.save(user);
+  }
+
+  async updatePhoto(id: string, photoUrl: string) {
+    const user = await this.findById(id);
+    if (!user) throw new NotFoundException('Utilisateur non trouvé');
+    user.photo = photoUrl;
     return this.usersRepository.save(user);
   }
 }

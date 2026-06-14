@@ -17,13 +17,13 @@ export class Message {
   @Column({ default: false })
   estLu: boolean;
 
-  @Column({ type: 'timestamptz', nullable: true })
+  @Column({ type: 'timestamp', nullable: true })
   luLe: Date;
 
   @Column({ nullable: true })
   urlMedia: string;
 
-  @Column({ type: 'timestamptz', default: () => 'NOW()' })
+  @Column({ type: 'timestamp', default: () => 'NOW()' })
   envoyeLe: Date;
 
   @ManyToOne(() => Utilisateur, (u) => u.messages, { eager: true })
