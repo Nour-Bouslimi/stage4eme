@@ -1,0 +1,175 @@
+import { Component, OnInit } from '@angular/core';
+import { AuthService } from '../../../core/services/auth.service';
+import { MissionService } from '../../../core/services/mission.service';
+import { UserService } from '../../../core/services/user.service';
+import { SocketService } from '../../../core/services/socket.service';
+import { Mission, MissionStatus } from '../../../core/models/mission.model';
+import { User } from '../../../core/models/user.model';
+
+@Component({
+  selector: 'app-livreur-dashboard',
+  templateUrl: './livreur-dashboard.component.html',
+  styleUrls: ['./livreur-dashboard.component.css']
+})
+export class LivreurDashboardComponent implements OnInit {
+  userName = '';
+  user: User | null = null;
+  available = true;
+  missions: Mission[] = [];
+  activeMission: Mission | null = null;
+  stats = {
+    today: 0,
+    completed: 0,
+    total: 0,
+    revenue: 0
+  };
+  loading = true;
+  showMissionModal = false;
+  newMission: Mission | null = null;
+  countdown = 30;
+  protected MissionStatus = MissionStatus;
+
+  constructor(
+    private authService: AuthService,
+    private missionService: MissionService,
+    private userService: UserService,
+    private socketService: SocketService
+  ) {}
+
+  ngOnInit(): void {
+    const currentUser = this.authService.getCurrentUser();
+    if (currentUser) {
+      this.userName = currentUser.prenom;
+    }
+
+    this.loadUserData();
+    this.loadMissions();
+    this.setupSocket();
+  }
+
+  loadUserData(): void {
+    this.userService.getProfile().subscribe({
+      next: (user) => {
+        this.user = user;
+        this.available = user.disponible || false;
+      }
+    });
+  }
+
+  loadMissions(): void {
+    this.loading = true;
+
+    this.missionService.getMissions().subscribe({
+      next: (missions) => {
+        this.missions = missions;
+        this.activeMission = missions.find(m => 
+          m.statut === MissionStatus.ACCEPTEE || 
+          m.statut === MissionStatus.EN_ROUTE ||
+          m.statut === MissionStatus.EN_LIVRAISON
+        ) || null;
+        this.calculateStats(missions);
+        this.loading = false;
+      },
+      error: () => {
+        this.loading = false;
+      }
+    });
+  }
+
+  setupSocket(): void {
+    this.socketService.connect();
+
+    this.socketService.onNouvelleMission().subscribe((mission: Mission) => {
+      this.newMission = mission;
+      this.showMissionModal = true;
+      this.startCountdown();
+    });
+  }
+
+  toggleAvailability(): void {
+    this.available = !this.available;
+
+    this.userService.updateDisponibilite(this.available).subscribe({
+      next: () => {
+        const status = this.available ? 'disponible' : 'indisponible';
+        // this.toastService.success(`Vous êtes maintenant ${status}`);
+      }
+    });
+  }
+
+  acceptMission(): void {
+    if (this.newMission) {
+      this.missionService.accepterMission(this.newMission.id).subscribe({
+        next: () => {
+          this.showMissionModal = false;
+          this.newMission = null;
+          this.loadMissions();
+          // this.toastService.success('Mission acceptée');
+        }
+      });
+    }
+  }
+
+  rejectMission(): void {
+    if (this.newMission) {
+      this.missionService.refuserMission(this.newMission.id).subscribe({
+        next: () => {
+          this.showMissionModal = false;
+          this.newMission = null;
+          // this.toastService.info('Mission refusée');
+        }
+      });
+    }
+  }
+
+  startCountdown(): void {
+    this.countdown = 30;
+    const interval = setInterval(() => {
+      this.countdown--;
+      if (this.countdown <= 0) {
+        clearInterval(interval);
+        this.rejectMission();
+      }
+    }, 1000);
+  }
+
+  calculateStats(missions: Mission[]): void {
+    const today = new Date().toDateString();
+    this.stats.today = missions.filter(m => 
+      new Date(m.createdAt).toDateString() === today
+    ).length;
+    this.stats.completed = missions.filter(m => 
+      m.statut === MissionStatus.TERMINEE
+    ).length;
+    this.stats.total = missions.length;
+    this.stats.revenue = missions
+      .filter(m => m.statut === MissionStatus.TERMINEE)
+      .reduce((sum, m) => sum + (m.prix || 0), 0);
+  }
+
+  goToActiveMission(): void {
+    if (this.activeMission) {
+      // this.router.navigate(['/livreur/active', this.activeMission.id]);
+    }
+  }
+
+  getActiveMissionStatusLabel(): string {
+    return this.getStatusLabel(this.activeMission?.statut ?? MissionStatus.EN_ATTENTE);
+  }
+
+  getStatusLabel(status: MissionStatus | undefined): string {
+    if (!status) return 'Inconnu';
+    switch (status) {
+      case MissionStatus.ACCEPTEE:
+        return 'Acceptée';
+      case MissionStatus.EN_ROUTE:
+        return 'En route';
+      case MissionStatus.EN_LIVRAISON:
+        return 'En livraison';
+      case MissionStatus.TERMINEE:
+        return 'Terminée';
+      default:
+        return status;
+    }
+  }
+}

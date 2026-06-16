@@ -1,0 +1,171 @@
+<div class="dashboard">
+  <div class="dashboard-header">
+    <div>
+      <h1 class="dashboard-title">Bonjour, {{ userName }} 👋</h1>
+      <p class="dashboard-subtitle">{{ currentDate }}</p>
+    </div>
+    <button class="create-mission-btn" routerLink="/client/create-mission">
+      <mat-icon>add</mat-icon>
+      Nouvelle mission
+    </button>
+  </div>
+
+  <div class="stats-grid">
+    <div class="stat-card">
+      <div class="stat-icon active">
+        <mat-icon>local_shipping</mat-icon>
+      </div>
+      <div class="stat-content">
+        <p class="stat-value">{{ stats.active }}</p>
+        <p class="stat-label">Missions actives</p>
+      </div>
+    </div>
+
+    <div class="stat-card">
+      <div class="stat-icon completed">
+        <mat-icon>check_circle</mat-icon>
+      </div>
+      <div class="stat-content">
+        <p class="stat-value">{{ stats.completed }}</p>
+        <p class="stat-label">Terminées</p>
+      </div>
+    </div>
+
+    <div class="stat-card">
+      <div class="stat-icon pending">
+        <mat-icon>schedule</mat-icon>
+      </div>
+      <div class="stat-content">
+        <p class="stat-value">{{ stats.pending }}</p>
+        <p class="stat-label">En attente</p>
+      </div>
+    </div>
+
+    <div class="stat-card">
+      <div class="stat-icon total">
+        <mat-icon>assessment</mat-icon>
+      </div>
+      <div class="stat-content">
+        <p class="stat-value">{{ stats.total }}</p>
+        <p class="stat-label">Total</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="quick-actions">
+    <h2 class="section-title">Actions rapides</h2>
+    <div class="actions-grid">
+      <div class="action-card" (click)="createMission('colis')">
+        <mat-icon class="action-icon">inventory_2</mat-icon>
+        <p class="action-label">Colis</p>
+      </div>
+      <div class="action-card" (click)="createMission('demenagement')">
+        <mat-icon class="action-icon">moving</mat-icon>
+        <p class="action-label">Déménagement</p>
+      </div>
+      <div class="action-card" (click)="createMission('courses')">
+        <mat-icon class="action-icon">shopping_cart</mat-icon>
+        <p class="action-label">Courses</p>
+      </div>
+      <div class="action-card" (click)="createMission('autre')">
+        <mat-icon class="action-icon">more_horiz</mat-icon>
+        <p class="action-label">Autre</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="dashboard-content">
+    <div class="missions-section">
+      <div class="section-header">
+        <h2 class="section-title">Missions en cours</h2>
+        <a class="view-all-link" routerLink="/client/history">Voir tout</a>
+      </div>
+
+      <div class="missions-table" *ngIf="!loading">
+        <div class="table-header">
+          <div class="table-cell">ID</div>
+          <div class="table-cell">Trajet</div>
+          <div class="table-cell">Statut</div>
+          <div class="table-cell">Livreur</div>
+          <div class="table-cell">Date</div>
+          <div class="table-cell">Actions</div>
+        </div>
+
+        <div class="table-row" *ngFor="let mission of missions.slice(0, 5)">
+          <div class="table-cell">
+            <span class="mission-id">#{{ mission.id.slice(0, 8) }}</span>
+          </div>
+          <div class="table-cell">
+            <div class="route-info">
+              <span class="route-point">{{ mission.depart.ville }}</span>
+              <mat-icon class="route-arrow">arrow_forward</mat-icon>
+              <span class="route-point">{{ mission.destination.ville }}</span>
+            </div>
+          </div>
+          <div class="table-cell">
+            <span class="status-badge" [class]="getStatusColor(mission.statut)">
+              {{ getStatusLabel(mission.statut) }}
+            </span>
+          </div>
+          <div class="table-cell">
+            <div class="driver-info" *ngIf="mission.livreurId">
+              <div class="driver-avatar">
+                <img src="assets/default-avatar.svg" alt="Driver" />
+              </div>
+              <span>Livreur assigné</span>
+            </div>
+            <span class="no-driver" *ngIf="!mission.livreurId">Non assigné</span>
+          </div>
+          <div class="table-cell">
+            {{ mission.createdAt | date:'dd/MM/yyyy' }}
+          </div>
+          <div class="table-cell">
+            <button class="action-btn" (click)="viewMission(mission.id)">
+              <mat-icon>visibility</mat-icon>
+            </button>
+          </div>
+        </div>
+
+        <div class="empty-state" *ngIf="missions.length === 0">
+          <mat-icon class="empty-icon">inbox</mat-icon>
+          <p>Aucune mission en cours</p>
+        </div>
+      </div>
+
+      <div class="loading-state" *ngIf="loading">
+        <p>Chargement...</p>
+      </div>
+    </div>
+
+    <div class="drivers-section">
+      <div class="section-header">
+        <h2 class="section-title">Livreurs disponibles</h2>
+        <a class="view-all-link" routerLink="/client/create-mission">Voir tout</a>
+      </div>
+
+      <div class="drivers-list">
+        <div class="driver-card" *ngFor="let driver of availableDrivers">
+          <div class="driver-avatar">
+            <img [src]="driver.avatar || 'assets/default-avatar.svg'" alt="Driver" />
+          </div>
+          <div class="driver-details">
+            <p class="driver-name">{{ driver.prenom }} {{ driver.nom }}</p>
+            <div class="driver-rating">
+              <mat-icon class="star-icon">star</mat-icon>
+              <span>{{ driver.note || 'N/A' }}</span>
+            </div>
+            <p class="driver-distance">~2 km</p>
+          </div>
+          <button class="contact-btn" (click)="contactDriver(driver.id)">
+            <mat-icon>chat</mat-icon>
+          </button>
+        </div>
+
+        <div class="empty-state" *ngIf="availableDrivers.length === 0">
+          <mat-icon class="empty-icon">person_search</mat-icon>
+          <p>Aucun livreur disponible</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

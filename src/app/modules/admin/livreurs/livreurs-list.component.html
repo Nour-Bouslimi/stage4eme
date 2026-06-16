@@ -1,0 +1,163 @@
+<div class="livreurs-list">
+  <div class="page-header">
+    <div>
+      <h1 class="page-title">Gestion des livreurs</h1>
+      <p class="page-subtitle">Consultez et gérez les livreurs de la plateforme</p>
+    </div>
+    <button class="create-btn" (click)="createLivreur()">
+      <mat-icon>add</mat-icon>
+      Créer un livreur
+    </button>
+  </div>
+
+  <div class="filters-section">
+    <div class="search-box">
+      <mat-icon class="search-icon">search</mat-icon>
+      <input
+        type="text"
+        [(ngModel)]="searchQuery"
+        (input)="onSearch()"
+        placeholder="Rechercher un livreur..."
+        class="search-input"
+      />
+    </div>
+
+    <div class="filter-selects">
+      <select [(ngModel)]="vehicleFilter" (change)="onVehicleFilterChange()" class="filter-select">
+        <option value="all">Tous les véhicules</option>
+        <option *ngFor="let type of vehicleTypes" [value]="type.value">
+          {{ type.label }}
+        </option>
+      </select>
+
+      <select [(ngModel)]="availabilityFilter" (change)="onAvailabilityFilterChange()" class="filter-select">
+        <option value="all">Tous les statuts</option>
+        <option value="available">Disponible</option>
+        <option value="unavailable">Indisponible</option>
+      </select>
+
+      <button class="view-toggle-btn" (click)="toggleViewMode()">
+        <mat-icon>{{ viewMode === 'table' ? 'grid_view' : 'table_view' }}</mat-icon>
+      </button>
+    </div>
+  </div>
+
+  <div class="livreurs-table-container" *ngIf="!loading && viewMode === 'table'">
+    <table class="livreurs-table">
+      <thead>
+        <tr>
+          <th>Livreur</th>
+          <th>Véhicule</th>
+          <th>Note</th>
+          <th>Disponibilité</th>
+          <th>Missions</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let livreur of filteredLivreurs">
+          <td>
+            <div class="livreur-cell">
+              <div class="livreur-avatar">
+                <img [src]="livreur.avatar || 'assets/default-avatar.svg'" alt="Livreur" />
+              </div>
+              <div class="livreur-info">
+                <span class="livreur-name">{{ livreur.prenom }} {{ livreur.nom }}</span>
+                <span class="livreur-email">{{ livreur.email }}</span>
+              </div>
+            </div>
+          </td>
+          <td>
+            <div class="vehicle-cell">
+              <mat-icon class="vehicle-icon">local_shipping</mat-icon>
+              <span>{{ livreur.vehicule ? getVehicleLabel(livreur.vehicule.type) : 'N/A' }}</span>
+            </div>
+          </td>
+          <td>
+            <div class="rating-cell">
+              <mat-icon class="star-icon">star</mat-icon>
+              <span>{{ livreur.note || 'N/A' }}</span>
+            </div>
+          </td>
+          <td>
+            <span class="status-badge" [class.available]="livreur.disponible">
+              {{ livreur.disponible ? 'Disponible' : 'Indisponible' }}
+            </span>
+          </td>
+          <td>0</td>
+          <td>
+            <div class="action-buttons">
+              <button class="action-btn view" (click)="viewLivreur(livreur.id)" mat-icon-button>
+                <mat-icon>visibility</mat-icon>
+              </button>
+              <button class="action-btn deactivate" (click)="deactivateLivreur(livreur.id)" mat-icon-button>
+                <mat-icon>block</mat-icon>
+              </button>
+              <button class="action-btn delete" (click)="deleteLivreur(livreur.id)" mat-icon-button>
+                <mat-icon>delete</mat-icon>
+              </button>
+            </div>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="empty-state" *ngIf="filteredLivreurs.length === 0">
+      <mat-icon class="empty-icon">people_outline</mat-icon>
+      <p>Aucun livreur trouvé</p>
+    </div>
+  </div>
+
+  <div class="livreurs-grid-container" *ngIf="!loading && viewMode === 'grid'">
+    <div class="livreurs-grid">
+      <div class="livreur-card" *ngFor="let livreur of filteredLivreurs">
+        <div class="card-header">
+          <div class="livreur-avatar">
+            <img [src]="livreur.avatar || 'assets/default-avatar.svg'" alt="Livreur" />
+          </div>
+          <div class="livreur-info">
+            <h3 class="livreur-name">{{ livreur.prenom }} {{ livreur.nom }}</h3>
+            <div class="livreur-rating">
+              <mat-icon class="star-icon">star</mat-icon>
+              <span>{{ livreur.note || 'N/A' }}</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="card-body">
+          <div class="info-item">
+            <mat-icon class="info-icon">local_shipping</mat-icon>
+            <span>{{ livreur.vehicule ? getVehicleLabel(livreur.vehicule.type) : 'N/A' }}</span>
+          </div>
+          <div class="info-item">
+            <mat-icon class="info-icon">fitness_center</mat-icon>
+            <span>Max {{ livreur.vehicule?.poidsMax || 'N/A' }}kg</span>
+          </div>
+          <div class="info-item">
+            <mat-icon class="info-icon">straighten</mat-icon>
+            <span>Rayon {{ livreur.vehicule?.rayonService || 'N/A' }}km</span>
+          </div>
+        </div>
+
+        <div class="card-footer">
+          <span class="status-badge" [class.available]="livreur.disponible">
+            {{ livreur.disponible ? 'Disponible' : 'Indisponible' }}
+          </span>
+          <button class="view-btn" (click)="viewLivreur(livreur.id)">
+            Voir détails
+          </button>
+        </div>
+      </div>
+
+      <div class="empty-state" *ngIf="filteredLivreurs.length === 0">
+        <mat-icon class="empty-icon">people_outline</mat-icon>
+        <p>Aucun livreur trouvé</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="loading-state" *ngIf="loading">
+    <mat-spinner diameter="40"></mat-spinner>
+    <p>Chargement...</p>
+  </div>
+</div>

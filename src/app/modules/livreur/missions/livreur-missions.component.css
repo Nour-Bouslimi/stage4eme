@@ -1,0 +1,245 @@
+.livreur-missions {
+  padding: 0;
+}
+
+.page-header {
+  margin-bottom: 32px;
+}
+
+.page-title {
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--text-1);
+  margin: 0 0 8px 0;
+}
+
+.page-subtitle {
+  font-size: 14px;
+  color: var(--text-2);
+  margin: 0;
+}
+
+.tabs-section {
+  margin-bottom: 24px;
+}
+
+.tabs {
+  display: flex;
+  gap: 8px;
+}
+
+.tab-btn {
+  padding: 10px 20px;
+  background: var(--surface);
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-2);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.tab-btn:hover {
+  background: var(--background);
+}
+
+.tab-btn.active {
+  background: var(--secondary);
+  color: white;
+  border-color: var(--secondary);
+}
+
+.missions-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 24px;
+}
+
+.mission-card {
+  background: var(--surface);
+  border-radius: 12px;
+  box-shadow: var(--shadow);
+  overflow: hidden;
+  transition: transform 0.2s;
+}
+
+.mission-card:hover {
+  transform: translateY(-4px);
+}
+
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 20px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.04);
+}
+
+.mission-id {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--primary);
+}
+
+.status-badge {
+  display: inline-block;
+  padding: 4px 12px;
+  border-radius: 16px;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.status-badge.green {
+  background: rgba(34, 197, 94, 0.1);
+  color: #22C55E;
+}
+
+.status-badge.blue {
+  background: rgba(59, 130, 246, 0.1);
+  color: #3B82F6;
+}
+
+.status-badge.purple {
+  background: rgba(139, 92, 246, 0.1);
+  color: #8B5CF6;
+}
+
+.status-badge.orange {
+  background: rgba(255, 107, 44, 0.1);
+  color: #FF6B2C;
+}
+
+.status-badge.gray {
+  background: rgba(100, 116, 139, 0.1);
+  color: #64748B;
+}
+
+.card-body {
+  padding: 20px;
+}
+
+.route-info {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 20px;
+}
+
+.route-point {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-1);
+}
+
+.point-icon {
+  font-size: 18px;
+  color: var(--secondary);
+}
+
+.route-point.end .point-icon {
+  color: var(--success);
+}
+
+.route-arrow {
+  align-self: center;
+  color: var(--text-2);
+}
+
+.mission-details {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+}
+
+.detail-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--text-2);
+}
+
+.detail-icon {
+  font-size: 16px;
+}
+
+.card-footer {
+  display: flex;
+  gap: 8px;
+  padding: 16px 20px;
+  border-top: 1px solid rgba(0, 0, 0, 0.04);
+}
+
+.btn-accept,
+.btn-view,
+.btn-view-full {
+  flex: 1;
+  padding: 10px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  border: none;
+}
+
+.btn-accept {
+  background: var(--success);
+  color: white;
+}
+
+.btn-accept:hover {
+  background: #16a34a;
+}
+
+.btn-view {
+  background: var(--background);
+  color: var(--text-1);
+}
+
+.btn-view:hover {
+  background: #e2e8f0;
+}
+
+.btn-view-full {
+  background: var(--secondary);
+  color: white;
+}
+
+.btn-view-full:hover {
+  background: #e55a1f;
+}
+
+.empty-state {
+  grid-column: 1 / -1;
+  text-align: center;
+  padding: 60px 20px;
+}
+
+.empty-icon {
+  font-size: 64px;
+  color: var(--text-2);
+  margin-bottom: 16px;
+}
+
+.empty-state p {
+  font-size: 16px;
+  color: var(--text-2);
+  margin: 0;
+}
+
+.loading-state {
+  text-align: center;
+  padding: 60px 20px;
+}
+
+.loading-state p {
+  font-size: 14px;
+  color: var(--text-2);
+  margin: 16px 0 0 0;
+}

@@ -1,0 +1,77 @@
+<div class="clients-list">
+  <div class="page-header">
+    <h1 class="page-title">Gestion des clients</h1>
+    <p class="page-subtitle">Consultez et gérez les clients de la plateforme</p>
+  </div>
+
+  <div class="filters-section">
+    <div class="search-box">
+      <mat-icon class="search-icon">search</mat-icon>
+      <input
+        type="text"
+        [(ngModel)]="searchQuery"
+        (input)="onSearch()"
+        placeholder="Rechercher un client..."
+        class="search-input"
+      />
+    </div>
+  </div>
+
+  <div class="clients-table-container" *ngIf="!loading">
+    <table class="clients-table">
+      <thead>
+        <tr>
+          <th>Client</th>
+          <th>Email</th>
+          <th>Téléphone</th>
+          <th>Missions</th>
+          <th>Date d'inscription</th>
+          <th>Statut</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let client of filteredClients">
+          <td>
+            <div class="client-cell">
+              <div class="client-avatar">
+                <img [src]="client.avatar || 'assets/default-avatar.svg'" alt="Client" />
+              </div>
+              <span class="client-name">{{ client.prenom }} {{ client.nom }}</span>
+            </div>
+          </td>
+          <td>{{ client.email }}</td>
+          <td>{{ client.telephone }}</td>
+          <td>0</td>
+          <td>{{ client.createdAt | date:'dd/MM/yyyy' }}</td>
+          <td>
+            <span class="status-badge active">Actif</span>
+          </td>
+          <td>
+            <div class="action-buttons">
+              <button class="action-btn view" (click)="viewClient(client.id)" mat-icon-button>
+                <mat-icon>visibility</mat-icon>
+              </button>
+              <button class="action-btn deactivate" (click)="deactivateClient(client.id)" mat-icon-button>
+                <mat-icon>block</mat-icon>
+              </button>
+              <button class="action-btn delete" (click)="deleteClient(client.id)" mat-icon-button>
+                <mat-icon>delete</mat-icon>
+              </button>
+            </div>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="empty-state" *ngIf="filteredClients.length === 0">
+      <mat-icon class="empty-icon">people_outline</mat-icon>
+      <p>Aucun client trouvé</p>
+    </div>
+  </div>
+
+  <div class="loading-state" *ngIf="loading">
+    <mat-spinner diameter="40"></mat-spinner>
+    <p>Chargement...</p>
+  </div>
+</div>

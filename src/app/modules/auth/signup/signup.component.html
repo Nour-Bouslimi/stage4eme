@@ -1,0 +1,175 @@
+<div class="signup-page">
+  <div class="signup-shell">
+    <div class="signup-visual">
+      <div class="brand-mark">
+        <mat-icon>delivery_dining</mat-icon>
+      </div>
+
+      <h1>Créer un compte client</h1>
+      <p>Rejoignez DeliverEase pour demander un livreur, suivre vos missions et gérer vos livraisons.</p>
+
+      <div class="hero-illustration" aria-hidden="true">
+        <div class="orbit orbit-one"></div>
+        <div class="orbit orbit-two"></div>
+
+        <div class="delivery-card package-main">
+          <mat-icon>shopping_bag</mat-icon>
+        </div>
+        <div class="delivery-card package-small one">
+          <mat-icon>pin_drop</mat-icon>
+        </div>
+        <div class="delivery-card package-small two">
+          <mat-icon>support_agent</mat-icon>
+        </div>
+        <div class="delivery-vehicle">
+          <mat-icon>local_shipping</mat-icon>
+        </div>
+      </div>
+
+      <div class="visual-points">
+        <div class="point">
+          <strong>Demande rapide</strong>
+          <span>Trouvez un livreur compatible en quelques étapes.</span>
+        </div>
+        <div class="point">
+          <strong>Suivi clair</strong>
+          <span>Accédez à vos missions et à leur statut en temps réel.</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="signup-card">
+      <div class="signup-topbar">
+        <span class="mode-pill">Inscription client</span>
+      </div>
+
+      <div class="signup-header">
+        <h2>Créer votre compte</h2>
+        <p>Inscrivez-vous pour rechercher et réserver un livreur selon vos besoins.</p>
+      </div>
+
+      <div class="stepper">
+        <div class="step" [class.active]="currentStep >= 1">
+          <div class="step-number">1</div>
+          <span class="step-label">Informations</span>
+        </div>
+        <div class="step-line" [class.active]="currentStep >= 2"></div>
+        <div class="step" [class.active]="currentStep >= 2">
+          <div class="step-number">2</div>
+          <span class="step-label">Confirmation</span>
+        </div>
+      </div>
+
+      <form [formGroup]="signupForm" (ngSubmit)="onSubmit()" class="signup-form">
+        <div class="form-step" *ngIf="currentStep === 1">
+          <div class="form-group">
+            <label for="prenom">Prénom</label>
+            <input
+              id="prenom"
+              type="text"
+              formControlName="prenom"
+              [class.invalid]="hasError('prenom')"
+              placeholder="Jean"
+              class="form-input"
+            />
+            <p class="field-error" *ngIf="hasError('prenom')">{{ getFieldError('prenom') }}</p>
+          </div>
+
+          <div class="form-group">
+            <label for="nom">Nom</label>
+            <input
+              id="nom"
+              type="text"
+              formControlName="nom"
+              [class.invalid]="hasError('nom')"
+              placeholder="Dupont"
+              class="form-input"
+            />
+            <p class="field-error" *ngIf="hasError('nom')">{{ getFieldError('nom') }}</p>
+          </div>
+
+          <div class="form-group">
+            <label for="email">Email</label>
+            <input
+              id="email"
+              type="email"
+              formControlName="email"
+              [class.invalid]="hasError('email')"
+              placeholder="jean.dupont@email.com"
+              class="form-input"
+            />
+            <p class="field-error" *ngIf="hasError('email')">{{ getFieldError('email') }}</p>
+          </div>
+
+          <div class="form-group">
+            <label for="telephone">Téléphone</label>
+            <input
+              id="telephone"
+              type="tel"
+              formControlName="telephone"
+              [class.invalid]="hasError('telephone')"
+              placeholder="0612345678"
+              class="form-input"
+            />
+            <p class="field-error" *ngIf="hasError('telephone')">{{ getFieldError('telephone') }}</p>
+          </div>
+
+          <div class="form-group">
+            <label for="password">Mot de passe</label>
+            <input
+              id="password"
+              type="password"
+              formControlName="motDePasse"
+              [class.invalid]="hasError('motDePasse')"
+              placeholder="••••••••"
+              class="form-input"
+            />
+            <p class="field-error" *ngIf="hasError('motDePasse')">{{ getFieldError('motDePasse') }}</p>
+          </div>
+
+          <button type="button" class="next-btn" (click)="nextStep()">
+            Suivant
+          </button>
+        </div>
+
+        <div class="form-step" *ngIf="currentStep === 2">
+          <div class="form-group">
+            <label for="confirmPassword">Confirmer le mot de passe</label>
+            <input
+              id="confirmPassword"
+              type="password"
+              formControlName="confirmationMotDePasse"
+              [class.invalid]="hasError('confirmationMotDePasse')"
+              placeholder="••••••••"
+              class="form-input"
+            />
+            <p class="field-error" *ngIf="hasError('confirmationMotDePasse')">{{ getFieldError('confirmationMotDePasse') }}</p>
+          </div>
+
+          <div class="form-group checkbox-group">
+            <label class="checkbox-label">
+              <input type="checkbox" formControlName="acceptCGU" />
+              <span>J'accepte les conditions générales d'utilisation</span>
+            </label>
+            <p class="field-error" *ngIf="hasError('acceptCGU')">{{ getFieldError('acceptCGU') }}</p>
+          </div>
+
+          <div class="form-actions">
+            <button type="button" class="back-btn" (click)="previousStep()">
+              Retour
+            </button>
+            <button type="submit" class="submit-btn" [disabled]="loading">
+              <span *ngIf="!loading">Créer mon compte</span>
+              <span *ngIf="loading">Création en cours...</span>
+            </button>
+          </div>
+        </div>
+      </form>
+
+      <div class="signup-footer">
+        <p>Vous avez déjà un compte ?</p>
+        <a class="login-link" (click)="goToLogin()">Se connecter</a>
+      </div>
+    </div>
+  </div>
+</div>

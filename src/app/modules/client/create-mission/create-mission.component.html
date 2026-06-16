@@ -1,0 +1,329 @@
+<div class="create-mission-page">
+  <div class="breadcrumb">
+    <span>Accueil</span>
+    <mat-icon>chevron_right</mat-icon>
+    <span class="breadcrumb-current">Nouvelle mission</span>
+  </div>
+
+  <div class="page-header">
+    <h1 class="page-title">Creer une mission</h1>
+    <p class="page-subtitle">Renseignez les details de votre livraison</p>
+  </div>
+
+  <div class="stepper-card">
+    <div class="stepper">
+      <div class="step-item" [class.active]="currentStep >= 1" [class.completed]="currentStep > 1">
+        <div class="step-badge">{{ currentStep > 1 ? '✓' : '1' }}</div>
+        <span>Adresses</span>
+      </div>
+      <div class="step-line" [class.active]="currentStep >= 2"></div>
+      <div class="step-item" [class.active]="currentStep >= 2" [class.completed]="currentStep > 2">
+        <div class="step-badge">{{ currentStep > 2 ? '✓' : '2' }}</div>
+        <span>Détails</span>
+      </div>
+      <div class="step-line" [class.active]="currentStep >= 3"></div>
+      <div class="step-item" [class.active]="currentStep >= 3">
+        <div class="step-badge">3</div>
+        <span>Confirmation</span>
+      </div>
+    </div>
+  </div>
+
+  <form [formGroup]="createMissionForm" class="mission-form">
+    <section class="step-panel" *ngIf="currentStep === 1">
+      <div class="address-grid">
+        <article class="glass-card address-card">
+          <div class="card-title-row">
+            <span class="card-emoji">📍</span>
+            <h2>Point de départ</h2>
+          </div>
+          <label class="field-shell">
+            <mat-icon>place</mat-icon>
+            <input
+              type="text"
+              formControlName="adresseRamassage"
+              placeholder="12 Rue du Faubourg Saint-Antoine, Paris 11e"
+            />
+          </label>
+        </article>
+
+        <article class="glass-card address-card">
+          <div class="card-title-row">
+            <span class="card-emoji">🏁</span>
+            <h2>Destination</h2>
+          </div>
+          <label class="field-shell">
+            <mat-icon>send</mat-icon>
+            <input
+              type="text"
+              formControlName="adresseLivraison"
+              placeholder="45 Avenue Victor Hugo, Vincennes 94300"
+            />
+          </label>
+        </article>
+      </div>
+
+      <article class="glass-card map-card">
+        <div class="map-surface">
+          <div class="map-grid"></div>
+          <div class="map-road road-a"></div>
+          <div class="map-road road-b"></div>
+          <div class="map-road road-c"></div>
+          <div class="map-road road-d"></div>
+
+          <div class="map-marker departure" aria-hidden="true">
+            <mat-icon>location_on</mat-icon>
+            <span>Départ</span>
+          </div>
+
+          <div class="map-marker destination" aria-hidden="true">
+            <mat-icon>navigation</mat-icon>
+            <span>Destination</span>
+          </div>
+
+          <div class="map-credit">© DeliverEase Maps</div>
+        </div>
+
+        <div class="map-stats">
+          <div class="stat-box stat-distance">
+            <mat-icon>near_me</mat-icon>
+            <div>
+              <span class="stat-label">Distance estimée</span>
+              <strong>{{ estimatedDistance }} km</strong>
+            </div>
+          </div>
+
+          <div class="stat-box stat-duration">
+            <mat-icon>schedule</mat-icon>
+            <div>
+              <span class="stat-label">Durée estimée</span>
+              <strong>~{{ estimatedDuration }} min</strong>
+            </div>
+          </div>
+        </div>
+      </article>
+
+      <div class="actions-row">
+        <button type="button" class="btn btn-secondary" (click)="cancel()">
+          <mat-icon>chevron_left</mat-icon>
+          Annuler
+        </button>
+        <button type="button" class="btn btn-primary" (click)="nextStep()">
+          Suivant
+          <mat-icon>chevron_right</mat-icon>
+        </button>
+      </div>
+    </section>
+
+    <section class="step-panel" *ngIf="currentStep === 2">
+      <div class="details-grid">
+        <div class="details-column">
+          <article class="glass-card option-card">
+            <div class="section-heading">
+              <h2>Catégorie</h2>
+            </div>
+            <div class="choice-grid category-grid">
+              <button
+                type="button"
+                class="choice-card"
+                *ngFor="let category of categories"
+                [class.active]="selectedCategory === category.value"
+                (click)="selectCategory(category.value)"
+              >
+                <mat-icon>{{ category.icon }}</mat-icon>
+                <span>{{ category.label }}</span>
+              </button>
+            </div>
+          </article>
+
+          <article class="glass-card option-card">
+            <div class="section-heading">
+              <h2>Type de véhicule</h2>
+            </div>
+            <div class="choice-grid vehicle-grid">
+              <button
+                type="button"
+                class="choice-card vehicle-card"
+                *ngFor="let vehicle of vehicleTypes"
+                [class.active]="selectedVehicle === vehicle.value"
+                (click)="selectVehicle(vehicle.value)"
+              >
+                <mat-icon>{{ vehicle.icon }}</mat-icon>
+                <span>{{ vehicle.label }}</span>
+              </button>
+            </div>
+          </article>
+
+          <article class="glass-card option-card">
+            <div class="section-heading">
+              <h2>Date & Heure</h2>
+            </div>
+            <div class="date-grid">
+              <label class="field-shell compact">
+                <mat-icon>event</mat-icon>
+                <input type="date" formControlName="dateDemandee" />
+              </label>
+              <label class="field-shell compact">
+                <mat-icon>schedule</mat-icon>
+                <input type="time" formControlName="heureDemandee" />
+              </label>
+            </div>
+          </article>
+        </div>
+
+        <div class="details-column">
+          <article class="glass-card metric-card">
+            <div class="metric-header">
+              <h2>Poids estimé</h2>
+              <strong>{{ createMissionForm.get('poidsEstime')?.value }} kg</strong>
+            </div>
+            <input
+              class="range-slider"
+              type="range"
+              min="1"
+              max="500"
+              step="1"
+              [value]="createMissionForm.get('poidsEstime')?.value"
+              (input)="onWeightSliderChange($event)"
+            />
+            <div class="range-scale">
+              <span>0 kg</span>
+              <span>500 kg</span>
+            </div>
+          </article>
+
+          <article class="glass-card form-card">
+            <h2>Volume (m³)</h2>
+            <label class="field-shell">
+              <mat-icon>scale</mat-icon>
+              <input type="number" formControlName="volumeEstime" step="0.1" min="0.1" />
+            </label>
+          </article>
+
+          <article class="glass-card form-card">
+            <h2>Description</h2>
+            <label class="textarea-shell">
+              <textarea
+                rows="5"
+                formControlName="description"
+                placeholder="Carton fragile contenant de la vaisselle. Manipuler avec précaution."
+              ></textarea>
+            </label>
+          </article>
+
+          <article class="glass-card form-card">
+            <h2>Instructions spéciales</h2>
+            <label class="textarea-shell">
+              <textarea
+                rows="4"
+                formControlName="instructionsSpeciales"
+                placeholder="Ex: Code d'accès, étage, instructions particulières..."
+              ></textarea>
+            </label>
+          </article>
+        </div>
+      </div>
+
+      <div class="actions-row">
+        <button type="button" class="btn btn-secondary" (click)="previousStep()">
+          <mat-icon>chevron_left</mat-icon>
+          Retour
+        </button>
+        <button type="button" class="btn btn-primary" (click)="nextStep()">
+          Suivant
+          <mat-icon>chevron_right</mat-icon>
+        </button>
+      </div>
+    </section>
+
+    <section class="step-panel" *ngIf="currentStep === 3">
+      <div class="confirmation-grid">
+        <article class="glass-card summary-card">
+          <h2>Récapitulatif de la mission</h2>
+
+          <div class="summary-list">
+            <div class="summary-row">
+              <span>Départ</span>
+              <strong>{{ createMissionForm.get('adresseRamassage')?.value }}</strong>
+            </div>
+            <div class="summary-row">
+              <span>Destination</span>
+              <strong>{{ createMissionForm.get('adresseLivraison')?.value }}</strong>
+            </div>
+            <div class="summary-row">
+              <span>Distance</span>
+              <strong>{{ estimatedDistance }} km • ~{{ estimatedDuration }} min</strong>
+            </div>
+            <div class="summary-row">
+              <span>Catégorie</span>
+              <strong>{{ categoryLabel }}</strong>
+            </div>
+            <div class="summary-row">
+              <span>Véhicule</span>
+              <strong>{{ vehicleLabel }}</strong>
+            </div>
+            <div class="summary-row">
+              <span>Date</span>
+              <strong>{{ routeDateTimeLabel }}</strong>
+            </div>
+            <div class="summary-row">
+              <span>Poids estimé</span>
+              <strong>{{ createMissionForm.get('poidsEstime')?.value }} kg</strong>
+            </div>
+            <div class="summary-row">
+              <span>Volume</span>
+              <strong>{{ createMissionForm.get('volumeEstime')?.value }} m³</strong>
+            </div>
+          </div>
+
+          <div class="note-box" *ngIf="specialInstructions">
+            <mat-icon>inventory_2</mat-icon>
+            <p>{{ specialInstructions }}</p>
+          </div>
+        </article>
+
+        <article class="glass-card price-card">
+          <h2>Estimation du prix</h2>
+
+          <div class="price-list">
+            <div class="price-row">
+              <span>Tarif de base</span>
+              <strong>{{ basePrice | number:'1.2-2' }} €</strong>
+            </div>
+            <div class="price-row">
+              <span>Distance ({{ estimatedDistance }} km)</span>
+              <strong>{{ distancePrice | number:'1.2-2' }} €</strong>
+            </div>
+            <div class="price-row">
+              <span>Supplément poids</span>
+              <strong>{{ weightSurcharge | number:'1.2-2' }} €</strong>
+            </div>
+            <div class="price-row">
+              <span>Frais de service</span>
+              <strong>{{ serviceFee | number:'1.2-2' }} €</strong>
+            </div>
+          </div>
+
+          <div class="price-total">
+            <span>Total estimé</span>
+            <strong>{{ estimatedPrice | number:'1.2-2' }} €</strong>
+          </div>
+
+          <button type="button" class="btn btn-primary btn-submit" [disabled]="loading" (click)="onSubmit()">
+            <span *ngIf="!loading">Publier la mission</span>
+            <span *ngIf="loading">Publication en cours...</span>
+          </button>
+
+          <p class="price-disclaimer">Le prix final peut varier selon le livreur accepté.</p>
+        </article>
+      </div>
+
+      <div class="actions-row">
+        <button type="button" class="btn btn-secondary" (click)="previousStep()">
+          <mat-icon>chevron_left</mat-icon>
+          Retour
+        </button>
+      </div>
+    </section>
+  </form>
+</div>

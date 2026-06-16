@@ -1,0 +1,94 @@
+<div class="admin-missions">
+  <div class="page-header">
+    <h1 class="page-title">Gestion des missions</h1>
+    <p class="page-subtitle">Consultez et gérez toutes les missions de la plateforme</p>
+  </div>
+
+  <div class="filters-section">
+    <div class="search-box">
+      <mat-icon class="search-icon">search</mat-icon>
+      <input
+        type="text"
+        [(ngModel)]="searchQuery"
+        (input)="onSearch()"
+        placeholder="Rechercher une mission..."
+        class="search-input"
+      />
+    </div>
+
+    <div class="filter-selects">
+      <select [(ngModel)]="statusFilter" (change)="onStatusFilterChange()" class="filter-select">
+        <option value="all">Tous les statuts</option>
+        <option *ngFor="let status of statuses" [value]="status.value">
+          {{ status.label }}
+        </option>
+      </select>
+
+      <select [(ngModel)]="categoryFilter" (change)="onCategoryFilterChange()" class="filter-select">
+        <option value="all">Toutes les catégories</option>
+        <option *ngFor="let category of categories" [value]="category.value">
+          {{ category.label }}
+        </option>
+      </select>
+    </div>
+  </div>
+
+  <div class="missions-table-container" *ngIf="!loading">
+    <table class="missions-table">
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Trajet</th>
+          <th>Catégorie</th>
+          <th>Statut</th>
+          <th>Poids</th>
+          <th>Prix</th>
+          <th>Date</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let mission of filteredMissions">
+          <td>
+            <span class="mission-id">#{{ mission.id.slice(0, 8) }}</span>
+          </td>
+          <td>
+            <div class="route-info">
+              <span class="route-point">{{ mission.depart.ville }}</span>
+              <mat-icon class="route-arrow">arrow_forward</mat-icon>
+              <span class="route-point">{{ mission.destination.ville }}</span>
+            </div>
+          </td>
+          <td>
+            <span class="category-badge">{{ getCategoryLabel(mission.categorie) }}</span>
+          </td>
+          <td>
+            <span class="status-badge" [class]="getStatusColor(mission.statut)">
+              {{ getStatusLabel(mission.statut) }}
+            </span>
+          </td>
+          <td>{{ mission.poids }} kg</td>
+          <td>{{ mission.prix || 'N/A' }} TND</td>
+          <td>{{ mission.createdAt | date:'dd/MM/yyyy' }}</td>
+          <td>
+            <div class="action-buttons">
+              <button class="action-btn view" (click)="viewMission(mission.id)" mat-icon-button>
+                <mat-icon>visibility</mat-icon>
+              </button>
+            </div>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="empty-state" *ngIf="filteredMissions.length === 0">
+      <mat-icon class="empty-icon">inbox</mat-icon>
+      <p>Aucune mission trouvée</p>
+    </div>
+  </div>
+
+  <div class="loading-state" *ngIf="loading">
+    <mat-spinner diameter="40"></mat-spinner>
+    <p>Chargement...</p>
+  </div>
+</div>

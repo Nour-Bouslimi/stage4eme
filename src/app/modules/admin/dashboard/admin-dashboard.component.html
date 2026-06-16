@@ -1,0 +1,109 @@
+<div class="admin-dashboard">
+  <div class="dashboard-header">
+    <h1 class="dashboard-title">Tableau de bord administrateur</h1>
+    <p class="dashboard-subtitle">Vue d'ensemble de la plateforme</p>
+  </div>
+
+  <div class="stats-grid">
+    <div class="stat-card">
+      <div class="stat-icon missions">
+        <mat-icon>local_shipping</mat-icon>
+      </div>
+      <div class="stat-content">
+        <p class="stat-value">{{ stats.totalMissions }}</p>
+        <p class="stat-label">Total missions</p>
+      </div>
+    </div>
+
+    <div class="stat-card">
+      <div class="stat-icon active">
+        <mat-icon>play_circle</mat-icon>
+      </div>
+      <div class="stat-content">
+        <p class="stat-value">{{ stats.activeMissions }}</p>
+        <p class="stat-label">Missions actives</p>
+      </div>
+    </div>
+
+    <div class="stat-card">
+      <div class="stat-icon clients">
+        <mat-icon>people</mat-icon>
+      </div>
+      <div class="stat-content">
+        <p class="stat-value">{{ stats.totalClients }}</p>
+        <p class="stat-label">Clients</p>
+      </div>
+    </div>
+
+    <div class="stat-card">
+      <div class="stat-icon livreurs">
+        <mat-icon>local_taxi</mat-icon>
+      </div>
+      <div class="stat-content">
+        <p class="stat-value">{{ stats.totalLivreurs }}</p>
+        <p class="stat-label">Livreurs</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="dashboard-content">
+    <div class="charts-section">
+      <div class="chart-card">
+        <div class="chart-header">
+          <h3 class="chart-title">Missions par jour (30 jours)</h3>
+        </div>
+        <div class="chart-placeholder">
+          <mat-icon class="placeholder-icon">show_chart</mat-icon>
+          <p>Graphique des missions</p>
+        </div>
+      </div>
+
+      <div class="chart-card">
+        <div class="chart-header">
+          <h3 class="chart-title">Répartition par catégorie</h3>
+        </div>
+        <div class="chart-placeholder">
+          <mat-icon class="placeholder-icon">pie_chart</mat-icon>
+          <p>Graphique circulaire</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="recent-missions-section">
+      <div class="section-header">
+        <h3 class="section-title">Missions récentes</h3>
+        <a class="view-all-link">Voir tout</a>
+      </div>
+
+      <div class="missions-list">
+        <div class="mission-item" *ngFor="let mission of recentMissions">
+          <div class="mission-icon">
+            <mat-icon>local_shipping</mat-icon>
+          </div>
+          <div class="mission-details">
+            <h4 class="mission-title">{{ mission.depart.ville }} → {{ mission.destination.ville }}</h4>
+            <p class="mission-meta">{{ mission.categorie }} • {{ mission.createdAt | date:'dd/MM/yyyy' }}</p>
+          </div>
+          <div class="mission-status">
+            <span class="status-badge" [class]="getStatusColor(mission.statut)">
+              {{ getStatusLabel(mission.statut) }}
+            </span>
+          </div>
+          <div class="mission-price">
+            <span>{{ mission.prix }} TND</span>
+          </div>
+        </div>
+
+        <div class="empty-state" *ngIf="recentMissions.length === 0">
+          <mat-icon class="empty-icon">inbox</mat-icon>
+          <p>Aucune mission récente</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="loading-state" *ngIf="loading">
+    <mat-spinner diameter="40"></mat-spinner>
+    <p>Chargement...</p>
+  </div>
+</div>

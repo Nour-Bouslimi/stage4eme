@@ -1,0 +1,122 @@
+<div class="active-mission">
+  <div class="page-header">
+    <button class="back-btn" (click)="goBack()">
+      <mat-icon>arrow_back</mat-icon>
+      Retour
+    </button>
+    <div>
+      <h1 class="page-title">Mission active</h1>
+      <p class="page-subtitle" *ngIf="mission">#{{ mission.id.slice(0, 8) }}</p>
+    </div>
+  </div>
+
+  <div class="mission-layout" *ngIf="!loading && mission">
+    <div class="map-section">
+      <div class="map-container">
+        <app-map height="100%"></app-map>
+      </div>
+    </div>
+
+    <div class="control-panel">
+      <div class="client-info-card">
+        <div class="card-header">
+          <h3 class="card-title">Informations client</h3>
+        </div>
+        <div class="client-details">
+          <div class="client-avatar">
+            <img src="assets/default-avatar.svg" alt="Client" />
+          </div>
+          <div class="client-info">
+            <p class="client-name">Client</p>
+            <p class="client-phone">+216 XX XXX XXX</p>
+          </div>
+        </div>
+        <div class="client-actions">
+          <button class="action-btn call" (click)="callClient()">
+            <mat-icon>phone</mat-icon>
+            Appeler
+          </button>
+          <button class="action-btn chat" (click)="contactClient()">
+            <mat-icon>chat</mat-icon>
+            Contacter
+          </button>
+        </div>
+      </div>
+
+      <div class="status-stepper-card">
+        <div class="card-header">
+          <h3 class="card-title">Progression de la mission</h3>
+        </div>
+        <div class="stepper">
+          <div
+            class="step"
+            *ngFor="let step of statusSteps"
+            [class.active]="currentStatus === step.value"
+            [class.completed]="isStatusCompleted(step.value)"
+            (click)="updateStatus(step.value)"
+          >
+            <div class="step-icon">
+              <mat-icon>{{ step.icon }}</mat-icon>
+            </div>
+            <span class="step-label">{{ step.label }}</span>
+          </div>
+        </div>
+        <button class="update-btn" (click)="updateStatus(getNextStatus())">
+          Mettre à jour le statut
+        </button>
+      </div>
+
+      <div class="route-info-card">
+        <div class="card-header">
+          <h3 class="card-title">Itinéraire</h3>
+        </div>
+        <div class="route-points">
+          <div class="route-point start">
+            <mat-icon class="point-icon">location_on</mat-icon>
+            <div class="point-details">
+              <span class="point-label">Départ</span>
+              <span class="point-address">{{ mission.depart.rue }}, {{ mission.depart.ville }}</span>
+            </div>
+          </div>
+          <div class="route-line"></div>
+          <div class="route-point end">
+            <mat-icon class="point-icon">flag</mat-icon>
+            <div class="point-details">
+              <span class="point-label">Destination</span>
+              <span class="point-address">{{ mission.destination.rue }}, {{ mission.destination.ville }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="mission-details-card">
+        <div class="card-header">
+          <h3 class="card-title">Détails de la mission</h3>
+        </div>
+        <div class="details-grid">
+          <div class="detail-item">
+            <span class="detail-label">Catégorie</span>
+            <span class="detail-value">{{ mission.categorie }}</span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">Poids</span>
+            <span class="detail-value">{{ mission.poids }} kg</span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">Volume</span>
+            <span class="detail-value">{{ mission.volume }} m³</span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">Prix</span>
+            <span class="detail-value">{{ mission.prix || 'N/A' }} TND</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="loading-state" *ngIf="loading">
+    <mat-spinner diameter="40"></mat-spinner>
+    <p>Chargement...</p>
+  </div>
+</div>

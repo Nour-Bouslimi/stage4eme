@@ -1,0 +1,323 @@
+.active-mission {
+  height: calc(100vh - 64px);
+  display: flex;
+  flex-direction: column;
+}
+
+.page-header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.back-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  background: var(--surface);
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-1);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.back-btn:hover {
+  background: var(--background);
+}
+
+.page-title {
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--text-1);
+  margin: 0 0 4px 0;
+}
+
+.page-subtitle {
+  font-size: 14px;
+  color: var(--text-2);
+  margin: 0;
+}
+
+.mission-layout {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 24px;
+  flex: 1;
+  min-height: 0;
+}
+
+.map-section {
+  background: var(--surface);
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: var(--shadow);
+}
+
+.map-container {
+  height: 100%;
+  min-height: 400px;
+}
+
+.control-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  overflow-y: auto;
+}
+
+.client-info-card,
+.status-stepper-card,
+.route-info-card,
+.mission-details-card {
+  background: var(--surface);
+  border-radius: 12px;
+  padding: 20px;
+  box-shadow: var(--shadow);
+}
+
+.card-header {
+  margin-bottom: 16px;
+}
+
+.card-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-1);
+  margin: 0;
+}
+
+.client-details {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.client-avatar {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  overflow: hidden;
+}
+
+.client-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.client-info {
+  flex: 1;
+}
+
+.client-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-1);
+  margin: 0 0 4px 0;
+}
+
+.client-phone {
+  font-size: 13px;
+  color: var(--text-2);
+  margin: 0;
+}
+
+.client-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.action-btn {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  border: none;
+}
+
+.action-btn.call {
+  background: var(--background);
+  color: var(--text-1);
+}
+
+.action-btn.call:hover {
+  background: #e2e8f0;
+}
+
+.action-btn.chat {
+  background: var(--secondary);
+  color: white;
+}
+
+.action-btn.chat:hover {
+  background: #e55a1f;
+}
+
+.stepper {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.step {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  opacity: 0.4;
+  transition: opacity 0.3s;
+}
+
+.step.active,
+.step.completed {
+  opacity: 1;
+}
+
+.step-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: var(--background);
+  color: var(--text-2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s;
+}
+
+.step.active .step-icon {
+  background: var(--secondary);
+  color: white;
+}
+
+.step.completed .step-icon {
+  background: var(--success);
+  color: white;
+}
+
+.step-icon mat-icon {
+  font-size: 20px;
+}
+
+.step-label {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text-2);
+}
+
+.step.active .step-label {
+  color: var(--primary);
+  font-weight: 600;
+}
+
+.update-btn {
+  width: 100%;
+  padding: 12px;
+  background: var(--secondary);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.update-btn:hover {
+  background: #e55a1f;
+}
+
+.route-points {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.route-point {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.point-icon {
+  font-size: 20px;
+  color: var(--secondary);
+}
+
+.route-point.end .point-icon {
+  color: var(--success);
+}
+
+.point-details {
+  flex: 1;
+}
+
+.point-label {
+  display: block;
+  font-size: 12px;
+  color: var(--text-2);
+  font-weight: 500;
+}
+
+.point-address {
+  font-size: 14px;
+  color: var(--text-1);
+}
+
+.route-line {
+  height: 20px;
+  border-left: 2px dashed var(--text-2);
+  margin-left: 9px;
+}
+
+.details-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+}
+
+.detail-item {
+  display: flex;
+  flex-direction: column;
+}
+
+.detail-label {
+  font-size: 12px;
+  color: var(--text-2);
+  margin-bottom: 4px;
+}
+
+.detail-value {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-1);
+}
+
+.loading-state {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+}
+
+.loading-state p {
+  font-size: 14px;
+  color: var(--text-2);
+  margin: 0;
+}

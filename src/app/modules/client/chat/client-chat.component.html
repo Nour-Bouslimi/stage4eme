@@ -1,0 +1,135 @@
+<div class="chat-page">
+  <div class="chat-layout">
+    <div class="chat-sidebar">
+      <div class="sidebar-header">
+        <h2 class="sidebar-title">Conversations</h2>
+      </div>
+
+      <div class="conversations-list" *ngIf="conversations.length > 0; else emptyConversations">
+        <button
+          type="button"
+          class="conversation-item"
+          *ngFor="let conversation of conversations"
+          [class.active]="isSelectedConversation(conversation)"
+          (click)="selectConversation(conversation)"
+        >
+          <div class="conversation-avatar">
+            <img [src]="conversation.driver?.avatar || 'assets/default-avatar.svg'" alt="Avatar" />
+          </div>
+          <div class="conversation-info">
+            <h3 class="conversation-name">{{ getConversationTitle(conversation) }}</h3>
+            <p class="conversation-preview">{{ getConversationSubtitle(conversation) }}</p>
+          </div>
+          <div class="conversation-meta">
+            <span class="conversation-time">{{ getConversationTime(conversation) }}</span>
+            <span class="conversation-badge" *ngIf="getUnreadCount(conversation) > 0">{{ getUnreadCount(conversation) }}</span>
+          </div>
+        </button>
+      </div>
+
+      <ng-template #emptyConversations>
+        <div class="empty-conversations">
+          <mat-icon>forum</mat-icon>
+          <p>Aucune conversation</p>
+        </div>
+      </ng-template>
+    </div>
+
+    <div class="chat-main">
+      <div class="chat-header">
+        <div class="header-info">
+          <div class="header-avatar">
+            <img [src]="selectedConversation?.driver?.avatar || 'assets/default-avatar.svg'" alt="Driver" />
+          </div>
+          <div class="header-details">
+            <h3 class="header-name">{{ mission ? getConversationTitle(selectedConversation || { missionId: '', title: 'Messagerie', preview: '', time: '', unreadCount: 0 }) : 'Messagerie' }}</h3>
+            <span class="header-status" *ngIf="missionId && isTyping">En train d'écrire...</span>
+            <span class="header-status" *ngIf="missionId && !isTyping">En ligne</span>
+            <span class="header-status" *ngIf="!missionId">Sélectionnez une conversation</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="chat-messages" #messagesContainer>
+        <ng-container *ngIf="messages.length > 0; else emptyMessages">
+          <div class="message" *ngFor="let message of messages" [class.my-message]="isMyMessage(message)">
+            <div class="message-avatar" *ngIf="!isMyMessage(message)">
+              <img src="assets/default-avatar.svg" alt="Driver" />
+            </div>
+            <div class="message-content">
+              <p class="message-text">{{ message.contenu }}</p>
+              <span class="message-time">{{ formatTime(message.dateEnvoi) }}</span>
+            </div>
+          </div>
+        </ng-container>
+
+        <ng-template #emptyMessages>
+          <div class="empty-messages">
+            <mat-icon>chat_bubble_outline</mat-icon>
+            <p>Sélectionnez une conversation pour afficher les messages</p>
+          </div>
+        </ng-template>
+
+        <div class="typing-indicator" *ngIf="isTyping">
+          <div class="typing-dots">
+            <span></span>
+            <span></span>
+            <span></span>
+          </div>
+        </div>
+      </div>
+
+      <div class="chat-input">
+        <button class="attach-btn" type="button">
+          <mat-icon>attach_file</mat-icon>
+        </button>
+        <input
+          type="text"
+          [(ngModel)]="newMessage"
+          (keyup.enter)="sendMessage()"
+          (input)="onTyping()"
+          placeholder="Écrivez votre message..."
+          class="message-input"
+          [disabled]="!missionId"
+        />
+        <button class="send-btn" type="button" (click)="sendMessage()" [disabled]="!newMessage.trim() || !missionId">
+          <mat-icon>send</mat-icon>
+        </button>
+      </div>
+    </div>
+
+    <div class="chat-details">
+      <div class="details-header">
+        <h3 class="details-title">Détails de la mission</h3>
+      </div>
+      <div class="details-content" *ngIf="mission; else emptyDetails">
+        <div class="detail-item">
+          <span class="detail-label">ID</span>
+          <span class="detail-value">#{{ mission.id.slice(0, 8) }}</span>
+        </div>
+        <div class="detail-item">
+          <span class="detail-label">Catégorie</span>
+          <span class="detail-value">{{ mission.categorie }}</span>
+        </div>
+        <div class="detail-item">
+          <span class="detail-label">Départ</span>
+          <span class="detail-value">{{ mission.depart.ville }}</span>
+        </div>
+        <div class="detail-item">
+          <span class="detail-label">Destination</span>
+          <span class="detail-value">{{ mission.destination.ville }}</span>
+        </div>
+        <div class="detail-item">
+          <span class="detail-label">Date</span>
+          <span class="detail-value">{{ mission.dateLivraison | date:'dd/MM/yyyy' }}</span>
+        </div>
+      </div>
+      <ng-template #emptyDetails>
+        <div class="details-content empty">
+          <p>Aucune mission sélectionnée</p>
+          <p>Choisissez une conversation pour voir ses détails.</p>
+        </div>
+      </ng-template>
+    </div>
+  </div>
+</div>

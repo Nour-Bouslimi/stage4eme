@@ -1,0 +1,142 @@
+<div class="tracking-page">
+  <div class="tracking-breadcrumb">
+    <span class="crumb">Accueil</span>
+    <span class="crumb-separator">></span>
+    <span class="crumb active">Suivi en temps réel</span>
+  </div>
+
+  <div class="tracking-header" *ngIf="!loading && mission">
+    <div>
+      <h1 class="page-title">Suivi en temps réel</h1>
+      <p class="page-subtitle">{{ getMissionNumber() }} · {{ getMissionTitle() }}</p>
+    </div>
+  </div>
+
+  <div class="tracking-grid" *ngIf="!loading && mission">
+    <section class="map-panel">
+      <div class="map-eta">
+        <span class="eta-caption">ETA</span>
+        <strong>~{{ eta }} min</strong>
+      </div>
+
+      <div class="map-visual">
+        <div class="map-grid"></div>
+        <div class="map-road map-road-horizontal"></div>
+        <div class="map-road map-road-vertical"></div>
+        <div class="map-road map-road-small"></div>
+
+        <div class="map-marker destination">
+          <span class="marker-icon">➤</span>
+          <span class="marker-label">Destination</span>
+        </div>
+
+        <div class="map-marker driver">
+          <span class="marker-icon">🚚</span>
+        </div>
+
+        <div class="map-marker departure">
+          <span class="marker-icon">⌖</span>
+          <span class="marker-label">Départ</span>
+        </div>
+
+        <div class="map-footer">© DeliverEase Maps</div>
+      </div>
+    </section>
+
+    <aside class="right-column">
+      <section class="timeline-card">
+        <div class="status-pill" [ngClass]="getStatusColor(mission.statut)">
+          <span class="dot"></span>
+          <span>{{ getStatusBadgeLabel() }}</span>
+        </div>
+
+        <div class="timeline-current">
+          <span class="current-time">{{ getDateLabel() }}</span>
+          <p class="current-title">{{ getStatusMessage() }}</p>
+          <p class="current-subtitle">{{ getStatusSubtext() }}</p>
+        </div>
+
+        <div class="route-strip">
+          <span class="route-strip-title">{{ getJourneyLabel() }}</span>
+          <span class="route-strip-state">{{ getStatusBadgeLabel() }}</span>
+        </div>
+
+        <div class="timeline-list">
+          <div
+            class="timeline-item"
+            *ngFor="let step of timelineSteps"
+            [class.active]="isTimelineStepActive(step.status)"
+          >
+            <div class="timeline-rail"></div>
+            <div class="timeline-bullet"></div>
+            <div class="timeline-body">
+              <div class="timeline-row">
+                <strong>{{ step.label }}</strong>
+                <span class="timeline-time">{{ step.time }}</span>
+              </div>
+              <p>{{ step.detail }}</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <button class="contact-driver-btn" type="button" (click)="contactDriver()">
+        <mat-icon>chat_bubble_outline</mat-icon>
+        <span>Contacter le livreur</span>
+      </button>
+
+      <section class="details-card">
+        <div class="details-header">
+          <span class="status-pill compact" [ngClass]="getStatusColor(mission.statut)">
+            <span class="dot"></span>
+            <span>{{ getStatusBadgeLabel() }}</span>
+          </span>
+          <span class="mission-id">{{ getMissionNumber() }}</span>
+        </div>
+
+        <div class="details-list">
+          <div class="details-item">
+            <span class="label">Mission</span>
+            <strong>{{ getMissionNumber() }}</strong>
+          </div>
+          <div class="details-item">
+            <span class="label">Catégorie</span>
+            <strong>{{ getMissionTitle() }}</strong>
+          </div>
+          <div class="details-item">
+            <span class="label">Départ</span>
+            <strong>{{ mission.depart.ville || mission.depart.rue }}</strong>
+          </div>
+          <div class="details-item">
+            <span class="label">Destination</span>
+            <strong>{{ mission.destination.ville || mission.destination.rue }}</strong>
+          </div>
+          <div class="details-item">
+            <span class="label">Colis</span>
+            <strong>{{ getWeightLabel() }}</strong>
+          </div>
+          <div class="details-item">
+            <span class="label">Date</span>
+            <strong>{{ getDateLabel() }}</strong>
+          </div>
+        </div>
+
+        <button class="view-mission-btn" type="button" (click)="goBack()">
+          Voir la mission
+        </button>
+      </section>
+    </aside>
+  </div>
+
+  <div class="loading-state" *ngIf="loading">
+    <mat-spinner diameter="44"></mat-spinner>
+    <p>Chargement du suivi...</p>
+  </div>
+
+  <div class="empty-state" *ngIf="!loading && !mission">
+    <mat-icon>map</mat-icon>
+    <h2>Aucune mission à afficher</h2>
+    <p>Le lien ne contient pas de mission valide ou la mission est introuvable.</p>
+    <button class="view-mission-btn" type="button" (click)="goBack()">Retour au tableau de bord</button>
+  </div>
+</div>

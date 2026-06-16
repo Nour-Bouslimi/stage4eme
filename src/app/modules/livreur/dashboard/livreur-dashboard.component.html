@@ -1,0 +1,184 @@
+<div class="livreur-dashboard">
+  <div class="dashboard-header">
+    <div>
+      <h1 class="dashboard-title">Bonjour, {{ userName }} 👋</h1>
+      <p class="dashboard-subtitle">Prêt pour de nouvelles missions</p>
+    </div>
+    <div class="availability-toggle">
+      <label class="toggle-label">Disponibilité</label>
+      <div class="toggle-switch" [class.active]="available" (click)="toggleAvailability()">
+        <div class="toggle-slider"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="stats-grid">
+    <div class="stat-card">
+      <div class="stat-icon today">
+        <mat-icon>today</mat-icon>
+      </div>
+      <div class="stat-content">
+        <p class="stat-value">{{ stats.today }}</p>
+        <p class="stat-label">Aujourd'hui</p>
+      </div>
+    </div>
+
+    <div class="stat-card">
+      <div class="stat-icon completed">
+        <mat-icon>check_circle</mat-icon>
+      </div>
+      <div class="stat-content">
+        <p class="stat-value">{{ stats.completed }}</p>
+        <p class="stat-label">Terminées</p>
+      </div>
+    </div>
+
+    <div class="stat-card">
+      <div class="stat-icon total">
+        <mat-icon>assessment</mat-icon>
+      </div>
+      <div class="stat-content">
+        <p class="stat-value">{{ stats.total }}</p>
+        <p class="stat-label">Total</p>
+      </div>
+    </div>
+
+    <div class="stat-card">
+      <div class="stat-icon revenue">
+        <mat-icon>payments</mat-icon>
+      </div>
+      <div class="stat-content">
+        <p class="stat-value">{{ stats.revenue }} TND</p>
+        <p class="stat-label">Revenus</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="dashboard-content">
+    <div class="active-mission-section" *ngIf="activeMission">
+      <div class="section-header">
+        <h2 class="section-title">Mission en cours</h2>
+        <button class="view-btn" (click)="goToActiveMission()">
+          Voir détails
+          <mat-icon>arrow_forward</mat-icon>
+        </button>
+      </div>
+
+      <div class="active-mission-card">
+        <div class="mission-header">
+          <div class="mission-id">#{{ activeMission.id.slice(0, 8) }}</div>
+          <span class="status-badge active">{{ getActiveMissionStatusLabel() }}</span>
+        </div>
+
+        <div class="mission-route">
+          <div class="route-point start">
+            <mat-icon class="point-icon">location_on</mat-icon>
+            <div class="point-details">
+              <span class="point-label">Départ</span>
+              <span class="point-address">{{ activeMission.depart.rue }}, {{ activeMission.depart.ville }}</span>
+            </div>
+          </div>
+          <mat-icon class="route-arrow">arrow_downward</mat-icon>
+          <div class="route-point end">
+            <mat-icon class="point-icon">flag</mat-icon>
+            <div class="point-details">
+              <span class="point-label">Destination</span>
+              <span class="point-address">{{ activeMission.destination.rue }}, {{ activeMission.destination.ville }}</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="mission-info">
+          <div class="info-item">
+            <span class="info-label">Catégorie</span>
+            <span class="info-value">{{ activeMission.categorie }}</span>
+          </div>
+          <div class="info-item">
+            <span class="info-label">Poids</span>
+            <span class="info-value">{{ activeMission.poids }} kg</span>
+          </div>
+          <div class="info-item">
+            <span class="info-label">Prix</span>
+            <span class="info-value">{{ activeMission.prix || 'N/A' }} TND</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="recent-missions-section">
+      <div class="section-header">
+        <h2 class="section-title">Missions récentes</h2>
+        <a class="view-all-link">Voir tout</a>
+      </div>
+
+      <div class="missions-list">
+        <div class="mission-item" *ngFor="let mission of missions.slice(0, 5)">
+          <div class="mission-icon">
+            <mat-icon>local_shipping</mat-icon>
+          </div>
+          <div class="mission-details">
+            <h3 class="mission-title">{{ mission.depart.ville }} → {{ mission.destination.ville }}</h3>
+            <p class="mission-meta">{{ mission.createdAt | date:'dd/MM/yyyy':'':'fr' }} • {{ mission.categorie }}</p>
+          </div>
+          <div class="mission-status">
+            <span class="status-badge">{{ getStatusLabel(mission.statut) }}</span>
+          </div>
+        </div>
+
+        <div class="empty-state" *ngIf="missions.length === 0">
+          <mat-icon class="empty-icon">inbox</mat-icon>
+          <p>Aucune mission récente</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal nouvelle mission -->
+  <div class="modal-overlay" *ngIf="showMissionModal" [class.visible]="showMissionModal">
+    <div class="mission-modal">
+      <div class="modal-header">
+        <mat-icon class="modal-icon">notifications_active</mat-icon>
+        <h2 class="modal-title">Nouvelle demande !</h2>
+      </div>
+
+      <div class="modal-content" *ngIf="newMission">
+        <div class="mission-summary">
+          <div class="summary-row">
+            <span class="summary-label">Trajet</span>
+            <span class="summary-value">{{ newMission.depart.ville }} → {{ newMission.destination.ville }}</span>
+          </div>
+          <div class="summary-row">
+            <span class="summary-label">Catégorie</span>
+            <span class="summary-value">{{ newMission.categorie }}</span>
+          </div>
+          <div class="summary-row">
+            <span class="summary-label">Poids</span>
+            <span class="summary-value">{{ newMission.poids }} kg</span>
+          </div>
+          <div class="summary-row">
+            <span class="summary-label">Distance</span>
+            <span class="summary-value">~{{ newMission.distance || 'N/A' }} km</span>
+          </div>
+          <div class="summary-row">
+            <span class="summary-label">Prix</span>
+            <span class="summary-value">{{ newMission.prix || 'N/A' }} TND</span>
+          </div>
+        </div>
+
+        <div class="countdown-bar">
+          <div class="countdown-progress" [style.width.%]="(countdown / 30) * 100"></div>
+          <span class="countdown-text">{{ countdown }}s</span>
+        </div>
+      </div>
+
+      <div class="modal-actions">
+        <button class="btn-reject" (click)="rejectMission()">
+          Refuser
+        </button>
+        <button class="btn-accept" (click)="acceptMission()">
+          Accepter
+        </button>
+      </div>
+    </div>
+  </div>
+</div>

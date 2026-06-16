@@ -1,0 +1,368 @@
+<div class="profil-page">
+  <div class="page-header">
+    <div>
+      <h1 class="page-title">Mon profil</h1>
+      <p class="page-subtitle">Gérez vos informations personnelles et votre véhicule</p>
+    </div>
+
+    <button class="edit-btn header-edit" (click)="toggleEdit()" *ngIf="!editing">
+      <mat-icon>edit</mat-icon>
+      Modifier le profil
+    </button>
+  </div>
+
+  <div class="profil-content" *ngIf="!loading && user">
+    <div class="profil-card">
+      <div class="card-header">
+        <h2 class="card-title">Informations personnelles</h2>
+        <button class="edit-btn" (click)="toggleEdit()" *ngIf="!editing">
+          <mat-icon>edit</mat-icon>
+          Modifier
+        </button>
+        <button class="cancel-btn" (click)="toggleEdit()" *ngIf="editing">
+          Annuler
+        </button>
+      </div>
+
+      <form [formGroup]="profileForm" class="profil-form">
+        <div class="avatar-section">
+          <div class="avatar-upload">
+            <div class="avatar-preview">
+              <img [src]="avatarPreview" alt="Avatar" />
+            </div>
+            <label class="upload-label" *ngIf="editing">
+              <input type="file" (change)="onFileSelected($event, 'avatar')" accept="image/*" />
+              <mat-icon>camera_alt</mat-icon>
+              <span>Changer la photo</span>
+            </label>
+          </div>
+          <div class="avatar-info">
+            <h3 class="user-name">{{ user.prenom }} {{ user.nom }}</h3>
+            <div class="user-rating">
+              <mat-icon class="star-icon">star</mat-icon>
+              <span>{{ user.note || 'N/A' }}</span>
+              <span class="review-count">({{ user.nombreAvis || 0 }} avis)</span>
+            </div>
+            <div class="user-role-badge">
+              <span>Livreur</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="form-grid">
+          <div class="form-group">
+            <label for="prenom">Prénom</label>
+            <input id="prenom" type="text" formControlName="prenom" [readonly]="!editing" class="form-input" />
+            <small class="field-error" *ngIf="editing && profileForm.get('prenom')?.touched && profileForm.get('prenom')?.invalid">
+              {{ getFieldError('prenom') }}
+            </small>
+          </div>
+
+          <div class="form-group">
+            <label for="nom">Nom</label>
+            <input id="nom" type="text" formControlName="nom" [readonly]="!editing" class="form-input" />
+            <small class="field-error" *ngIf="editing && profileForm.get('nom')?.touched && profileForm.get('nom')?.invalid">
+              {{ getFieldError('nom') }}
+            </small>
+          </div>
+
+          <div class="form-group">
+            <label for="email">Email</label>
+            <input id="email" type="email" formControlName="email" [readonly]="!editing" class="form-input" />
+            <small class="field-error" *ngIf="editing && profileForm.get('email')?.touched && profileForm.get('email')?.invalid">
+              {{ getFieldError('email') }}
+            </small>
+          </div>
+
+          <div class="form-group">
+            <label for="telephone">Téléphone</label>
+            <input id="telephone" type="tel" formControlName="telephone" [readonly]="!editing" class="form-input" />
+            <small class="field-error" *ngIf="editing && profileForm.get('telephone')?.touched && profileForm.get('telephone')?.invalid">
+              {{ getFieldError('telephone') }}
+            </small>
+          </div>
+
+          <div class="form-group">
+            <label for="cin">CIN</label>
+            <input id="cin" type="text" formControlName="cin" [readonly]="!editing" class="form-input" />
+            <small class="field-error" *ngIf="editing && profileForm.get('cin')?.touched && profileForm.get('cin')?.invalid">
+              {{ getFieldError('cin') }}
+            </small>
+          </div>
+
+          <div class="form-group">
+            <label for="motDePasse">Mot de passe</label>
+            <input
+              id="motDePasse"
+              type="password"
+              formControlName="motDePasse"
+              [readonly]="!editing"
+              class="form-input"
+              placeholder="Laisser vide pour ne pas changer"
+            />
+            <small class="field-error" *ngIf="editing && profileForm.get('motDePasse')?.touched && profileForm.get('motDePasse')?.invalid">
+              {{ getFieldError('motDePasse') }}
+            </small>
+          </div>
+        </div>
+
+        <div class="vehicle-section">
+          <h3 class="section-title">Informations véhicule</h3>
+
+          <div class="upload-grid">
+            <div class="upload-card">
+              <div class="upload-preview">
+                <img [src]="cinPreview" alt="CIN" />
+              </div>
+              <label class="upload-label upload-label-static" *ngIf="editing">
+                <input type="file" (change)="onFileSelected($event, 'cin')" accept="image/*" />
+                <mat-icon>badge</mat-icon>
+                <span>Photo CIN</span>
+              </label>
+              <div class="upload-caption" *ngIf="!editing">
+                <mat-icon>badge</mat-icon>
+                <span>Photo CIN</span>
+              </div>
+            </div>
+
+            <div class="upload-card">
+              <div class="upload-preview">
+                <img [src]="vehiclePreview" alt="Véhicule" />
+              </div>
+              <label class="upload-label upload-label-static" *ngIf="editing">
+                <input type="file" (change)="onFileSelected($event, 'vehicle')" accept="image/*" />
+                <mat-icon>add_photo_alternate</mat-icon>
+                <span>Photo du véhicule</span>
+              </label>
+              <div class="upload-caption" *ngIf="!editing">
+                <mat-icon>add_photo_alternate</mat-icon>
+                <span>Photo du véhicule</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="form-grid">
+            <div class="form-group">
+              <label for="vehiculeType">Type de véhicule</label>
+              <select id="vehiculeType" formControlName="vehiculeType" [disabled]="!editing" class="form-select">
+                <option *ngFor="let type of vehicleTypes" [value]="type.value">
+                  {{ type.label }}
+                </option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label for="vehiculeImmatriculation">Immatriculation</label>
+              <input id="vehiculeImmatriculation" type="text" formControlName="vehiculeImmatriculation" [readonly]="!editing" class="form-input" />
+              <small class="field-error" *ngIf="editing && profileForm.get('vehiculeImmatriculation')?.touched && profileForm.get('vehiculeImmatriculation')?.invalid">
+                {{ getFieldError('vehiculeImmatriculation') }}
+              </small>
+            </div>
+
+            <div class="form-group">
+              <label for="vehiculePoidsMax">Poids max (kg)</label>
+              <input id="vehiculePoidsMax" type="number" formControlName="vehiculePoidsMax" [readonly]="!editing" class="form-input" />
+              <small class="field-error" *ngIf="editing && profileForm.get('vehiculePoidsMax')?.touched && profileForm.get('vehiculePoidsMax')?.invalid">
+                {{ getFieldError('vehiculePoidsMax') }}
+              </small>
+            </div>
+
+            <div class="form-group">
+              <label for="vehiculeVolumeMax">Volume max (m³)</label>
+              <input id="vehiculeVolumeMax" type="number" formControlName="vehiculeVolumeMax" [readonly]="!editing" class="form-input" />
+              <small class="field-error" *ngIf="editing && profileForm.get('vehiculeVolumeMax')?.touched && profileForm.get('vehiculeVolumeMax')?.invalid">
+                {{ getFieldError('vehiculeVolumeMax') }}
+              </small>
+            </div>
+
+            <div class="form-group full-width">
+              <label for="vehiculeRayonService">Rayon de service (km)</label>
+              <input id="vehiculeRayonService" type="number" formControlName="vehiculeRayonService" [readonly]="!editing" class="form-input" />
+              <small class="field-error" *ngIf="editing && profileForm.get('vehiculeRayonService')?.touched && profileForm.get('vehiculeRayonService')?.invalid">
+                {{ getFieldError('vehiculeRayonService') }}
+              </small>
+            </div>
+          </div>
+        </div>
+
+        <div class="form-actions" *ngIf="editing">
+          <button type="button" class="btn-cancel" (click)="toggleEdit()">
+            Annuler
+          </button>
+          <button type="button" class="btn-save" (click)="saveProfile()" [disabled]="saving">
+            <span *ngIf="!saving">Enregistrer</span>
+            <span *ngIf="saving">Enregistrement...</span>
+          </button>
+        </div>
+      </form>
+    </div>
+
+    <div class="right-column">
+      <div class="summary-card">
+        <div class="summary-avatar">
+          <img [src]="avatarPreview" alt="Avatar" />
+          <span class="summary-badge" *ngIf="editing">
+            <mat-icon>photo_camera</mat-icon>
+          </span>
+        </div>
+        <div class="summary-info">
+          <h3>{{ user.prenom }} {{ user.nom }}</h3>
+          <p>CIN: {{ getCinLabel() }}</p>
+          <div class="summary-rating">
+            <mat-icon class="star-icon">star</mat-icon>
+            <strong>{{ user.note || 'N/A' }}</strong>
+            <span>({{ user.nombreAvis || 0 }} avis)</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="vehicle-summary-card">
+        <div class="section-top">
+          <h3>Mon véhicule</h3>
+        </div>
+
+        <div class="vehicle-summary-header">
+          <div class="vehicle-icon-box">
+            <mat-icon>local_shipping</mat-icon>
+          </div>
+          <div class="vehicle-copy">
+            <strong>{{ getVehicleName() }}</strong>
+            <p>Immatriculation: {{ getVehicleMatriculation() }}</p>
+          </div>
+        </div>
+
+        <div class="vehicle-metrics">
+          <div class="metric-pill blue">
+            <span>Poids max</span>
+            <strong>{{ getVehiclePoidLabel() }}</strong>
+          </div>
+          <div class="metric-pill purple">
+            <span>Volume max</span>
+            <strong>{{ getVehicleVolumeLabel() }}</strong>
+          </div>
+          <div class="metric-pill green">
+            <span>Rayon service</span>
+            <strong>{{ getVehicleRadiusLabel() }}</strong>
+          </div>
+        </div>
+      </div>
+
+      <div class="documents-card">
+        <div class="section-top">
+          <h3>Documents</h3>
+        </div>
+
+        <div class="document-row">
+          <div>
+            <strong>CIN</strong>
+            <p>{{ getCinLabel() }}</p>
+          </div>
+          <span class="doc-status" [ngClass]="getDocumentStatus('cin').className">
+            {{ getDocumentStatus('cin').label }}
+          </span>
+        </div>
+
+        <div class="document-row">
+          <div>
+            <strong>Photo véhicule</strong>
+            <p>{{ user.vehicule?.photo ? 'Validée' : 'À compléter' }}</p>
+          </div>
+          <span class="doc-status" [ngClass]="getDocumentStatus('vehicle-photo').className">
+            {{ getDocumentStatus('vehicle-photo').label }}
+          </span>
+        </div>
+
+        <div class="document-row">
+          <div>
+            <strong>Permis B</strong>
+            <p>{{ user.estActif ? '2024-10-15' : 'À renseigner' }}</p>
+          </div>
+          <span class="doc-status" [ngClass]="getDocumentStatus('license').className">
+            {{ getDocumentStatus('license').label }}
+          </span>
+        </div>
+
+        <div class="document-row">
+          <div>
+            <strong>Assurance</strong>
+            <p>{{ getInsuranceLabel() }}</p>
+          </div>
+          <span class="doc-status pending">
+            {{ getDocumentStatus('insurance').label }}
+          </span>
+        </div>
+      </div>
+
+      <div class="planning-card" id="availability-section">
+        <div class="section-top">
+          <h3>Planning de disponibilité</h3>
+          <button
+            type="button"
+            class="availability-toggle-btn"
+            [class.editing]="editingAvailability"
+            (click)="editingAvailability ? saveAvailability() : openAvailabilityEditor()"
+            [disabled]="saving"
+          >
+            {{ editingAvailability ? 'Enregistrer' : 'Modifier' }}
+          </button>
+        </div>
+
+        <p class="availability-summary">{{ availabilityPreview }}</p>
+
+        <div class="planning-days">
+          <button
+            type="button"
+            class="day-chip"
+            *ngFor="let day of availabilityDays"
+            [class.active]="day.active"
+            [class.clickable]="editingAvailability"
+            (click)="toggleDayAvailability(day)"
+          >
+            {{ day.label }}
+          </button>
+        </div>
+
+        <div class="planning-hours">
+          <div class="hour-box">
+            <span>Heure de début</span>
+            <strong *ngIf="!editingAvailability">{{ profileForm.get('availabilityStart')?.value }}</strong>
+            <input *ngIf="editingAvailability" type="time" formControlName="availabilityStart" class="time-input" />
+          </div>
+          <div class="hour-box">
+            <span>Heure de fin</span>
+            <strong *ngIf="!editingAvailability">{{ profileForm.get('availabilityEnd')?.value }}</strong>
+            <input *ngIf="editingAvailability" type="time" formControlName="availabilityEnd" class="time-input" />
+          </div>
+        </div>
+
+        <div class="availability-actions" *ngIf="editingAvailability">
+          <button type="button" class="btn-cancel btn-small" (click)="cancelAvailabilityEdit()">Annuler</button>
+        </div>
+      </div>
+
+      <div class="stats-mini-grid">
+        <div class="mini-stat revenue">
+          <span>Revenus ce mois</span>
+          <strong>{{ getRevenueLabel() }}</strong>
+        </div>
+        <div class="mini-stat acceptance">
+          <span>Taux acceptation</span>
+          <strong>{{ getAcceptanceRate() }}</strong>
+        </div>
+        <div class="mini-stat missions">
+          <span>Missions ce mois</span>
+          <strong>{{ getMonthlyMissions() }}</strong>
+        </div>
+        <div class="mini-stat cancellations">
+          <span>Annulations</span>
+          <strong>{{ getCancellationCount() }}</strong>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="loading-state" *ngIf="loading">
+    <mat-spinner diameter="40"></mat-spinner>
+    <p>Chargement...</p>
+  </div>
+</div>

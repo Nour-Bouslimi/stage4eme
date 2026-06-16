@@ -1,0 +1,138 @@
+<div class="driver-search-page">
+  <div class="search-breadcrumb">
+    <span class="crumb">Accueil</span>
+    <span class="crumb-separator">></span>
+    <span class="crumb active">Recherche de livreurs</span>
+  </div>
+
+  <section class="mission-summary" *ngIf="mission">
+    <div class="summary-route">
+      <mat-icon class="route-icon departure">place</mat-icon>
+      <strong>{{ mission.depart.ville || mission.depart.rue }}</strong>
+      <mat-icon class="route-arrow">navigation</mat-icon>
+      <strong>{{ mission.destination.ville || mission.destination.rue }}</strong>
+    </div>
+    <div class="summary-meta">{{ getMissionSummaryLabel() }}</div>
+    <button class="modify-btn" type="button" (click)="modifyMission()">Modifier</button>
+  </section>
+
+  <div class="search-grid" *ngIf="!loading && mission">
+    <section class="map-panel">
+      <div class="map-surface">
+        <div class="map-grid"></div>
+        <div class="map-road road-a"></div>
+        <div class="map-road road-b"></div>
+        <div class="map-road road-c"></div>
+        <div class="map-road road-d"></div>
+
+        <div class="map-marker destination">
+          <mat-icon>near_me</mat-icon>
+          <span>Destination</span>
+        </div>
+
+        <div class="map-marker driver"></div>
+
+        <div class="map-marker departure">
+          <mat-icon>location_on</mat-icon>
+          <span>Départ</span>
+        </div>
+
+        <div class="map-credit">© DeliverEase Maps</div>
+      </div>
+    </section>
+
+    <aside class="drivers-panel">
+      <div class="drivers-search-box">
+        <mat-icon>search</mat-icon>
+        <input
+          type="text"
+          [(ngModel)]="searchQuery"
+          (input)="onSearchChange()"
+          placeholder="Rechercher un livreur..."
+        />
+      </div>
+
+      <div class="filters-row">
+        <button
+          type="button"
+          class="filter-pill"
+          [class.active]="selectedFilter === 'all'"
+          (click)="filterDrivers('all')"
+        >
+          Tous
+        </button>
+        <button
+          type="button"
+          class="filter-pill"
+          *ngFor="let vehicle of vehicleTypes"
+          [class.active]="selectedFilter === vehicle.value"
+          (click)="filterDrivers(vehicle.value)"
+        >
+          {{ vehicle.label }}
+        </button>
+      </div>
+
+      <div class="results-count">{{ filteredDrivers.length }} livreurs trouvés</div>
+
+      <div class="drivers-list" *ngIf="filteredDrivers.length > 0">
+        <article class="driver-card" *ngFor="let driver of filteredDrivers">
+          <div class="driver-top">
+            <div class="driver-avatar">
+              <img [src]="driver.avatar || 'assets/default-avatar.svg'" [alt]="driver.prenom + ' ' + driver.nom" />
+            </div>
+            <div class="driver-main">
+              <div class="driver-name-row">
+                <h3>{{ driver.prenom }} {{ driver.nom }}</h3>
+                <div class="rating">
+                  <mat-icon>star</mat-icon>
+                  <span>{{ getDriverRating(driver) }}</span>
+                </div>
+              </div>
+              <p class="driver-subtitle">{{ getDriverSubtitle(driver) }}</p>
+              <div class="driver-stats">
+                <span>{{ getDriverMissions(driver) }} missions</span>
+                <span>{{ getDriverRate(driver) }}€/h</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="driver-footer">
+            <span
+              class="availability"
+              [class.available]="driver.disponible"
+              [class.unavailable]="!driver.disponible"
+            >
+              {{ getDriverStatusLabel(driver) }}
+            </span>
+
+            <button
+              *ngIf="driver.disponible"
+              class="contact-btn"
+              type="button"
+              (click)="contactDriver(driver.id)"
+            >
+              Contacter
+            </button>
+          </div>
+        </article>
+      </div>
+
+      <div class="empty-state" *ngIf="filteredDrivers.length === 0">
+        <mat-icon>person_search</mat-icon>
+        <p>Aucun livreur disponible pour ce filtre</p>
+      </div>
+    </aside>
+  </div>
+
+  <div class="loading-state" *ngIf="loading">
+    <mat-spinner diameter="40"></mat-spinner>
+    <p>Chargement des livreurs...</p>
+  </div>
+
+  <div class="empty-state page-empty" *ngIf="!loading && !mission">
+    <mat-icon>local_shipping</mat-icon>
+    <h2>Mission introuvable</h2>
+    <p>La recherche de livreurs nécessite une mission valide.</p>
+    <button class="contact-btn" type="button" (click)="goBack()">Retour</button>
+  </div>
+</div>

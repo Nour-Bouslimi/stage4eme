@@ -1,0 +1,108 @@
+<div class="livreur-missions">
+  <div class="page-header">
+    <h1 class="page-title">Missions disponibles</h1>
+    <p class="page-subtitle">Consultez et acceptez les missions de livraison</p>
+  </div>
+
+  <div class="tabs-section">
+    <div class="tabs">
+      <button
+        class="tab-btn"
+        [class.active]="selectedTab === 'all'"
+        (click)="selectTab('all')"
+      >
+        Toutes
+      </button>
+      <button
+        class="tab-btn"
+        [class.active]="selectedTab === 'available'"
+        (click)="selectTab('available')"
+      >
+        Disponibles
+      </button>
+      <button
+        class="tab-btn"
+        [class.active]="selectedTab === 'accepted'"
+        (click)="selectTab('accepted')"
+      >
+        En cours
+      </button>
+      <button
+        class="tab-btn"
+        [class.active]="selectedTab === 'completed'"
+        (click)="selectTab('completed')"
+      >
+        Terminées
+      </button>
+    </div>
+  </div>
+
+  <div class="missions-grid" *ngIf="!loading">
+    <div class="mission-card" *ngFor="let mission of filteredMissions">
+      <div class="card-header">
+        <div class="mission-id">#{{ mission.id.slice(0, 8) }}</div>
+        <span class="status-badge" [class]="getStatusColor(mission.statut)">
+          {{ getStatusLabel(mission.statut) }}
+        </span>
+      </div>
+
+      <div class="card-body">
+        <div class="route-info">
+          <div class="route-point start">
+            <mat-icon class="point-icon">location_on</mat-icon>
+            <span>{{ mission.depart.ville }}</span>
+          </div>
+          <mat-icon class="route-arrow">arrow_downward</mat-icon>
+          <div class="route-point end">
+            <mat-icon class="point-icon">flag</mat-icon>
+            <span>{{ mission.destination.ville }}</span>
+          </div>
+        </div>
+
+        <div class="mission-details">
+          <div class="detail-item">
+            <mat-icon class="detail-icon">category</mat-icon>
+            <span>{{ mission.categorie }}</span>
+          </div>
+          <div class="detail-item">
+            <mat-icon class="detail-icon">fitness_center</mat-icon>
+            <span>{{ mission.poids }} kg</span>
+          </div>
+          <div class="detail-item">
+            <mat-icon class="detail-icon">straighten</mat-icon>
+            <span>~{{ mission.distance || 'N/A' }} km</span>
+          </div>
+          <div class="detail-item">
+            <mat-icon class="detail-icon">payments</mat-icon>
+            <span>{{ mission.prix || 'N/A' }} TND</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="card-footer" *ngIf="mission.statut === MissionStatus.EN_ATTENTE">
+        <button class="btn-accept" (click)="acceptMission(mission.id)">
+          Accepter
+        </button>
+        <button class="btn-view" (click)="viewMission(mission.id)">
+          Voir détails
+        </button>
+      </div>
+
+      <div class="card-footer" *ngIf="mission.statut !== MissionStatus.EN_ATTENTE">
+        <button class="btn-view-full" (click)="viewMission(mission.id)">
+          Voir détails
+        </button>
+      </div>
+    </div>
+
+    <div class="empty-state" *ngIf="filteredMissions.length === 0">
+      <mat-icon class="empty-icon">inbox</mat-icon>
+      <p>Aucune mission trouvée</p>
+    </div>
+  </div>
+
+  <div class="loading-state" *ngIf="loading">
+    <mat-spinner diameter="40"></mat-spinner>
+    <p>Chargement...</p>
+  </div>
+</div>

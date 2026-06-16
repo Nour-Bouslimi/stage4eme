@@ -1,1 +1,128 @@
-/* You can add global styles to this file, and also import other style files */
+@import '@angular/material/prebuilt-themes/indigo-pink.css';
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --primary: #1A3C6E;
+  --secondary: #FF6B2C;
+  --background: #F5F7FA;
+  --surface: #FFFFFF;
+  --success: #22C55E;
+  --warning: #F59E0B;
+  --error: #EF4444;
+  --text-1: #1E293B;
+  --text-2: #64748B;
+  --radius-card: 12px;
+  --radius-btn: 8px;
+  --shadow: 0 2px 8px rgba(0,0,0,0.08);
+}
+
+* {
+  font-family: 'Inter', sans-serif;
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background: var(--background);
+  color: var(--text-1);
+}
+
+.btn-primary {
+  background: var(--secondary);
+  color: white;
+  border: none;
+  border-radius: var(--radius-btn);
+  padding: 12px 24px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-primary:hover {
+  background: #e55a1f;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(255,107,44,0.3);
+}
+
+.card {
+  background: var(--surface);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow);
+  padding: 24px;
+}
+
+.sidebar {
+  width: 260px;
+  height: 100vh;
+  background: var(--primary);
+  position: fixed;
+  left: 0;
+  top: 0;
+  transition: width 0.3s;
+  z-index: 1000;
+}
+
+.sidebar.collapsed {
+  width: 72px;
+}
+
+.main-content {
+  margin-left: 260px;
+  min-height: 100vh;
+  transition: margin-left 0.3s;
+}
+
+.main-content.expanded {
+  margin-left: 72px;
+}
+
+/* Leaflet Map Styles */
+.leaflet-container {
+  height: 100%;
+  width: 100%;
+  border-radius: var(--radius-card);
+}
+
+/* Scrollbar Styles */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--background);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--text-2);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-1);
+}
+
+/* Angular Material Overrides */
+.mat-mdc-form-field {
+  width: 100%;
+}
+
+.mat-mdc-select-panel {
+  background: var(--surface);
+}
+
+.mat-mdc-option {
+  color: var(--text-1);
+}
+
+.mat-mdc-option:hover {
+  background: var(--background);
+}
+
+.mat-mdc-option.mat-mdc-selected {
+  background: var(--secondary);
+  color: white;
+}

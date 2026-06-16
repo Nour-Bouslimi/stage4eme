@@ -1,0 +1,121 @@
+<div class="missions-page">
+  <div class="page-header">
+    <div>
+      <h1 class="page-title">Mes missions</h1>
+      <p class="page-subtitle">{{ totalMissionsLabel }}</p>
+    </div>
+  </div>
+
+  <div class="tabs-card">
+    <div class="tabs">
+      <button class="tab-btn" [class.active]="selectedTab === 'all'" (click)="selectTab('all')">Toutes</button>
+      <button class="tab-btn" [class.active]="selectedTab === 'active'" (click)="selectTab('active')">En cours</button>
+      <button class="tab-btn" [class.active]="selectedTab === 'completed'" (click)="selectTab('completed')">Terminées</button>
+      <button class="tab-btn" [class.active]="selectedTab === 'cancelled'" (click)="selectTab('cancelled')">Annulées</button>
+    </div>
+  </div>
+
+  <div class="filters-card">
+    <div class="search-filters">
+      <div class="search-box">
+        <mat-icon class="search-icon">search</mat-icon>
+        <input
+          type="text"
+          [(ngModel)]="searchQuery"
+          (input)="onSearch()"
+          placeholder="Rechercher par ID, adresse..."
+          class="search-input"
+        />
+      </div>
+
+      <div class="date-filters">
+        <mat-icon class="date-icon">calendar_month</mat-icon>
+        <input type="date" [(ngModel)]="dateRange.start" (change)="onDateChange()" class="date-input" />
+        <span class="date-separator">→</span>
+        <input type="date" [(ngModel)]="dateRange.end" (change)="onDateChange()" class="date-input" />
+      </div>
+    </div>
+  </div>
+
+  <div class="missions-table-container" *ngIf="!loading">
+    <table class="missions-table">
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Trajet</th>
+          <th>Catégorie</th>
+          <th>Livreur</th>
+          <th>Date</th>
+          <th>Prix</th>
+          <th>Statut</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let mission of paginatedMissions">
+          <td><span class="mission-id">#{{ mission.id.slice(0, 8) }}</span></td>
+          <td>
+            <div class="route-info">
+              <span class="route-point">{{ mission.depart.ville }}</span>
+              <div class="route-divider">→</div>
+              <span class="route-subpoint">{{ mission.destination.ville }}</span>
+            </div>
+          </td>
+          <td><span class="category-badge">{{ mission.categorie }}</span></td>
+          <td><span class="driver-name" [class.muted]="!mission.livreurId">{{ getDriverLabel(mission) }}</span></td>
+          <td>{{ mission.createdAt | date:'dd MMM HH:mm' }}</td>
+          <td><span class="price">{{ mission.prix ? (mission.prix | number:'1.2-2') + ' €' : '—' }}</span></td>
+          <td>
+            <span class="status-badge" [class]="getStatusColor(mission.statut)">
+              {{ getStatusLabel(mission.statut) }}
+            </span>
+          </td>
+          <td>
+            <div class="action-buttons">
+              <button class="action-btn" type="button" (click)="viewMission(mission.id)" mat-icon-button aria-label="Voir la mission">
+                <mat-icon>visibility</mat-icon>
+              </button>
+              <button class="action-btn" type="button" (click)="contactDriver(mission.id)" mat-icon-button aria-label="Message">
+                <mat-icon>chat_bubble_outline</mat-icon>
+              </button>
+              <button class="action-btn rate" type="button" (click)="rateMission(mission.id)" mat-icon-button aria-label="Évaluer la mission">
+                <mat-icon>star_outline</mat-icon>
+              </button>
+            </div>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="empty-state" *ngIf="filteredMissions.length === 0">
+      <mat-icon class="empty-icon">inbox</mat-icon>
+      <p>Aucune mission trouvée</p>
+    </div>
+
+    <div class="table-footer" *ngIf="filteredMissions.length > 0">
+      <p>{{ showingLabel }}</p>
+      <div class="pagination">
+        <button class="page-btn" type="button" (click)="onPageChange(currentPage - 1)" [disabled]="currentPage === 1">
+          <mat-icon>chevron_left</mat-icon>
+        </button>
+        <button
+          class="page-btn number"
+          type="button"
+          *ngFor="let page of visiblePages"
+          [class.active]="page === currentPage"
+          (click)="onPageChange(page)"
+        >
+          {{ page }}
+        </button>
+        <button class="page-btn" type="button" (click)="onPageChange(currentPage + 1)" [disabled]="currentPage === totalPages">
+          <mat-icon>chevron_right</mat-icon>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div class="loading-state" *ngIf="loading">
+    <mat-spinner diameter="40"></mat-spinner>
+    <p>Chargement...</p>
+  </div>
+</div>

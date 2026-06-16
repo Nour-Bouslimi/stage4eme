@@ -1,0 +1,45 @@
+<div class="sidebar" [class.collapsed]="collapsed">
+  <div class="sidebar-header">
+    <div class="logo">
+      <mat-icon class="logo-icon">local_shipping</mat-icon>
+      <span class="logo-text" *ngIf="!collapsed">DeliverEase</span>
+    </div>
+    <button class="toggle-btn" (click)="toggleCollapse()">
+      <mat-icon>{{ collapsed ? 'menu' : 'chevron_left' }}</mat-icon>
+    </button>
+  </div>
+
+  <nav class="sidebar-nav">
+    <div
+      class="nav-item"
+      *ngFor="let item of menuItems"
+      [class.active]="isMenuItemActive(item)"
+      (click)="onMenuItemClick(item)"
+    >
+      <mat-icon class="nav-icon">{{ item.icon }}</mat-icon>
+      <span class="nav-label" *ngIf="!collapsed">{{ item.label }}</span>
+    </div>
+  </nav>
+
+  <div class="sidebar-footer" *ngIf="!collapsed">
+    <div class="user-info">
+      <div class="user-avatar">
+        <img [src]="userAvatar || 'assets/default-avatar.svg'" alt="Avatar" />
+      </div>
+      <div class="user-details">
+        <p class="user-name">{{ userName }}</p>
+        <span class="user-role">{{ getRoleLabel() }}</span>
+      </div>
+    </div>
+    <button class="logout-btn" (click)="logout()">
+      <mat-icon>logout</mat-icon>
+      <span>Déconnexion</span>
+    </button>
+  </div>
+
+  <div class="sidebar-footer-collapsed" *ngIf="collapsed">
+    <button class="logout-btn-collapsed" (click)="logout()" mat-icon-button>
+      <mat-icon>logout</mat-icon>
+    </button>
+  </div>
+</div>

@@ -1,0 +1,107 @@
+<div class="rating-page">
+  <ng-container *ngIf="!loading && mission; else loadingState">
+    <section class="rating-shell" [class.is-complete]="submitted">
+      <ng-container *ngIf="!submitted; else successState">
+        <header class="page-intro">
+          <h1>Évaluer la mission</h1>
+          <p>Partagez votre expérience avec {{ getDriverName() }}</p>
+        </header>
+
+        <article class="mission-card">
+          <div class="mission-main">
+            <div class="mission-avatar">{{ getDriverInitials() }}</div>
+            <div class="mission-copy">
+              <h2>{{ getDriverName() }}</h2>
+              <p>{{ getMissionTypeLabel() }} · {{ getMissionReference() }}</p>
+            </div>
+          </div>
+
+          <div class="mission-meta">
+            <div class="meta-item">
+              <mat-icon>place</mat-icon>
+              <span>{{ getPickupLabel() }}</span>
+            </div>
+            <div class="meta-item">
+              <mat-icon>navigation</mat-icon>
+              <span>{{ getDeliveryLabel() }}</span>
+            </div>
+            <div class="meta-item meta-date">
+              <span>{{ getDeliveryDateLabel() }}</span>
+            </div>
+          </div>
+        </article>
+
+        <article class="rating-card">
+          <h2>Comment s'est passée votre livraison ?</h2>
+
+          <div class="stars-row" aria-label="Notation">
+            <button
+              type="button"
+              class="star-button"
+              *ngFor="let star of [1, 2, 3, 4, 5]"
+              (click)="setRating(star)"
+              [attr.aria-label]="'Noter ' + star + ' étoile' + (star > 1 ? 's' : '')"
+            >
+              <mat-icon>{{ star <= rating ? 'star' : 'star_outline' }}</mat-icon>
+            </button>
+          </div>
+
+          <p class="rating-label" *ngIf="rating > 0">{{ getRatingText() }}</p>
+        </article>
+
+        <article class="tags-card">
+          <h2>Qu'avez-vous apprécié ?</h2>
+
+          <div class="tags-row">
+            <button
+              type="button"
+              class="tag-pill"
+              *ngFor="let tag of availableTags"
+              [class.selected]="isTagSelected(tag.value)"
+              (click)="toggleTag(tag.value)"
+            >
+              {{ tag.label }}
+            </button>
+          </div>
+        </article>
+
+        <article class="comment-card">
+          <h2>Commentaire (optionnel)</h2>
+          <textarea
+            [(ngModel)]="comment"
+            placeholder="Décrivez votre expérience avec ce livreur..."
+            rows="5"
+          ></textarea>
+        </article>
+
+        <div class="actions-row">
+          <button type="button" class="btn-secondary" (click)="skipRating()">Passer</button>
+          <button type="button" class="btn-primary" [disabled]="submitting" (click)="submitRating()">
+            <span *ngIf="!submitting">Envoyer l'évaluation</span>
+            <span *ngIf="submitting">Envoi...</span>
+          </button>
+        </div>
+      </ng-container>
+
+      <ng-template #successState>
+        <div class="success-card">
+          <div class="success-icon">
+            <mat-icon>star</mat-icon>
+          </div>
+          <h2>Merci pour votre évaluation !</h2>
+          <p>Votre avis aide à améliorer la qualité du service.</p>
+          <button type="button" class="btn-primary success-button" (click)="goHome()">
+            Retour à l'accueil
+          </button>
+        </div>
+      </ng-template>
+    </section>
+  </ng-container>
+
+  <ng-template #loadingState>
+    <div class="loading-state">
+      <mat-icon class="loading-icon">hourglass_empty</mat-icon>
+      <p>Chargement...</p>
+    </div>
+  </ng-template>
+</div>
