@@ -14,6 +14,8 @@ export class SignupComponent implements OnInit {
   signupForm!: FormGroup;
   currentStep = 1;
   loading = false;
+  showPassword = false;
+  showConfirmPassword = false;
 
   constructor(
     private fb: FormBuilder,

@@ -64,14 +64,19 @@
 
         <div class="form-group">
           <label for="password">Mot de passe</label>
-          <input
-            id="password"
-            type="password"
-            formControlName="motDePasse"
-            [class.invalid]="hasError('motDePasse')"
-            placeholder="••••••••"
-            class="form-input"
-          />
+          <div class="input-with-toggle">
+            <input
+              id="password"
+              [type]="showPassword ? 'text' : 'password'"
+              formControlName="motDePasse"
+              [class.invalid]="hasError('motDePasse')"
+              placeholder="••••••••"
+              class="form-input"
+            />
+            <button type="button" class="password-toggle" (click)="showPassword = !showPassword" aria-label="Afficher/Masquer le mot de passe">
+              <mat-icon>{{ showPassword ? 'visibility_off' : 'visibility' }}</mat-icon>
+            </button>
+          </div>
           <p class="field-error" *ngIf="hasError('motDePasse')">{{ getFieldError('motDePasse') }}</p>
         </div>
 

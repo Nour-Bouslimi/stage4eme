@@ -26,6 +26,10 @@
   box-shadow: 0 24px 80px rgba(15, 35, 65, 0.22);
 }
 
+.input-with-toggle { position: relative; }
+.input-with-toggle .form-input { padding-right: 46px; }
+.password-toggle { position: absolute; right: 8px; top: 50%; transform: translateY(-50%); background: transparent; border: none; cursor: pointer; color: var(--secondary); }
+.password-toggle mat-icon { font-size: 20px; }
 .signup-visual {
   padding: 20px;
   color: #fff;

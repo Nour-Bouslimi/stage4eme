@@ -9,12 +9,14 @@ import { RouterModule } from '@angular/router';
 
 import { AppRoutingModule } from './app-routing.module';
 import { AppComponent } from './app.component';
+import { ResetRedirectComponent } from './reset-redirect/reset-redirect.component';
 import { SharedModule } from './shared/shared.module';
 import { JwtInterceptor } from './core/interceptors/jwt.interceptor';
 
 @NgModule({
   declarations: [
-    AppComponent
+    AppComponent,
+    ResetRedirectComponent
   ],
   imports: [
     BrowserModule,

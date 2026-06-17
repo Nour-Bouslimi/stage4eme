@@ -1,23 +1,20 @@
-import { HttpErrorResponse } from '@angular/common/http';
 import { Component, OnInit } from '@angular/core';
-import { AbstractControl, FormBuilder, FormGroup, ValidationErrors, ValidatorFn, Validators } from '@angular/forms';
+import { FormBuilder, FormGroup, ValidatorFn, AbstractControl, ValidationErrors, Validators } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { finalize } from 'rxjs/operators';
 import { AuthService } from '../../../core/services/auth.service';
 import { ToastService } from '../../../shared/components/toast/toast.service';
 
 @Component({
-  selector: 'app-forgot-password',
-  templateUrl: './forgot-password.component.html',
-  styleUrls: ['./forgot-password.component.css']
+  selector: 'app-reset-password',
+  templateUrl: './reset-password.component.html',
+  styleUrls: ['./reset-password.component.css']
 })
-export class ForgotPasswordComponent implements OnInit {
-  requestForm!: FormGroup;
+export class ResetPasswordComponent implements OnInit {
   resetForm!: FormGroup;
   loading = false;
-  tokenChecking = false;
-  sent = false;
   token = '';
+  tokenChecking = false;
   tokenValid = false;
   tokenInvalid = false;
   tokenErrorMessage = '';
@@ -27,17 +24,13 @@ export class ForgotPasswordComponent implements OnInit {
 
   constructor(
     private fb: FormBuilder,
-    private authService: AuthService,
     private route: ActivatedRoute,
-    private router: Router,
+    public router: Router,
+    private authService: AuthService,
     private toastService: ToastService
   ) {}
 
   ngOnInit(): void {
-    this.requestForm = this.fb.group({
-      email: ['', [Validators.required, Validators.email]]
-    });
-
     this.resetForm = this.fb.group({
       motDePasse: ['', [Validators.required, Validators.minLength(6)]],
       confirmMotDePasse: ['', [Validators.required, this.passwordMatchValidator()]]
@@ -47,7 +40,7 @@ export class ForgotPasswordComponent implements OnInit {
       this.resetForm.get('confirmMotDePasse')?.updateValueAndValidity({ onlySelf: true });
     });
 
-    this.route.queryParamMap.subscribe((params) => {
+    this.route.queryParamMap.subscribe(params => {
       const token = params.get('token') || '';
       const email = params.get('email') || '';
       this.token = token;
@@ -56,51 +49,35 @@ export class ForgotPasswordComponent implements OnInit {
       this.tokenInvalid = false;
       this.tokenErrorMessage = '';
 
-      if (email && !this.requestForm.get('email')?.value) {
-        this.requestForm.patchValue({ email });
-      }
-
       if (token) {
         this.validateToken(token);
       }
     });
   }
 
-  get isResetMode(): boolean {
-    return !!this.token && this.tokenValid && !this.tokenInvalid;
-  }
-
-  get hasToken(): boolean {
-    return !!this.token;
-  }
-
-  get canRequestReset(): boolean {
-    return !this.loading && !this.tokenChecking;
-  }
-
-  requestReset(): void {
-    if (this.requestForm.invalid) {
-      this.requestForm.markAllAsTouched();
-      this.toastService.warning('Veuillez saisir une adresse email valide.');
-      return;
+  getFieldMessage(controlName: string): string {
+    const control = this.resetForm.get(controlName);
+    if (!control || !control.touched || !control.errors) {
+      return '';
     }
 
-    this.loading = true;
-    const email = (this.requestForm.get('email')?.value || '').trim();
+    if (control.errors['required']) {
+      return 'Ce champ est obligatoire.';
+    }
 
-    this.authService.requestPasswordReset(email)
-      .pipe(finalize(() => {
-        this.loading = false;
-      }))
-      .subscribe({
-        next: (response) => {
-          this.sent = true;
-          this.toastService.success(response.message || 'Un lien de reinitialisation a ete envoye.');
-        },
-        error: (error: unknown) => {
-          this.toastService.error(this.getErrorMessage(error));
-        }
-      });
+    if (control.errors['minlength']) {
+      return `Au moins ${control.errors['minlength'].requiredLength} caracteres sont requis.`;
+    }
+
+    if (control.errors['mismatch']) {
+      return 'Les mots de passe ne correspondent pas.';
+    }
+
+    return 'Valeur invalide.';
+  }
+
+  get isResetMode(): boolean {
+    return !!this.token && this.tokenValid && !this.tokenInvalid;
   }
 
   resetPassword(): void {
@@ -127,9 +104,7 @@ export class ForgotPasswordComponent implements OnInit {
     this.loading = true;
 
     this.authService.resetPassword(this.token, motDePasse)
-      .pipe(finalize(() => {
-        this.loading = false;
-      }))
+      .pipe(finalize(() => { this.loading = false; }))
       .subscribe({
         next: (response) => {
           this.toastService.success(response.message || 'Mot de passe mis a jour avec succes.');
@@ -141,64 +116,10 @@ export class ForgotPasswordComponent implements OnInit {
       });
   }
 
-  backToLogin(): void {
-    this.router.navigate(['/auth/login']);
-  }
-
-  resendLink(): void {
-    this.sent = false;
-  }
-
-  hasError(controlName: string): boolean {
-    const control = this.isResetMode ? this.resetForm.get(controlName) : this.requestForm.get(controlName);
-    return !!control && control.touched && control.invalid;
-  }
-
-  getFieldError(controlName: string): string {
-    const control = this.isResetMode ? this.resetForm.get(controlName) : this.requestForm.get(controlName);
-
-    if (!control || !control.touched || !control.errors) {
-      return '';
-    }
-
-    if (control.errors['required']) {
-      return 'Ce champ est obligatoire.';
-    }
-
-    if (control.errors['email']) {
-      return 'Adresse email invalide.';
-    }
-
-    if (control.errors['minlength']) {
-      return `Au moins ${control.errors['minlength'].requiredLength} caracteres sont requis.`;
-    }
-
-    if (control.errors['mismatch']) {
-      return 'Les mots de passe ne correspondent pas.';
-    }
-
-    return 'Valeur invalide.';
-  }
-
-  getTokenMessage(): string {
-    if (this.tokenChecking) {
-      return 'Validation du lien en cours...';
-    }
-
-    if (this.tokenInvalid) {
-      return this.tokenErrorMessage || 'Le lien de reinitialisation est invalide ou expire.';
-    }
-
-    return '';
-  }
-
   private validateToken(token: string): void {
     this.tokenChecking = true;
-
     this.authService.validateResetToken(token)
-      .pipe(finalize(() => {
-        this.tokenChecking = false;
-      }))
+      .pipe(finalize(() => { this.tokenChecking = false; }))
       .subscribe({
         next: () => {
           this.tokenValid = true;
@@ -231,15 +152,14 @@ export class ForgotPasswordComponent implements OnInit {
   }
 
   private getErrorMessage(error: unknown): string {
-    if (error instanceof HttpErrorResponse) {
-      if (error.status === 0) {
-        return 'Impossible de contacter le serveur.';
-      }
+    // Reuse simple error handling from other components
+    if ((error as any)?.status === 0) {
+      return 'Impossible de contacter le serveur.';
+    }
 
-      const backendMessage = error.error?.message;
-      if (typeof backendMessage === 'string' && backendMessage.trim()) {
-        return backendMessage;
-      }
+    const backendMessage = (error as any)?.error?.message;
+    if (typeof backendMessage === 'string' && backendMessage.trim()) {
+      return backendMessage;
     }
 
     if (error instanceof Error && error.message.trim()) {

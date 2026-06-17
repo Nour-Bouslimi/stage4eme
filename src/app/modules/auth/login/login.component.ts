@@ -14,6 +14,7 @@ import { UserRole } from '../../../core/models/user.model';
 export class LoginComponent implements OnInit {
   loginForm!: FormGroup;
   loading = false;
+  showPassword = false;
 
   constructor(
     private fb: FormBuilder,

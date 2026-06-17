@@ -37,6 +37,12 @@ export class AuthService {
     return this.http.post<{ message?: string }>(`${this.apiUrl}/auth/forgot-password`, { email });
   }
 
+  validateResetToken(token: string): Observable<unknown> {
+    return this.http.get(`${this.apiUrl}/auth/reset-password/validate`, {
+      params: { token }
+    });
+  }
+
   resetPassword(token: string, motDePasse: string): Observable<{ message?: string }> {
     return this.http.post<{ message?: string }>(`${this.apiUrl}/auth/reset-password`, {
       token,
