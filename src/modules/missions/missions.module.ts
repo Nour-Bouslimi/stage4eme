@@ -6,9 +6,10 @@ import { MatchingService } from './matching.service';
 import { Mission } from './entities/mission.entity';
 import { UsersModule } from '../users/users.module';
 import { Utilisateur } from '../users/entities/user.entity';
+import { NotificationsModule } from '../notifications/notifications.module';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Mission, Utilisateur]), UsersModule],
+  imports: [TypeOrmModule.forFeature([Mission, Utilisateur]), UsersModule, NotificationsModule],
   providers: [MissionsService, MatchingService],
   controllers: [MissionsController],
   exports: [MissionsService],

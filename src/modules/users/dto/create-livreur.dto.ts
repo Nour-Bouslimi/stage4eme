@@ -5,16 +5,66 @@ import {
   IsString,
   IsBoolean,
   IsDateString,
+  ValidateNested,
+  IsArray,
 } from 'class-validator';
 import { TypeVehicule } from '../../../common/enums/type-vehicule.enum';
 import { StatutDisponibilite } from '../../../common/enums/statut-disponibilite.enum';
-import { Type } from 'class-transformer';
+import { Transform, Type } from 'class-transformer';
+
+class VehicleInputDto {
+  @IsOptional()
+  @IsString()
+  type?: TypeVehicule;
+
+  @IsOptional()
+  @IsString()
+  immatriculation?: string;
+
+  @IsOptional()
+  @IsString()
+  photo?: string;
+
+  @IsOptional()
+  @IsNumber()
+  @Type(() => Number)
+  poidsMax?: number;
+
+  @IsOptional()
+  @IsNumber()
+  @Type(() => Number)
+  volumeMax?: number;
+
+  @IsOptional()
+  @IsNumber()
+  @Type(() => Number)
+  rayonService?: number;
+}
+
+class AvailabilityInputDto {
+  @IsOptional()
+  @IsString()
+  day?: string;
+
+  @IsOptional()
+  @IsBoolean()
+  active?: boolean;
+
+  @IsOptional()
+  @IsString()
+  startTime?: string;
+
+  @IsOptional()
+  @IsString()
+  endTime?: string;
+}
 
 export class CreateLivreurDto {
   @IsNotEmpty()
   email: string;
 
   @IsNotEmpty()
+  @Transform(({ value, obj }) => obj.password ?? value)
   motDePasse: string;
 
   @IsOptional()
@@ -38,6 +88,11 @@ export class CreateLivreurDto {
   @IsOptional()
   @IsString()
   photoVehicule?: string; // Photo unique du véhicule (URL ou chemin)
+
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => VehicleInputDto)
+  vehicule?: VehicleInputDto;
 
   @IsOptional()
   @IsNumber()
@@ -84,4 +139,10 @@ export class CreateLivreurDto {
   @IsOptional()
   @IsDateString()
   derniereMiseAJourPosition?: string;
+
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => AvailabilityInputDto)
+  disponibilites?: AvailabilityInputDto[];
 }

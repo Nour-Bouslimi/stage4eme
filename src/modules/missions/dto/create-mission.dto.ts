@@ -1,4 +1,6 @@
-import { IsNotEmpty, IsNumber, IsOptional } from 'class-validator';
+import { IsEnum, IsNotEmpty, IsNumber, IsOptional, IsString } from 'class-validator';
+import { Type } from 'class-transformer';
+import { CategorieMission } from '../../../common/enums/categorie-mission.enum';
 import { TypeVehicule } from '../../../common/enums/type-vehicule.enum';
 
 export class CreateMissionDto {
@@ -8,16 +10,103 @@ export class CreateMissionDto {
   @IsNotEmpty()
   adresseLivraison: string;
 
-  @IsNumber()
-  latitudeRamassage: number;
-
-  @IsNumber()
-  longitudeRamassage: number;
+  @IsOptional()
+  @IsString()
+  instructionsSpeciales?: string;
 
   @IsOptional()
+  @IsEnum(CategorieMission)
+  categorie?: CategorieMission;
+
+  @IsOptional()
+  @Type(() => Number)
   @IsNumber()
   poidsEstime?: number;
 
   @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  volumeEstime?: number;
+
+  @IsOptional()
+  @IsEnum(TypeVehicule)
   typeVehiculeRequis?: TypeVehicule;
+
+  @IsOptional()
+  @IsEnum(TypeVehicule)
+  vehiculeRequis?: TypeVehicule;
+
+  @IsOptional()
+  @IsString()
+  description?: string;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  latitudeRamassage?: number;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  longitudeRamassage?: number;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  latitudeLivraison?: number;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  longitudeLivraison?: number;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  poids?: number;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  volume?: number;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  distanceKm?: number;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  dureeEstimee?: number;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  prix?: number;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  prixEstime?: number;
+
+  @IsOptional()
+  @IsString()
+  depart?: string;
+
+  @IsOptional()
+  @IsString()
+  destination?: string;
+
+  @IsOptional()
+  @IsString()
+  dateLivraison?: string;
+
+  @IsOptional()
+  @IsString()
+  dateDemandee?: string;
+
+  @IsOptional()
+  @IsString()
+  heureDemandee?: string;
 }

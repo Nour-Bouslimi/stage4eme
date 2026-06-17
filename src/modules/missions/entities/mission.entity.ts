@@ -43,6 +43,9 @@ export class Mission {
   @Column({ nullable: true })
   description: string;
 
+  @Column({ nullable: true })
+  instructionsSpeciales: string;
+
   @Column({ type: 'enum', enum: CategorieMission, default: CategorieMission.LIVRAISON_COLIS })
   categorie: CategorieMission;
 
@@ -60,6 +63,9 @@ export class Mission {
 
   @Column({ nullable: true })
   dureeEstimee: number;
+
+  @Column({ type: 'numeric', nullable: true })
+  prixEstime: number;
 
   @Column({ type: 'date', nullable: true })
   dateDemandee: string;

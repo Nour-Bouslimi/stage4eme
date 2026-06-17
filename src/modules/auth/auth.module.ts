@@ -5,6 +5,7 @@ import { AuthService } from './auth.service';
 import { AuthController } from './auth.controller';
 import { JwtStrategy } from './strategies/jwt.strategy';
 import { UsersModule } from '../users/users.module';
+import { MailModule } from '../mail/mail.module';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 
 @Module({
@@ -20,6 +21,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
         signOptions: { expiresIn: '2h' },
       }),
     }),
+    MailModule,
     /* JwtModule.register({
       secret: process.env.JWT_SECRET || 'changeme',
       signOptions: { expiresIn: '2h' },

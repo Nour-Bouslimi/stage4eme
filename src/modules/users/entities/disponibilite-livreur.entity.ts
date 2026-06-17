@@ -7,10 +7,22 @@ export class DisponibiliteLivreur {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @Column({ type: 'timestamptz' })
+  @Column({ nullable: true })
+  day: string;
+
+  @Column({ default: true })
+  active: boolean;
+
+  @Column({ nullable: true })
+  startTime: string;
+
+  @Column({ nullable: true })
+  endTime: string;
+
+  @Column({ type: 'timestamptz', nullable: true })
   heureDebut: Date;
 
-  @Column({ type: 'timestamptz' })
+  @Column({ type: 'timestamptz', nullable: true })
   heureFin: Date;
 
   @Column({ default: false })

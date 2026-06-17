@@ -1,12 +1,13 @@
-import { Controller, Post, Body, UseGuards, Req } from '@nestjs/common';
+import { Body, Controller, Get, Post, Query } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
 import { InscriptionClientDto } from './dto/inscription-client.dto';
-import { UsersService } from '../users/users.service';
+import { ForgotPasswordDto } from './dto/forgot-password.dto';
+import { ResetPasswordDto } from './dto/reset-password.dto';
 
 @Controller('auth')
 export class AuthController {
-  constructor(private authService: AuthService, private usersService: UsersService) {}
+  constructor(private authService: AuthService) {}
 
   @Post('register')
   async register(@Body() dto: InscriptionClientDto) {
@@ -16,8 +17,25 @@ export class AuthController {
   @Post('login')
   async login(@Body() dto: LoginDto) {
     const user = await this.authService.validateUser(dto.email, dto.motDePasse);
-    if (!user) return { error: 'Invalid credentials' };
+    if (!user) {
+      return { error: 'Invalid credentials' };
+    }
     return this.authService.login(user);
+  }
+
+  @Post('forgot-password')
+  async forgotPassword(@Body() dto: ForgotPasswordDto) {
+    return this.authService.forgotPassword(dto);
+  }
+
+  @Post('reset-password')
+  async resetPassword(@Body() dto: ResetPasswordDto) {
+    return this.authService.resetPassword(dto);
+  }
+
+  @Get('reset-password/validate')
+  async validateResetToken(@Query('token') token: string) {
+    return this.authService.validateResetToken(token);
   }
 
   @Post('register-admin')

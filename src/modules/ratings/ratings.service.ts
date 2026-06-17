@@ -15,7 +15,7 @@ export class RatingsService {
   ) {}
 
   async createRating(clientId: string, dto: any) {
-    const mission = await this.missionsService.findById(dto.missionId);
+    const mission = await this.missionsService.findEntityById(dto.missionId);
     if (!mission) throw new NotFoundException('Mission introuvable');
     if (!mission.livreur) throw new BadRequestException('Mission sans livreur');
     const existing = await this.notationRepo.findOne({ where: { mission: { id: dto.missionId } } });
@@ -35,7 +35,7 @@ export class RatingsService {
     const noteMoyenne = ((Number(livreur.noteMoyenne || 0) * (totalNotes - 1)) + dto.etoiles) / totalNotes;
     livreur.totalNotes = totalNotes;
     livreur.noteMoyenne = Number(noteMoyenne.toFixed(2));
-    await this.usersService.create(livreur as any);
+    await this.usersService.save(livreur);
     return saved;
   }
 }

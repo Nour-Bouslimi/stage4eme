@@ -11,6 +11,9 @@ export class Message {
   @Column({ type: 'text', nullable: true })
   contenu: string;
 
+  @Column({ nullable: true })
+  destinataireId: string;
+
   @Column({ type: 'enum', enum: TypeMessage, default: TypeMessage.TEXTE })
   type: TypeMessage;
 

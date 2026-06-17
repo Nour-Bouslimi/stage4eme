@@ -1,7 +1,7 @@
-import { Controller, Post, UseGuards, Body, Req, Patch, Param, Get } from '@nestjs/common';
-import { MissionsService } from './missions.service';
+import { Body, Controller, Get, Param, Patch, Post, Req, UseGuards } from '@nestjs/common';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { CreateMissionDto } from './dto/create-mission.dto';
+import { MissionsService } from './missions.service';
 
 @Controller('missions')
 export class MissionsController {
@@ -22,12 +22,24 @@ export class MissionsController {
   @UseGuards(JwtAuthGuard)
   @Patch(':id/status')
   async updateStatus(@Param('id') id: string, @Body() body: any) {
-    return this.missionsService.updateStatus(id, body.statut);
+    return this.missionsService.updateStatus(id, body.statut ?? body.status, body.raisonAnnulation ?? body.reason);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Get('client/me')
+  async getMyMissions(@Req() req: any) {
+    return this.missionsService.findByClientId(req.user.id);
   }
 
   @UseGuards(JwtAuthGuard)
   @Get(':id')
   async get(@Param('id') id: string) {
     return this.missionsService.findById(id);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Get(':id/livreurs-compatibles')
+  async getCompatibleDrivers(@Param('id') id: string) {
+    return this.missionsService.findCompatibleLivreurs(id);
   }
 }

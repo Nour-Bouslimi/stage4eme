@@ -1,13 +1,18 @@
-import { IsNumber, IsOptional } from 'class-validator';
+import { IsBoolean, IsNumber, IsOptional } from 'class-validator';
+import { Transform } from 'class-transformer';
 
 export class UpdateLocationDto {
-  @IsNumber()
-  latitude: number;
-
-  @IsNumber()
-  longitude: number;
-
-  @IsNumber()
   @IsOptional()
+  @IsNumber()
+  @Transform(({ value, obj }) => obj.lat ?? value)
+  latitude?: number;
+
+  @IsOptional()
+  @IsNumber()
+  @Transform(({ value, obj }) => obj.lng ?? value)
+  longitude?: number;
+
+  @IsOptional()
+  @IsBoolean()
   estEnLigne?: boolean;
 }

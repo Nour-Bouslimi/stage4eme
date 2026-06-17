@@ -26,6 +26,15 @@ export class Utilisateur {
   @Column()
   motDePasseHash: string;
 
+  @Column({ type: 'varchar', nullable: true })
+  resetPasswordTokenHash: string | null;
+
+  @Column({ type: 'timestamptz', nullable: true })
+  resetPasswordTokenExpiresAt: Date | null;
+
+  @Column({ type: 'timestamptz', nullable: true })
+  resetPasswordRequestedAt: Date | null;
+
   @Column({ nullable: true })
   prenom: string;
 

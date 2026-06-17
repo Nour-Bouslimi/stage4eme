@@ -35,6 +35,7 @@ export class MatchingService {
       if (u.statutDisponibilite !== 'DISPONIBLE') return false;
       if (options.typeVehiculeRequis && u.typeVehicule && u.typeVehicule !== options.typeVehiculeRequis) return false;
       if (options.poidsEstime && u.poidsMaxKg && Number(u.poidsMaxKg) < options.poidsEstime) return false;
+      if (options.volumeEstime && u.volumeMaxM3 && Number(u.volumeMaxM3) < options.volumeEstime) return false;
       if (u.latitudeActuelle == null || u.longitudeActuelle == null) return false;
       const dist = this.haversineDistance(options.latitudeRamassage, options.longitudeRamassage, Number(u.latitudeActuelle), Number(u.longitudeActuelle));
       if (u.rayonServiceKm != null && dist > Number(u.rayonServiceKm)) return false;
