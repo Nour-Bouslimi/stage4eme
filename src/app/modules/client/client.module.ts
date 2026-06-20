@@ -22,6 +22,7 @@ import { TrackingComponent } from './tracking/tracking.component';
 import { ClientChatComponent } from './chat/client-chat.component';
 import { MissionHistoryComponent } from './history/mission-history.component';
 import { RatingComponent } from './rating/rating.component';
+import { ClientProfileComponent } from './profile/client-profile.component';
 
 const routes: Routes = [
   {
@@ -29,7 +30,7 @@ const routes: Routes = [
     component: ClientLayoutComponent,
     children: [
       { path: 'dashboard', component: ClientDashboardComponent },
-      { path: 'profile', component: ClientDashboardComponent },
+      { path: 'profile', component: ClientProfileComponent },
       { path: 'create-mission', component: CreateMissionComponent },
       { path: 'driver-search/:missionId', component: DriverSearchComponent },
       { path: 'tracking/:missionId', component: TrackingComponent },
@@ -46,6 +47,7 @@ const routes: Routes = [
   declarations: [
     ClientLayoutComponent,
     ClientDashboardComponent,
+    ClientProfileComponent,
     CreateMissionComponent,
     DriverSearchComponent,
     TrackingComponent,

@@ -13,6 +13,7 @@ import { SharedModule } from '../../shared/shared.module';
 
 import { AdminLayoutComponent } from './admin-layout/admin-layout.component';
 import { AdminDashboardComponent } from './dashboard/admin-dashboard.component';
+import { AdminProfileComponent } from './profile/admin-profile.component';
 import { ClientsListComponent } from './clients/clients-list.component';
 import { LivreursListComponent } from './livreurs/livreurs-list.component';
 import { CreateLivreurComponent } from './livreurs/create-livreur/create-livreur.component';
@@ -24,7 +25,7 @@ const routes: Routes = [
     component: AdminLayoutComponent,
     children: [
       { path: 'dashboard', component: AdminDashboardComponent },
-      { path: 'profile', component: AdminDashboardComponent },
+      { path: 'profile', component: AdminProfileComponent },
       { path: 'clients', component: ClientsListComponent },
       { path: 'livreurs', component: LivreursListComponent },
       { path: 'livreurs/create', component: CreateLivreurComponent },
@@ -38,6 +39,7 @@ const routes: Routes = [
   declarations: [
     AdminLayoutComponent,
     AdminDashboardComponent,
+    AdminProfileComponent,
     ClientsListComponent,
     LivreursListComponent,
     CreateLivreurComponent,

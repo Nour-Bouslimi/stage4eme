@@ -38,7 +38,10 @@ export class LoginComponent implements OnInit {
     }
 
     this.loading = true;
-    const credentials = this.loginForm.value;
+    const credentials = {
+      email: (this.loginForm.get('email')?.value || '').trim().toLowerCase(),
+      motDePasse: this.loginForm.get('motDePasse')?.value || ''
+    };
 
     this.authService.login(credentials).subscribe({
       next: (response) => {

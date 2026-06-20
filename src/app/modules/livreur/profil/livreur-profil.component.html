@@ -92,14 +92,19 @@
 
           <div class="form-group">
             <label for="motDePasse">Mot de passe</label>
-            <input
-              id="motDePasse"
-              type="password"
-              formControlName="motDePasse"
-              [readonly]="!editing"
-              class="form-input"
-              placeholder="Laisser vide pour ne pas changer"
-            />
+            <div class="password-field">
+              <input
+                id="motDePasse"
+                [type]="showPassword ? 'text' : 'password'"
+                formControlName="motDePasse"
+                [readonly]="!editing"
+                class="form-input"
+                placeholder="Laisser vide pour ne pas changer"
+              />
+              <button type="button" class="password-toggle" (click)="togglePasswordVisibility()" [attr.aria-label]="showPassword ? 'Masquer le mot de passe' : 'Afficher le mot de passe'">
+                <mat-icon>{{ showPassword ? 'visibility_off' : 'visibility' }}</mat-icon>
+              </button>
+            </div>
             <small class="field-error" *ngIf="editing && profileForm.get('motDePasse')?.touched && profileForm.get('motDePasse')?.invalid">
               {{ getFieldError('motDePasse') }}
             </small>

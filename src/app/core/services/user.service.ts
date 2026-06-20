@@ -41,7 +41,7 @@ export class UserService {
     );
   }
 
-  updateProfile(data: Partial<User>): Observable<User> {
+  updateProfile(data: Partial<User> | FormData): Observable<User> {
     return this.http.patch<User>(`${this.apiUrl}/users/me`, data).pipe(
       map(user => normalizeUser(user))
     );

@@ -93,6 +93,26 @@ export class HeaderComponent implements OnInit, OnDestroy {
   }
 
   private getTitleForUrl(url: string): string {
+    if (url.includes('/admin/profile')) {
+      return 'Mon profil';
+    }
+
+    if (url.includes('/admin/clients')) {
+      return 'Clients';
+    }
+
+    if (url.includes('/admin/livreurs')) {
+      return 'Livreurs';
+    }
+
+    if (url.includes('/admin/missions')) {
+      return 'Missions';
+    }
+
+    if (url.includes('/admin/dashboard')) {
+      return 'Tableau de bord administrateur';
+    }
+
     if (url.includes('/client/rating/')) {
       return 'Évaluer la mission';
     }

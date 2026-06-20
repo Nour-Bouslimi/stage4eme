@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { Observable, BehaviorSubject } from 'rxjs';
+import { BehaviorSubject, Observable } from 'rxjs';
 import { map, tap } from 'rxjs/operators';
 import { environment } from '../../../environments/environment';
 import { LoginRequest, LoginResponse, SignupRequest, User, UserRole, normalizeUser } from '../models/user.model';
@@ -18,7 +18,12 @@ export class AuthService {
   }
 
   login(credentials: LoginRequest): Observable<LoginResponse> {
-    return this.http.post<unknown>(`${this.apiUrl}/auth/login`, credentials).pipe(
+    const normalizedCredentials: LoginRequest = {
+      email: credentials.email.trim().toLowerCase(),
+      motDePasse: credentials.motDePasse
+    };
+
+    return this.http.post<unknown>(`${this.apiUrl}/auth/login`, normalizedCredentials).pipe(
       map(response => this.normalizeLoginResponse(response)),
       tap(response => {
         localStorage.setItem('token', response.accessToken);
@@ -106,31 +111,33 @@ export class AuthService {
 
   private normalizeLoginResponse(response: unknown): LoginResponse {
     if (!response || typeof response !== 'object') {
-      throw new Error('Réponse de connexion invalide');
+      throw new Error('Response de connexion invalide');
     }
 
     const payload = response as Record<string, unknown>;
-
-    const errorMessage = this.readString(payload, ['error', 'message']);
-    if (errorMessage) {
-      throw new Error(errorMessage);
-    }
 
     const accessToken =
       this.readString(payload, ['accessToken']) ??
       this.readString(payload, ['access_token']) ??
       this.readString(payload, ['token']) ??
-      this.readString(payload, ['jwt']);
+      this.readString(payload, ['jwt']) ??
+      this.readString(this.readObject(payload, ['data']) ?? {}, ['accessToken', 'access_token', 'token', 'jwt']);
 
     const userPayload =
       this.readObject(payload, ['user']) ??
       this.readObject(payload, ['utilisateur']) ??
       this.readObject(payload, ['data']) ??
-      this.readObject(payload, ['profile']);
+      this.readObject(payload, ['profile']) ??
+      this.readObject(payload, ['result']);
 
     if (!accessToken) {
+      const errorMessage = this.readString(payload, ['error', 'message']);
+      if (errorMessage) {
+        throw new Error(errorMessage);
+      }
+
       console.error('Unexpected login response shape', response);
-      throw new Error('Réponse de connexion invalide');
+      throw new Error('Response de connexion invalide');
     }
 
     const decodedUser = this.decodeJwtUser(accessToken);

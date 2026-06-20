@@ -30,6 +30,7 @@ export class LivreurProfilComponent implements OnInit {
   saving = false;
   editing = false;
   editingAvailability = false;
+  showPassword = false;
   avatarPreview = 'assets/default-avatar.svg';
   cinPreview = 'assets/default-avatar.svg';
   vehiclePreview = 'assets/default-vehicle.svg';
@@ -37,6 +38,7 @@ export class LivreurProfilComponent implements OnInit {
 
   private avatarFile: File | null = null;
   private cinFile: File | null = null;
+  private vehicleFile: File | null = null;
 
   readonly availabilityDays: AvailabilityDay[] = [
     { key: 'lun', label: 'Lun', active: true },
@@ -184,8 +186,10 @@ export class LivreurProfilComponent implements OnInit {
       this.vehiclePreview = this.user.vehicule?.photo || 'assets/default-vehicle.svg';
       this.avatarFile = null;
       this.cinFile = null;
+      this.vehicleFile = null;
       this.profileForm.get('motDePasse')?.reset('');
       this.editingAvailability = false;
+      this.showPassword = false;
     }
   }
 
@@ -260,27 +264,41 @@ export class LivreurProfilComponent implements OnInit {
 
     this.saving = true;
 
-    const finishSave = (avatarUrl?: string): void => {
-      const profileData: Partial<User> & { motDePasse?: string } = {
-        prenom: this.profileForm.get('prenom')?.value,
-        nom: this.profileForm.get('nom')?.value,
-        telephone: this.profileForm.get('telephone')?.value,
-        cin: this.profileForm.get('cin')?.value,
-        avatar: avatarUrl ?? this.avatarPreview,
-        photoCin: this.cinPreview,
-        photoVehicule: this.vehiclePreview,
-        vehicule: {
-          type: this.profileForm.get('vehiculeType')?.value,
-          immatriculation: this.profileForm.get('vehiculeImmatriculation')?.value,
-          poidsMax: this.profileForm.get('vehiculePoidsMax')?.value,
-          volumeMax: this.profileForm.get('vehiculeVolumeMax')?.value,
-          rayonService: this.profileForm.get('vehiculeRayonService')?.value,
-          photo: this.vehiclePreview
-        },
-        motDePasse: this.profileForm.get('motDePasse')?.value || undefined
-      };
+    const uploadAndSave = async (): Promise<void> => {
+      const formData = new FormData();
 
-      this.userService.updateProfile(profileData).subscribe({
+      this.appendField(formData, 'prenom', this.profileForm.get('prenom')?.value);
+      this.appendField(formData, 'nom', this.profileForm.get('nom')?.value);
+      this.appendField(formData, 'email', this.profileForm.get('email')?.value);
+      this.appendField(formData, 'telephone', this.profileForm.get('telephone')?.value);
+      this.appendField(formData, 'cin', this.profileForm.get('cin')?.value);
+      this.appendField(formData, 'typeVehicule', this.profileForm.get('vehiculeType')?.value);
+      this.appendField(formData, 'immatriculationVehicule', this.profileForm.get('vehiculeImmatriculation')?.value);
+      this.appendField(formData, 'poidsMaxKg', this.profileForm.get('vehiculePoidsMax')?.value);
+      this.appendField(formData, 'volumeMaxM3', this.profileForm.get('vehiculeVolumeMax')?.value);
+      this.appendField(formData, 'rayonServiceKm', this.profileForm.get('vehiculeRayonService')?.value);
+
+      const password = this.profileForm.get('motDePasse')?.value;
+      if (typeof password === 'string' && password.trim()) {
+        formData.append('motDePasse', password.trim());
+      }
+
+      if (this.avatarFile) {
+        const avatarFile = await this.prepareImageForUpload(this.avatarFile, 1200, 0.82);
+        formData.append('avatar', avatarFile, avatarFile.name);
+      }
+
+      if (this.cinFile) {
+        const cinFile = await this.prepareImageForUpload(this.cinFile, 1400, 0.82);
+        formData.append('photoCin', cinFile, cinFile.name);
+      }
+
+      if (this.vehicleFile) {
+        const vehicleFile = await this.prepareImageForUpload(this.vehicleFile, 1400, 0.82);
+        formData.append('photoVehicule', vehicleFile, vehicleFile.name);
+      }
+
+      this.userService.updateProfile(formData).subscribe({
         next: (user) => {
           this.user = user;
           this.avatarPreview = user.avatar || user.photo || this.avatarPreview;
@@ -290,7 +308,9 @@ export class LivreurProfilComponent implements OnInit {
           this.editing = false;
           this.avatarFile = null;
           this.cinFile = null;
+          this.vehicleFile = null;
           this.profileForm.get('motDePasse')?.reset('');
+          this.showPassword = false;
           this.toastService.success('Profil mis à jour avec succès');
         },
         error: () => {
@@ -300,32 +320,14 @@ export class LivreurProfilComponent implements OnInit {
       });
     };
 
-    const uploadAvatarThenSave = (): void => {
-      if (!this.avatarFile) {
-        finishSave();
-        return;
-      }
+    uploadAndSave().catch(() => {
+      this.saving = false;
+      this.toastService.error('Erreur lors de la preparation des images');
+    });
+  }
 
-      this.userService.uploadAvatar(this.avatarFile).subscribe({
-        next: (response) => finishSave(response.url),
-        error: () => {
-          this.saving = false;
-          this.toastService.error('Erreur lors de l upload de la photo de profil');
-        }
-      });
-    };
-
-    if (this.cinFile) {
-      const reader = new FileReader();
-      reader.onload = () => {
-        this.cinPreview = typeof reader.result === 'string' ? reader.result : this.cinPreview;
-        uploadAvatarThenSave();
-      };
-      reader.readAsDataURL(this.cinFile);
-      return;
-    }
-
-    uploadAvatarThenSave();
+  togglePasswordVisibility(): void {
+    this.showPassword = !this.showPassword;
   }
 
   onFileSelected(event: Event, type: 'avatar' | 'cin' | 'vehicle'): void {
@@ -352,9 +354,85 @@ export class LivreurProfilComponent implements OnInit {
 
       if (type === 'vehicle') {
         this.vehiclePreview = result;
+        this.vehicleFile = file;
       }
     };
     reader.readAsDataURL(file);
+  }
+
+  private appendField(formData: FormData, key: string, value: unknown): void {
+    if (value === null || value === undefined) {
+      return;
+    }
+
+    const normalized = typeof value === 'string' ? value.trim() : String(value);
+    if (!normalized) {
+      return;
+    }
+
+    formData.append(key, normalized);
+  }
+
+  private async prepareImageForUpload(file: File, maxSize = 1400, quality = 0.82): Promise<File> {
+    if (!file.type.startsWith('image/')) {
+      return file;
+    }
+
+    const image = await this.loadImageElement(file);
+    const { width, height } = this.fitWithin(image.naturalWidth, image.naturalHeight, maxSize);
+
+    if (width === image.naturalWidth && height === image.naturalHeight && file.size <= 900_000) {
+      return file;
+    }
+
+    const canvas = document.createElement('canvas');
+    canvas.width = width;
+    canvas.height = height;
+    const context = canvas.getContext('2d');
+
+    if (!context) {
+      return file;
+    }
+
+    context.drawImage(image, 0, 0, width, height);
+
+    const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, file.type || 'image/jpeg', quality));
+    if (!blob) {
+      return file;
+    }
+
+    return new File([blob], file.name, { type: blob.type || file.type });
+  }
+
+  private loadImageElement(file: File): Promise<HTMLImageElement> {
+    return new Promise<HTMLImageElement>((resolve, reject) => {
+      const img = new Image();
+      const objectUrl = URL.createObjectURL(file);
+
+      img.onload = () => {
+        URL.revokeObjectURL(objectUrl);
+        resolve(img);
+      };
+
+      img.onerror = () => {
+        URL.revokeObjectURL(objectUrl);
+        reject(new Error('Image load failed'));
+      };
+
+      img.src = objectUrl;
+    });
+  }
+
+  private fitWithin(width: number, height: number, maxSize: number): { width: number; height: number } {
+    if (width <= maxSize && height <= maxSize) {
+      return { width, height };
+    }
+
+    const ratio = Math.min(maxSize / width, maxSize / height);
+    return {
+      width: Math.max(1, Math.round(width * ratio)),
+      height: Math.max(1, Math.round(height * ratio))
+    };
   }
 
   getVehicleLabel(type: VehicleType): string {

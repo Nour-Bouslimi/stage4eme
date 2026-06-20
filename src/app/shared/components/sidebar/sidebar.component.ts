@@ -61,7 +61,8 @@ export class SidebarComponent implements OnInit {
         { icon: 'dashboard', label: 'Tableau de bord', route: '/admin/dashboard' },
         { icon: 'people', label: 'Clients', route: '/admin/clients' },
         { icon: 'local_shipping', label: 'Livreurs', route: '/admin/livreurs' },
-        { icon: 'assignment', label: 'Missions', route: '/admin/missions' }
+        { icon: 'assignment', label: 'Missions', route: '/admin/missions' },
+        { icon: 'person', label: 'Mon profil', route: '/admin/profile' }
       ];
     }
   }

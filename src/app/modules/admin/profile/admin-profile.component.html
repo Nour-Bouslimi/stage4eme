@@ -1,0 +1,172 @@
+<div class="profil-page">
+  <div class="page-header">
+    <div>
+      <h1 class="page-title">Mon profil</h1>
+      <p class="page-subtitle">Voir et modifier mes informations administrateur</p>
+    </div>
+
+    <button class="edit-btn header-edit" (click)="toggleEdit()" *ngIf="!editing">
+      <mat-icon>edit</mat-icon>
+      Modifier le profil
+    </button>
+  </div>
+
+  <div class="profil-content" *ngIf="!loading && user">
+    <div class="profil-card">
+      <div class="card-header">
+        <h2 class="card-title">Informations personnelles</h2>
+        <button class="edit-btn" (click)="toggleEdit()" *ngIf="!editing">
+          <mat-icon>edit</mat-icon>
+          Modifier
+        </button>
+        <button class="cancel-btn" (click)="toggleEdit()" *ngIf="editing">Annuler</button>
+      </div>
+
+      <form [formGroup]="profileForm" class="profil-form">
+        <div class="avatar-section">
+          <div class="avatar-upload">
+            <div class="avatar-preview">
+              <img [src]="avatarPreview" alt="Avatar" />
+            </div>
+            <label class="upload-label" *ngIf="editing">
+              <input type="file" (change)="onFileChange($event)" accept="image/*" />
+              <mat-icon>camera_alt</mat-icon>
+              <span>Changer la photo</span>
+            </label>
+          </div>
+
+          <div class="avatar-info">
+            <h3 class="user-name">{{ user.prenom }} {{ user.nom }}</h3>
+            <div class="user-role-badge">
+              <span>Administrateur</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="form-grid">
+          <div class="form-group">
+            <label for="prenom">Prénom</label>
+            <input id="prenom" type="text" formControlName="prenom" [readonly]="!editing" class="form-input" />
+            <small class="field-error" *ngIf="editing && profileForm.get('prenom')?.touched && profileForm.get('prenom')?.invalid">
+              {{ getFieldError('prenom') }}
+            </small>
+          </div>
+
+          <div class="form-group">
+            <label for="nom">Nom</label>
+            <input id="nom" type="text" formControlName="nom" [readonly]="!editing" class="form-input" />
+            <small class="field-error" *ngIf="editing && profileForm.get('nom')?.touched && profileForm.get('nom')?.invalid">
+              {{ getFieldError('nom') }}
+            </small>
+          </div>
+
+          <div class="form-group">
+            <label for="email">Email</label>
+            <input id="email" type="email" formControlName="email" [readonly]="!editing" class="form-input" />
+            <small class="field-error" *ngIf="editing && profileForm.get('email')?.touched && profileForm.get('email')?.invalid">
+              {{ getFieldError('email') }}
+            </small>
+          </div>
+
+          <div class="form-group">
+            <label for="telephone">Téléphone</label>
+            <input id="telephone" type="tel" formControlName="telephone" [readonly]="!editing" class="form-input" />
+            <small class="field-error" *ngIf="editing && profileForm.get('telephone')?.touched && profileForm.get('telephone')?.invalid">
+              {{ getFieldError('telephone') }}
+            </small>
+          </div>
+
+          <div class="form-group full-width">
+            <label for="motDePasse">Mot de passe</label>
+            <div class="password-field">
+              <input
+                id="motDePasse"
+                #passwordField
+                [type]="showPassword ? 'text' : 'password'"
+                formControlName="motDePasse"
+                [readonly]="!editing"
+                class="form-input"
+                placeholder="Laisser vide pour ne pas changer"
+              />
+              <button type="button" class="password-toggle" (click)="togglePasswordVisibility()" [attr.aria-label]="showPassword ? 'Masquer le mot de passe' : 'Afficher le mot de passe'">
+                <mat-icon>{{ showPassword ? 'visibility_off' : 'visibility' }}</mat-icon>
+              </button>
+            </div>
+            <small class="field-error" *ngIf="editing && profileForm.get('motDePasse')?.touched && profileForm.get('motDePasse')?.invalid">
+              {{ getFieldError('motDePasse') }}
+            </small>
+          </div>
+        </div>
+
+        <div class="form-actions" *ngIf="editing">
+          <button type="button" class="btn-cancel" (click)="toggleEdit()">Annuler</button>
+          <button type="button" class="btn-save" (click)="saveProfile()" [disabled]="saving">
+            <span *ngIf="!saving">Enregistrer</span>
+            <span *ngIf="saving">Enregistrement...</span>
+          </button>
+        </div>
+      </form>
+    </div>
+
+    <div class="right-column">
+      <div class="summary-card">
+        <div class="summary-avatar">
+          <img [src]="avatarPreview" alt="Avatar" />
+        </div>
+        <div class="summary-info">
+          <h3>{{ user.prenom }} {{ user.nom }}</h3>
+          <p class="summary-email" [title]="user.email">{{ user.email }}</p>
+          <p class="summary-phone">{{ user.telephone || 'Téléphone non renseigné' }}</p>
+          <span class="summary-status active">Compte administrateur</span>
+        </div>
+      </div>
+
+      <div class="info-card">
+        <div class="section-top">
+          <h3>Aperçu du compte</h3>
+        </div>
+
+        <div class="info-row">
+          <span>Rôle</span>
+          <strong>Administrateur</strong>
+        </div>
+        <div class="info-row">
+          <span>Email</span>
+          <strong>{{ user.email }}</strong>
+        </div>
+        <div class="info-row">
+          <span>Téléphone</span>
+          <strong>{{ user.telephone || 'Non renseigné' }}</strong>
+        </div>
+        <div class="info-row">
+          <span>Inscription</span>
+          <strong>{{ user.createdAt | date:'dd/MM/yyyy' }}</strong>
+        </div>
+      </div>
+
+      <div class="quick-actions-card">
+        <div class="section-top">
+          <h3>Actions rapides</h3>
+        </div>
+
+        <button type="button" class="quick-action-btn" (click)="toggleEdit()" *ngIf="!editing">
+          <mat-icon>edit</mat-icon>
+          Modifier les informations
+        </button>
+        <button type="button" class="quick-action-btn secondary" (click)="toggleEdit()" *ngIf="editing">
+          <mat-icon>close</mat-icon>
+          Quitter le mode édition
+        </button>
+        <button type="button" class="quick-action-btn ghost" (click)="resetPasswordField()">
+          <mat-icon>lock_reset</mat-icon>
+          Réinitialiser le mot de passe
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div class="loading-state" *ngIf="loading">
+    <mat-spinner diameter="40"></mat-spinner>
+    <p>Chargement...</p>
+  </div>
+</div>
