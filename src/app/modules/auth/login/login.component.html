@@ -58,6 +58,7 @@
             [class.invalid]="hasError('email')"
             placeholder="votre@email.com"
             class="form-input"
+            autocomplete="email"
           />
           <p class="field-error" *ngIf="hasError('email')">{{ getFieldError('email') }}</p>
         </div>
@@ -72,6 +73,7 @@
               [class.invalid]="hasError('motDePasse')"
               placeholder="••••••••"
               class="form-input"
+              autocomplete="current-password"
             />
             <button type="button" class="password-toggle" (click)="showPassword = !showPassword" aria-label="Afficher/Masquer le mot de passe">
               <mat-icon>{{ showPassword ? 'visibility_off' : 'visibility' }}</mat-icon>

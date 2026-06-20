@@ -23,6 +23,11 @@ export class AuthService {
       motDePasse: credentials.motDePasse
     };
 
+    console.debug('[AuthService] POST /auth/login', {
+      email: normalizedCredentials.email,
+      motDePasseLength: normalizedCredentials.motDePasse?.length ?? 0
+    });
+
     return this.http.post<unknown>(`${this.apiUrl}/auth/login`, normalizedCredentials).pipe(
       map(response => this.normalizeLoginResponse(response)),
       tap(response => {
@@ -49,10 +54,18 @@ export class AuthService {
   }
 
   resetPassword(token: string, motDePasse: string): Observable<{ message?: string }> {
-    return this.http.post<{ message?: string }>(`${this.apiUrl}/auth/reset-password`, {
+    const payload = {
       token,
       motDePasse
+    };
+
+    console.debug('[AuthService] POST /auth/reset-password', {
+      tokenPresent: !!payload.token,
+      motDePasseLength: payload.motDePasse?.length ?? 0,
+      keys: Object.keys(payload)
     });
+
+    return this.http.post<{ message?: string }>(`${this.apiUrl}/auth/reset-password`, payload);
   }
 
   logout(): void {

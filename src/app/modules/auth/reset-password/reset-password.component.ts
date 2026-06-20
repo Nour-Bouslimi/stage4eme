@@ -108,6 +108,9 @@ export class ResetPasswordComponent implements OnInit {
       .subscribe({
         next: (response) => {
           this.toastService.success(response.message || 'Mot de passe mis a jour avec succes.');
+          this.resetForm.reset();
+          this.showPassword = false;
+          this.showConfirmPassword = false;
           this.router.navigate(['/auth/login']);
         },
         error: (error: unknown) => {

@@ -1,5 +1,5 @@
 import { Component, OnInit } from '@angular/core';
-import { FormBuilder, FormGroup, Validators } from '@angular/forms';
+import { AbstractControl, FormBuilder, FormGroup, ValidationErrors, ValidatorFn, Validators } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { MissionService } from '../../../core/services/mission.service';
 import { ToastService } from '../../../shared/components/toast/toast.service';
@@ -64,8 +64,8 @@ export class CreateMissionComponent implements OnInit {
     const today = new Date();
 
     this.createMissionForm = this.fb.group({
-      adresseRamassage: ['', [Validators.required, Validators.minLength(6)]],
-      adresseLivraison: ['', [Validators.required, Validators.minLength(6)]],
+      adresseRamassage: ['', [Validators.required, this.nonBlankValidator()]],
+      adresseLivraison: ['', [Validators.required, this.nonBlankValidator()]],
       categorie: [MissionCategory.COLIS, Validators.required],
       poidsEstime: [30, [Validators.required, Validators.min(1), Validators.max(500)]],
       volumeEstime: [0.5, [Validators.required, Validators.min(0.1), Validators.max(50)]],
@@ -207,8 +207,8 @@ export class CreateMissionComponent implements OnInit {
     this.loading = true;
 
     const payload: CreateMissionRequest = {
-      adresseRamassage: this.createMissionForm.get('adresseRamassage')?.value,
-      adresseLivraison: this.createMissionForm.get('adresseLivraison')?.value,
+      adresseRamassage: String(this.createMissionForm.get('adresseRamassage')?.value || '').trim(),
+      adresseLivraison: String(this.createMissionForm.get('adresseLivraison')?.value || '').trim(),
       categorie: this.createMissionForm.get('categorie')?.value,
       poidsEstime: Number(this.createMissionForm.get('poidsEstime')?.value),
       volumeEstime: Number(this.createMissionForm.get('volumeEstime')?.value),
@@ -263,5 +263,16 @@ export class CreateMissionComponent implements OnInit {
     }
 
     return MissionCategory.COLIS;
+  }
+
+  private nonBlankValidator(): ValidatorFn {
+    return (control: AbstractControl): ValidationErrors | null => {
+      const value = control.value;
+      if (typeof value !== 'string') {
+        return null;
+      }
+
+      return value.trim().length > 0 ? null : { blank: true };
+    };
   }
 }
