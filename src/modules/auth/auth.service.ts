@@ -76,14 +76,39 @@ export class AuthService {
     return this.createAuthResponse(user);
   }
 
-  async validateUser(email: string, motDePasse: string) {
+ /*  async validateUser(email: string, motDePasse: string) {
     const user = await this.usersService.findByEmail(email);
     if (!user || !user.estActif) return null;
     const match = await bcrypt.compare(motDePasse, user.motDePasseHash);
     if (!match) return null;
     return user;
+  } */
+
+  async validateUser(email: string, motDePasse: string) {
+  const user = await this.usersService.findByEmail(email.trim().toLowerCase());
+
+  if (!user || !user.estActif) {
+    console.log('[validateUser] userFound=', !!user);
+    console.log('[validateUser] email=', email.trim().toLowerCase());
+    return null;
   }
 
+  const match = await bcrypt.compare(motDePasse, user.motDePasseHash);
+
+  console.log('email=', email.trim().toLowerCase());
+  console.log('user=', !!user);
+  console.log('motDePasse=', JSON.stringify(motDePasse));
+  console.log('motDePasseLength=', motDePasse?.length ?? null);
+  console.log('hash=', user.motDePasseHash);
+  console.log('hashLength=', user.motDePasseHash?.length ?? null);
+  console.log('match=', match);
+
+  if (!match) {
+    return null;
+  }
+
+  return user;
+}
   async login(user: any) {
     if (!user) throw new UnauthorizedException();
     return this.createAuthResponse(user);
@@ -128,15 +153,20 @@ export class AuthService {
   async resetPassword(dto: ResetPasswordDto) {
     const tokenHash = createHash('sha256').update(dto.token).digest('hex');
     const user = await this.usersService.findByResetTokenHash(tokenHash);
+    console.log('[resetPassword] tokenHashPrefix=', tokenHash.slice(0, 12));
+    console.log('[resetPassword] userFound=', !!user);
+    console.log('[resetPassword] userId=', user?.id ?? null);
+    console.log('[resetPassword] motDePasseLength=', dto.motDePasse?.length ?? null);
     if (!user || !user.resetPasswordTokenExpiresAt || user.resetPasswordTokenExpiresAt.getTime() < Date.now()) {
       throw new BadRequestException('Token de réinitialisation invalide ou expiré');
     }
 
-    user.motDePasseHash = await bcrypt.hash(dto.motDePasse, 10);
-    user.resetPasswordTokenHash = null;
-    user.resetPasswordTokenExpiresAt = null;
-    user.resetPasswordRequestedAt = null;
-    await this.usersService.save(user);
+    const confirmation = dto.confirmPassword ?? dto.passwordConfirmation;
+    if (confirmation && confirmation !== dto.motDePasse) {
+      throw new BadRequestException('La confirmation du mot de passe ne correspond pas');
+    }
+
+    await this.usersService.resetPassword(user.id, dto.motDePasse);
 
     return { message: 'Mot de passe réinitialisé avec succès' };
   }

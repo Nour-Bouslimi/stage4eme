@@ -58,18 +58,43 @@ export class UsersService {
     return this.usersRepository.save(user as Utilisateur);
   }
 
-  async findByEmail(email: string) {
-    return this.usersRepository.findOne({
-      where: { email },
-      relations: {
-        disponibilites: true,
-        missionsCreees: true,
-        missionsAcceptees: true,
-        notesDonnees: true,
-        messages: true,
-        notifications: true,
+  async resetPassword(userId: string, plainPassword: string) {
+    const before = await this.findById(userId);
+    console.log('[resetPassword] userId=', userId);
+    console.log('[resetPassword] beforeHashPrefix=', before?.motDePasseHash?.slice(0, 12) ?? null);
+    console.log('[resetPassword] plainPasswordLength=', plainPassword?.length ?? null);
+
+    const motDePasseHash = await bcrypt.hash(plainPassword, 10);
+    console.log('[resetPassword] newHashPrefix=', motDePasseHash.slice(0, 12));
+
+    await this.usersRepository.update(
+      { id: userId },
+      {
+        motDePasseHash,
+        resetPasswordTokenHash: null,
+        resetPasswordTokenExpiresAt: null,
+        resetPasswordRequestedAt: null,
       } as any,
-    });
+    );
+
+    const after = await this.findById(userId);
+    console.log('[resetPassword] afterHashPrefix=', after?.motDePasseHash?.slice(0, 12) ?? null);
+    return after;
+  }
+
+  async findByEmail(email: string) {
+    const normalizedEmail = email.trim().toLowerCase();
+    console.log('[findByEmail] email=', normalizedEmail);
+    return this.usersRepository
+      .createQueryBuilder('user')
+      .leftJoinAndSelect('user.disponibilites', 'disponibilites')
+      .leftJoinAndSelect('user.missionsCreees', 'missionsCreees')
+      .leftJoinAndSelect('user.missionsAcceptees', 'missionsAcceptees')
+      .leftJoinAndSelect('user.notesDonnees', 'notesDonnees')
+      .leftJoinAndSelect('user.messages', 'messages')
+      .leftJoinAndSelect('user.notifications', 'notifications')
+      .where('LOWER(user.email) = :email', { email: normalizedEmail })
+      .getOne();
   }
 
   async findByResetTokenHash(resetPasswordTokenHash: string) {
@@ -170,6 +195,9 @@ export class UsersService {
     const user = await this.findById(id);
     if (!user) throw new NotFoundException('Utilisateur non trouvé');
 
+    if (typeof dto.motDePasse === 'string' && dto.motDePasse.trim()) {
+      user.motDePasseHash = await bcrypt.hash(dto.motDePasse, 10);
+    }
     if (typeof dto.email === 'string') user.email = dto.email;
     if (typeof dto.prenom === 'string') user.prenom = dto.prenom;
     if (typeof dto.nom === 'string') user.nom = dto.nom;

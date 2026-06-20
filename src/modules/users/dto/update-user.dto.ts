@@ -38,6 +38,10 @@ export class UpdateUserDto {
 
   @IsOptional()
   @IsString()
+  motDePasse?: string;
+
+  @IsOptional()
+  @IsString()
   prenom?: string;
 
   @IsOptional()
