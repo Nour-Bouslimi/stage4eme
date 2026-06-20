@@ -17,6 +17,13 @@ import { toPublicUser } from '../../common/utils/api-mappers';
 export class UsersController {
   constructor(private usersService: UsersService, private cloudinaryService: CloudinaryService) {}
 
+  private async uploadFirstFile(files?: Express.Multer.File[]) {
+    const file = files?.[0];
+    if (!file) return undefined;
+    const result = await this.cloudinaryService.uploadBuffer(file.buffer, file.originalname);
+    return result.secure_url;
+  }
+
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('ADMIN')
   @Post('create-livreur')
@@ -26,22 +33,20 @@ export class UsersController {
         { name: 'photoCin', maxCount: 1 },
         { name: 'photoVehicule', maxCount: 1 },
       ],
-      { storage: multer.memoryStorage() },
+      {
+        storage: multer.memoryStorage(),
+        limits: {
+          fileSize: 10 * 1024 * 1024,
+        },
+      },
     ),
   )
   async createLivreur(
     @UploadedFiles() files: { photoCin?: Express.Multer.File[]; photoVehicule?: Express.Multer.File[] },
     @Body() dto: CreateLivreurDto,
   ) {
-    if (files?.photoCin?.[0]) {
-      const result = await this.cloudinaryService.uploadBuffer(files.photoCin[0].buffer, files.photoCin[0].originalname);
-      dto.photoCin = result.secure_url;
-    }
-
-    if (files?.photoVehicule?.[0]) {
-      const result = await this.cloudinaryService.uploadBuffer(files.photoVehicule[0].buffer, files.photoVehicule[0].originalname);
-      dto.photoVehicule = result.secure_url;
-    }
+    dto.photoCin = (await this.uploadFirstFile(files.photoCin)) ?? dto.photoCin;
+    dto.photoVehicule = (await this.uploadFirstFile(files.photoVehicule)) ?? dto.photoVehicule;
 
     const user = await this.usersService.createLivreur(dto);
     return toPublicUser(user);
@@ -49,7 +54,32 @@ export class UsersController {
 
   @UseGuards(JwtAuthGuard)
   @Patch('me')
-  async updateProfile(@Req() req: any, @Body() dto: UpdateUserDto) {
+  @UseInterceptors(
+    FileFieldsInterceptor(
+      [
+        { name: 'photoCin', maxCount: 1 },
+        { name: 'photoVehicule', maxCount: 1 },
+        { name: 'photo', maxCount: 1 },
+        { name: 'avatar', maxCount: 1 },
+      ],
+      {
+        storage: multer.memoryStorage(),
+        limits: {
+          fileSize: 10 * 1024 * 1024,
+        },
+      },
+    ),
+  )
+  async updateProfile(
+    @Req() req: any,
+    @Body() dto: UpdateUserDto,
+    @UploadedFiles() files: { photoCin?: Express.Multer.File[]; photoVehicule?: Express.Multer.File[]; photo?: Express.Multer.File[]; avatar?: Express.Multer.File[] },
+  ) {
+    dto.photoCin = (await this.uploadFirstFile(files?.photoCin)) ?? dto.photoCin;
+    dto.photoVehicule = (await this.uploadFirstFile(files?.photoVehicule)) ?? dto.photoVehicule;
+    dto.photo = (await this.uploadFirstFile(files?.photo)) ?? dto.photo;
+    dto.photo = (await this.uploadFirstFile(files?.avatar)) ?? dto.photo;
+
     const user = await this.usersService.updateProfile(req.user.id, dto);
     return toPublicUser(user);
   }

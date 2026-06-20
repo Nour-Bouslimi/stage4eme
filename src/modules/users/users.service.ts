@@ -170,12 +170,31 @@ export class UsersService {
     const user = await this.findById(id);
     if (!user) throw new NotFoundException('Utilisateur non trouvé');
 
+    if (typeof dto.email === 'string') user.email = dto.email;
     if (typeof dto.prenom === 'string') user.prenom = dto.prenom;
     if (typeof dto.nom === 'string') user.nom = dto.nom;
     if (typeof dto.telephone === 'string') user.telephone = dto.telephone;
+    if (typeof dto.cin === 'string') user.cin = dto.cin;
+    if (typeof dto.photoCin === 'string') user.photoCin = dto.photoCin;
     if (typeof dto.adresseParDefaut === 'string') user.adresseParDefaut = dto.adresseParDefaut;
     if (typeof dto.photo === 'string') user.photo = dto.photo;
     if (typeof dto.avatar === 'string') user.photo = dto.avatar;
+    if (typeof dto.typeVehicule !== 'undefined') user.typeVehicule = dto.typeVehicule as TypeVehicule;
+    if (typeof dto.immatriculationVehicule === 'string') user.immatriculationVehicule = dto.immatriculationVehicule;
+    if (typeof dto.photoVehicule === 'string') user.photoVehicule = dto.photoVehicule;
+    if (typeof dto.poidsMaxKg === 'number') user.poidsMaxKg = dto.poidsMaxKg;
+    if (typeof dto.volumeMaxM3 === 'number') user.volumeMaxM3 = dto.volumeMaxM3;
+    if (typeof dto.rayonServiceKm === 'number') user.rayonServiceKm = dto.rayonServiceKm;
+    if (typeof dto.statutDisponibilite !== 'undefined') user.statutDisponibilite = dto.statutDisponibilite as StatutDisponibilite;
+    if (typeof dto.noteMoyenne === 'number') user.noteMoyenne = dto.noteMoyenne;
+    if (typeof dto.totalNotes === 'number') user.totalNotes = dto.totalNotes;
+    if (typeof dto.latitudeActuelle === 'number') user.latitudeActuelle = dto.latitudeActuelle;
+    if (typeof dto.longitudeActuelle === 'number') user.longitudeActuelle = dto.longitudeActuelle;
+    if (typeof dto.estEnLigne === 'boolean') user.estEnLigne = dto.estEnLigne;
+    if (typeof dto.totalMissions === 'number') user.totalMissions = dto.totalMissions;
+    if (typeof dto.missionsAnnulees === 'number') user.missionsAnnulees = dto.missionsAnnulees;
+    if (typeof dto.derniereActivite === 'string') user.derniereActivite = new Date(dto.derniereActivite);
+    if (typeof dto.derniereMiseAJourPosition === 'string') user.derniereMiseAJourPosition = new Date(dto.derniereMiseAJourPosition);
 
     if (dto.disponibilites) {
       await this.setDisponibilites(id, dto.disponibilites as AvailabilityInput[]);
