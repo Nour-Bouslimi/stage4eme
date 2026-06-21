@@ -7,9 +7,10 @@ import { Mission } from './entities/mission.entity';
 import { UsersModule } from '../users/users.module';
 import { Utilisateur } from '../users/entities/user.entity';
 import { NotificationsModule } from '../notifications/notifications.module';
+import { GeolocationModule } from '../geolocation/geolocation.module';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Mission, Utilisateur]), UsersModule, NotificationsModule],
+  imports: [TypeOrmModule.forFeature([Mission, Utilisateur]), UsersModule, NotificationsModule, GeolocationModule],
   providers: [MissionsService, MatchingService],
   controllers: [MissionsController],
   exports: [MissionsService],

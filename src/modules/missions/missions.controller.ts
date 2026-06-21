@@ -1,6 +1,7 @@
 import { Body, Controller, Get, Param, Patch, Post, Req, UseGuards } from '@nestjs/common';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { CreateMissionDto } from './dto/create-mission.dto';
+import { UpdateMissionDto } from './dto/update-mission.dto';
 import { MissionsService } from './missions.service';
 
 @Controller('missions')
@@ -14,6 +15,12 @@ export class MissionsController {
   }
 
   @UseGuards(JwtAuthGuard)
+  @Post('estimate')
+  async estimate(@Body() dto: CreateMissionDto) {
+    return this.missionsService.estimate(dto);
+  }
+
+  @UseGuards(JwtAuthGuard)
   @Patch(':id/accept')
   async accept(@Param('id') id: string, @Req() req: any) {
     return this.missionsService.acceptMission(id, req.user.id);
@@ -23,6 +30,12 @@ export class MissionsController {
   @Patch(':id/status')
   async updateStatus(@Param('id') id: string, @Body() body: any) {
     return this.missionsService.updateStatus(id, body.statut ?? body.status, body.raisonAnnulation ?? body.reason);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Patch(':id')
+  async update(@Param('id') id: string, @Body() dto: UpdateMissionDto) {
+    return this.missionsService.updateMission(id, dto);
   }
 
   @UseGuards(JwtAuthGuard)
