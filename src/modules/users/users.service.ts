@@ -60,12 +60,9 @@ export class UsersService {
 
   async resetPassword(userId: string, plainPassword: string) {
     const before = await this.findById(userId);
-    console.log('[resetPassword] userId=', userId);
-    console.log('[resetPassword] beforeHashPrefix=', before?.motDePasseHash?.slice(0, 12) ?? null);
-    console.log('[resetPassword] plainPasswordLength=', plainPassword?.length ?? null);
+    
 
     const motDePasseHash = await bcrypt.hash(plainPassword, 10);
-    console.log('[resetPassword] newHashPrefix=', motDePasseHash.slice(0, 12));
 
     await this.usersRepository.update(
       { id: userId },
@@ -78,13 +75,13 @@ export class UsersService {
     );
 
     const after = await this.findById(userId);
-    console.log('[resetPassword] afterHashPrefix=', after?.motDePasseHash?.slice(0, 12) ?? null);
+   
     return after;
   }
 
   async findByEmail(email: string) {
     const normalizedEmail = email.trim().toLowerCase();
-    console.log('[findByEmail] email=', normalizedEmail);
+    
     return this.usersRepository
       .createQueryBuilder('user')
       .leftJoinAndSelect('user.disponibilites', 'disponibilites')

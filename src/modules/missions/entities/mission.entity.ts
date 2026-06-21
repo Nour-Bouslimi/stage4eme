@@ -97,10 +97,18 @@ export class Mission {
   @UpdateDateColumn()
   updatedAt: Date;
 
+  @Column({ type: 'uuid', nullable: true })
+  clientId: string;
+
   @ManyToOne(() => Utilisateur, (u) => u.missionsCreees, { eager: true })
+  @JoinColumn({ name: 'clientId' })
   client: Utilisateur;
 
+  @Column({ type: 'uuid', nullable: true })
+  livreurId: string;
+
   @ManyToOne(() => Utilisateur, (u) => u.missionsAcceptees, { nullable: true, eager: true })
+  @JoinColumn({ name: 'livreurId' })
   livreur: Utilisateur;
 
   @OneToMany(() => Message, (m) => m.mission)

@@ -88,20 +88,14 @@ export class AuthService {
   const user = await this.usersService.findByEmail(email.trim().toLowerCase());
 
   if (!user || !user.estActif) {
-    console.log('[validateUser] userFound=', !!user);
-    console.log('[validateUser] email=', email.trim().toLowerCase());
+    
     return null;
   }
 
   const match = await bcrypt.compare(motDePasse, user.motDePasseHash);
 
-  console.log('email=', email.trim().toLowerCase());
-  console.log('user=', !!user);
-  console.log('motDePasse=', JSON.stringify(motDePasse));
-  console.log('motDePasseLength=', motDePasse?.length ?? null);
-  console.log('hash=', user.motDePasseHash);
-  console.log('hashLength=', user.motDePasseHash?.length ?? null);
-  console.log('match=', match);
+
+
 
   if (!match) {
     return null;

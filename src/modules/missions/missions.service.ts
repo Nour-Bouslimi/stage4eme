@@ -1,6 +1,6 @@
 import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { In, Repository } from 'typeorm';
 import { StatutDisponibilite } from '../../common/enums/statut-disponibilite.enum';
 import { StatutMission } from '../../common/enums/statut-mission.enum';
 import { TypeNotification } from '../../common/enums/type-notification.enum';
@@ -9,6 +9,7 @@ import { toMission, toPublicUser } from '../../common/utils/api-mappers';
 import { GeolocationService } from '../geolocation/geolocation.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { NotificationsGateway } from '../notifications/notifications.gateway';
+import { Utilisateur } from '../users/entities/user.entity';
 import { UsersService } from '../users/users.service';
 import { CreateMissionDto } from './dto/create-mission.dto';
 import { UpdateMissionDto } from './dto/update-mission.dto';
@@ -411,7 +412,62 @@ export class MissionsService {
     return missions.map((mission) => toMission(mission));
   }
 
-  async acceptMission(missionId: string, livreurId: string) {
+  async findByLivreurId(livreurId: string, options?: { activeOnly?: boolean }) {
+    const where: Record<string, unknown> = {
+      livreur: { id: livreurId },
+    };
+
+    if (options?.activeOnly) {
+      where.statut = In([
+        StatutMission.ACCEPTEE,
+        StatutMission.EN_ROUTE,
+        StatutMission.ARRIVEE,
+        StatutMission.EN_LIVRAISON,
+      ]);
+    }
+
+    const missions = await this.missionRepo.find({
+      where: where as any,
+      relations: {
+        client: true,
+        livreur: true,
+        messages: { auteur: true } as any,
+        notifications: true,
+        notation: true,
+      } as any,
+      order: {
+        updatedAt: 'DESC',
+      },
+    });
+
+    return missions.map((mission) => toMission(mission));
+  }
+
+  async findMissions(options?: { statut?: string }) {
+    const where: Record<string, unknown> = {};
+
+    if (typeof options?.statut === 'string' && options.statut.trim()) {
+      where.statut = this.normalizeStatusFilter(options.statut);
+    }
+
+    const missions = await this.missionRepo.find({
+      where: where as any,
+      relations: {
+        client: true,
+        livreur: true,
+        messages: { auteur: true } as any,
+        notifications: true,
+        notation: true,
+      } as any,
+      order: {
+        createdAt: 'DESC',
+      },
+    });
+
+    return missions.map((mission) => toMission(mission));
+  }
+
+  /* async acceptMission(missionId: string, livreurId: string) {
     const mission = await this.findEntityById(missionId);
     if (mission.statut !== StatutMission.EN_ATTENTE) throw new BadRequestException('Mission non disponible');
 
@@ -445,6 +501,54 @@ export class MissionsService {
       missionId: saved.id,
     });
 
+    return toMission(saved);
+  } */
+
+  async acceptMission(missionId: string, livreurId: string) {
+    const mission = await this.findEntityById(missionId);
+    if (mission.statut !== StatutMission.EN_ATTENTE) {
+      throw new BadRequestException('Mission non disponible');
+    }
+
+    const livreur = await this.usersService.findById(livreurId);
+    if (!livreur) throw new NotFoundException('Livreur introuvable');
+    if (livreur.role !== 'LIVREUR') {
+      throw new ConflictException('Seul un livreur peut accepter une mission');
+    }
+    if (livreur.statutDisponibilite !== StatutDisponibilite.DISPONIBLE || !livreur.estEnLigne) {
+      throw new ConflictException('Livreur indisponible');
+    }
+
+    const accepteeLe = new Date();
+
+    await this.missionRepo.manager.transaction(async (manager) => {
+      const result = await manager.query(
+        `
+          UPDATE missions
+          SET "livreurId" = $1,
+              statut = $2,
+              "accepteeLe" = $3
+          WHERE id = $4
+          RETURNING id, "livreurId", statut, "accepteeLe"
+        `,
+        [livreur.id, StatutMission.ACCEPTEE, accepteeLe, mission.id],
+      );
+      console.log('[acceptMission] update returning =', result?.[0] ?? result);
+    });
+
+    await this.missionRepo.manager.update(
+      Utilisateur,
+      { id: livreur.id },
+      { statutDisponibilite: StatutDisponibilite.OCCUPE },
+    );
+
+    const saved = await this.findEntityById(missionId);
+    console.log('[acceptMission] final db state =', {
+      id: saved.id,
+      livreurId: (saved as any).livreurId,
+      livreur: saved.livreur?.id,
+      statut: saved.statut,
+    });
     return toMission(saved);
   }
 
@@ -543,5 +647,13 @@ export class MissionsService {
       default:
         return statut as StatutMission;
     }
+  }
+
+  private normalizeStatusFilter(statut: string) {
+    const normalized = this.normalizeStatus(statut);
+    if (!Object.values(StatutMission).includes(normalized)) {
+      throw new BadRequestException(`Statut mission invalide: ${statut}`);
+    }
+    return normalized;
   }
 }
