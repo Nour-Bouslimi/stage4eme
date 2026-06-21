@@ -32,6 +32,36 @@ export class MissionService {
     );
   }
 
+  getMissionsForLivreur(statut?: string): Observable<Mission[]> {
+    const url = statut ? `${this.apiUrl}/missions?statut=${encodeURIComponent(statut)}` : `${this.apiUrl}/missions`;
+
+    return this.http.get<Mission[]>(url).pipe(
+      map((missions) => missions.map((mission) => normalizeMission(mission)))
+    );
+  }
+
+  getMyLivreurMissions(): Observable<Mission[]> {
+    return this.http.get<Mission[]>(`${this.apiUrl}/missions/livreur/me`).pipe(
+      map((missions) => missions.map((mission) => normalizeMission(mission)))
+    );
+  }
+
+  getMyActiveLivreurMission(): Observable<Mission | null> {
+    return this.http.get<Mission[] | Mission | null>(`${this.apiUrl}/missions/livreur/me/active`).pipe(
+      map((response) => {
+        if (!response) {
+          return null;
+        }
+
+        if (Array.isArray(response)) {
+          return response.length > 0 ? normalizeMission(response[0]) : null;
+        }
+
+        return normalizeMission(response);
+      })
+    );
+  }
+
   getMissionById(id: string): Observable<Mission> {
     return this.http.get<Mission>(`${this.apiUrl}/missions/${id}`).pipe(
       map((mission) => normalizeMission(mission))
@@ -83,6 +113,10 @@ export class MissionService {
 
   remettreMissionEnCours(id: string): Observable<Mission> {
     return this.updateStatut(id, MissionStatus.EN_ATTENTE);
+  }
+
+  annulerAcceptation(id: string): Observable<Mission> {
+    return this.remettreMissionEnCours(id);
   }
 
   private mapVehicleToApi(value: string): string {

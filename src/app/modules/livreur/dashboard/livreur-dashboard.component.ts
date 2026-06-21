@@ -59,7 +59,7 @@ export class LivreurDashboardComponent implements OnInit {
   loadMissions(): void {
     this.loading = true;
 
-    this.missionService.getMissions().subscribe({
+    this.missionService.getMyLivreurMissions().subscribe({
       next: (missions) => {
         this.missions = missions;
         this.activeMission = missions.find(m => 

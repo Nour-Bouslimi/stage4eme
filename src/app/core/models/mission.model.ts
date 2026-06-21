@@ -111,6 +111,9 @@ export interface CreateMissionRequest {
 
 export interface UpdateStatusRequest {
   statut: MissionStatus;
+  livreurId?: string | null;
+  accepteeLe?: string | Date | null;
+  raisonAnnulation?: string | null;
 }
 
 export interface MissionApiRequest {
@@ -226,6 +229,32 @@ const statusToDisplay = (value: string | null | undefined): MissionStatus => {
   return mapping[value] ?? MissionStatus.EN_ATTENTE;
 };
 
+const readStatusValue = (mission: Partial<Mission> & Record<string, unknown>): string | null | undefined => {
+  const directStatut = mission.statut;
+  if (typeof directStatut === 'string' && directStatut.trim()) {
+    return directStatut;
+  }
+
+  const alternateStatus = mission['status'];
+  if (typeof alternateStatus === 'string' && alternateStatus.trim()) {
+    return alternateStatus;
+  }
+
+  return undefined;
+};
+
+const readMissionId = (mission: Partial<Mission> & Record<string, unknown>): string => {
+  const candidates = [mission.id, mission['_id'], mission['missionId']];
+
+  for (const value of candidates) {
+    if (typeof value === 'string' && value.trim()) {
+      return value;
+    }
+  }
+
+  return '';
+};
+
 const categoryToApi = (value: string | null | undefined): string | undefined => {
   if (!value) {
     return undefined;
@@ -301,9 +330,11 @@ export function normalizeMission(mission: Partial<Mission> = {}): Mission {
   const destination = mission.destination ?? parseAddress(mission.adresseLivraison) ?? emptyAddress;
   const client = mission.client ? normalizeUser(mission.client) : normalizeUser({ id: mission.clientId });
   const livreur = mission.livreur ? normalizeUser(mission.livreur) : mission.livreurId ? normalizeUser({ id: mission.livreurId }) : undefined;
+  const rawStatus = readStatusValue(mission as Partial<Mission> & Record<string, unknown>);
+  const missionId = readMissionId(mission as Partial<Mission> & Record<string, unknown>);
 
   return {
-    id: mission.id ?? '',
+    id: missionId,
     adresseRamassage: mission.adresseRamassage ?? serializeAddress(depart ?? { rue: '', ville: '', codePostal: '', pays: '' }),
     adresseLivraison: mission.adresseLivraison ?? serializeAddress(destination ?? { rue: '', ville: '', codePostal: '', pays: '' }),
     latitudeRamassage: mission.latitudeRamassage ?? depart?.latitude ?? null,
@@ -323,7 +354,7 @@ export function normalizeMission(mission: Partial<Mission> = {}): Mission {
         ? mission.dateLivraison.toISOString().slice(0, 10)
         : null) ?? null,
     heureDemandee: mission.heureDemandee ?? null,
-    statut: statusToDisplay(mission.statut),
+    statut: statusToDisplay(rawStatus),
     accepteeLe: toDate(mission.accepteeLe) ?? null,
     commenceeLe: toDate(mission.commenceeLe) ?? null,
     termineeLe: toDate(mission.termineeLe) ?? null,

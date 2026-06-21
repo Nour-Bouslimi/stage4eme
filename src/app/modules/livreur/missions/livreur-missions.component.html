@@ -1,99 +1,104 @@
 <div class="livreur-missions">
   <div class="page-header">
-    <h1 class="page-title">Missions disponibles</h1>
-    <p class="page-subtitle">Consultez et acceptez les missions de livraison</p>
+    <h1 class="page-title">Missions en cours</h1>
+    <p class="page-subtitle">Consultez, acceptez ou retirez votre acceptation des missions</p>
   </div>
 
   <div class="tabs-section">
     <div class="tabs">
-      <button
-        class="tab-btn"
-        [class.active]="selectedTab === 'all'"
-        (click)="selectTab('all')"
-      >
-        Toutes
-      </button>
-      <button
-        class="tab-btn"
-        [class.active]="selectedTab === 'available'"
-        (click)="selectTab('available')"
-      >
-        Disponibles
-      </button>
-      <button
-        class="tab-btn"
-        [class.active]="selectedTab === 'accepted'"
-        (click)="selectTab('accepted')"
-      >
-        En cours
-      </button>
-      <button
-        class="tab-btn"
-        [class.active]="selectedTab === 'completed'"
-        (click)="selectTab('completed')"
-      >
-        Terminées
-      </button>
+      <button class="tab-btn" [class.active]="selectedTab === 'all'" (click)="selectTab('all')">Toutes</button>
+      <button class="tab-btn" [class.active]="selectedTab === 'available'" (click)="selectTab('available')">Disponibles</button>
+      <button class="tab-btn" [class.active]="selectedTab === 'accepted'" (click)="selectTab('accepted')">En cours</button>
+      <button class="tab-btn" [class.active]="selectedTab === 'completed'" (click)="selectTab('completed')">Terminées</button>
     </div>
   </div>
 
+  <div class="toolbar">
+    <div class="search-box">
+      <mat-icon>search</mat-icon>
+      <input
+        type="text"
+        [(ngModel)]="searchQuery"
+        (input)="onSearchChange()"
+        placeholder="Rechercher par ville, client ou catégorie..."
+      />
+    </div>
+    <div class="results-count">{{ filteredMissions.length }} mission(s) trouvée(s)</div>
+  </div>
+
   <div class="missions-grid" *ngIf="!loading">
-    <div class="mission-card" *ngFor="let mission of filteredMissions">
+    <article class="mission-card" *ngFor="let mission of filteredMissions">
       <div class="card-header">
-        <div class="mission-id">#{{ mission.id.slice(0, 8) }}</div>
+        <div class="mission-title">{{ getMissionRouteLabel(mission) }}</div>
         <span class="status-badge" [class]="getStatusColor(mission.statut)">
           {{ getStatusLabel(mission.statut) }}
         </span>
+        <p class="confirm-error" *ngIf="acceptErrorMessage">{{ acceptErrorMessage }}</p>
       </div>
 
       <div class="card-body">
         <div class="route-info">
           <div class="route-point start">
-            <mat-icon class="point-icon">location_on</mat-icon>
-            <span>{{ mission.depart.ville }}</span>
+            <mat-icon class="point-icon">trip_origin</mat-icon>
+            <span>{{ getAddressLabel(mission.adresseRamassage) }}</span>
           </div>
           <mat-icon class="route-arrow">arrow_downward</mat-icon>
           <div class="route-point end">
             <mat-icon class="point-icon">flag</mat-icon>
-            <span>{{ mission.destination.ville }}</span>
+            <span>{{ getAddressLabel(mission.adresseLivraison) }}</span>
           </div>
         </div>
 
         <div class="mission-details">
           <div class="detail-item">
             <mat-icon class="detail-icon">category</mat-icon>
-            <span>{{ mission.categorie }}</span>
+            <span>{{ getCategoryLabel(mission) }}</span>
           </div>
           <div class="detail-item">
             <mat-icon class="detail-icon">fitness_center</mat-icon>
-            <span>{{ mission.poids }} kg</span>
+            <span>{{ mission.poidsEstime ?? mission.poids ?? 'N/A' }} kg</span>
           </div>
           <div class="detail-item">
             <mat-icon class="detail-icon">straighten</mat-icon>
-            <span>~{{ mission.distance || 'N/A' }} km</span>
+            <span>~{{ mission.distanceKm ?? mission.distance ?? 'N/A' }} km</span>
           </div>
           <div class="detail-item">
             <mat-icon class="detail-icon">payments</mat-icon>
-            <span>{{ mission.prix || 'N/A' }} TND</span>
+            <span>{{ mission.prixEstime ?? mission.prix ?? 'N/A' }} TND</span>
           </div>
+        </div>
+
+        <div class="mission-meta">
+          <span *ngIf="mission.client">Client: {{ mission.client.prenom }} {{ mission.client.nom }}</span>
         </div>
       </div>
 
-      <div class="card-footer" *ngIf="mission.statut === MissionStatus.EN_ATTENTE">
-        <button class="btn-accept" (click)="acceptMission(mission.id)">
-          Accepter
+      <div class="card-footer">
+        <button
+          *ngIf="canCancelAcceptance(mission)"
+          class="btn-cancel"
+          type="button"
+          [disabled]="isActionPending(mission)"
+          (click)="cancelAcceptance(mission)"
+        >
+          {{ isActionPending(mission) ? 'Annulation...' : "Annuler l'acceptation" }}
         </button>
-        <button class="btn-view" (click)="viewMission(mission.id)">
-          Voir détails
-        </button>
-      </div>
 
-      <div class="card-footer" *ngIf="mission.statut !== MissionStatus.EN_ATTENTE">
-        <button class="btn-view-full" (click)="viewMission(mission.id)">
+        <button
+          *ngIf="canAcceptMission(mission)"
+          class="btn-accept"
+          type="button"
+          [disabled]="isActionPending(mission)"
+          (click)="acceptMission(mission)"
+        >
+          {{ isActionPending(mission) ? 'Acceptation...' : 'Accepter' }}
+        </button>
+
+        <button class="btn-view" type="button" (click)="viewMission(mission.id)">
           Voir détails
         </button>
       </div>
-    </div>
+    </article>
 
     <div class="empty-state" *ngIf="filteredMissions.length === 0">
       <mat-icon class="empty-icon">inbox</mat-icon>
@@ -103,6 +108,111 @@
 
   <div class="loading-state" *ngIf="loading">
     <mat-spinner diameter="40"></mat-spinner>
-    <p>Chargement...</p>
+    <p>Chargement des missions...</p>
+  </div>
+
+  <div class="modal-backdrop" *ngIf="detailModalOpen || confirmModalOpen">
+    <section class="modal-card details-modal" *ngIf="detailModalOpen && selectedMission">
+      <div class="modal-header">
+        <div>
+          <p class="modal-kicker">Détails de la mission</p>
+          <h2>{{ getMissionRouteLabel(selectedMission) }}</h2>
+        </div>
+        <button type="button" class="modal-close" (click)="closeDetailModal()">
+          <mat-icon>close</mat-icon>
+        </button>
+      </div>
+
+      <div class="modal-body">
+        <div class="detail-grid">
+          <div class="detail-row">
+            <span>Départ</span>
+            <strong>{{ getAddressLabel(selectedMission.adresseRamassage) }}</strong>
+          </div>
+          <div class="detail-row">
+            <span>Destination</span>
+            <strong>{{ getAddressLabel(selectedMission.adresseLivraison) }}</strong>
+          </div>
+          <div class="detail-row">
+            <span>Catégorie</span>
+            <strong>{{ getCategoryLabel(selectedMission) }}</strong>
+          </div>
+          <div class="detail-row">
+            <span>Statut</span>
+            <strong>{{ getStatusLabel(selectedMission.statut) }}</strong>
+          </div>
+          <div class="detail-row">
+            <span>Distance</span>
+            <strong>{{ formatDistance(selectedMission.distanceKm ?? selectedMission.distance) }} km</strong>
+          </div>
+          <div class="detail-row">
+            <span>Prix estimé</span>
+            <strong>{{ formatMoney(selectedMission.prixEstime ?? selectedMission.prix) }} TND</strong>
+          </div>
+          <div class="detail-row">
+            <span>Poids estimé</span>
+            <strong>{{ selectedMission.poidsEstime ?? selectedMission.poids ?? '--' }} kg</strong>
+          </div>
+          <div class="detail-row">
+            <span>Volume estimé</span>
+            <strong>{{ selectedMission.volumeEstime ?? selectedMission.volume ?? '--' }} m3</strong>
+          </div>
+          <div class="detail-row">
+            <span>Client</span>
+            <strong>{{ selectedMission.client?.prenom }} {{ selectedMission.client?.nom }}</strong>
+          </div>
+          <div class="detail-row">
+            <span>Créée le</span>
+            <strong>{{ formatDateTime(selectedMission.createdAt) }}</strong>
+          </div>
+        </div>
+
+        <div class="detail-note" *ngIf="selectedMission.description || selectedMission.instructionsSpeciales">
+          <div *ngIf="selectedMission.description">
+            <span>Description</span>
+            <p>{{ selectedMission.description }}</p>
+          </div>
+          <div *ngIf="selectedMission.instructionsSpeciales">
+            <span>Instructions spéciales</span>
+            <p>{{ selectedMission.instructionsSpeciales }}</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="btn-view" (click)="closeDetailModal()">Fermer</button>
+      </div>
+    </section>
+
+    <section class="modal-card confirm-modal" *ngIf="confirmModalOpen && confirmMission">
+      <div class="modal-header">
+        <div>
+          <p class="modal-kicker">Confirmation</p>
+          <h2>Accepter cette mission ?</h2>
+        </div>
+        <button type="button" class="modal-close" (click)="closeConfirmModal()">
+          <mat-icon>close</mat-icon>
+        </button>
+      </div>
+
+      <div class="modal-body">
+        <p class="confirm-text">
+          Vous allez accepter la mission suivante :
+        </p>
+        <div class="confirm-route">
+          <strong>{{ getMissionRouteLabel(confirmMission) }}</strong>
+          <span>{{ getCategoryLabel(confirmMission) }}</span>
+        </div>
+        <p class="confirm-hint">Cette action changera le statut de la mission à <strong>ACCEPTEE</strong>.</p>
+        <p class="confirm-error" *ngIf="acceptErrorMessage">{{ acceptErrorMessage }}</p>
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="btn-view" (click)="closeConfirmModal()">Annuler</button>
+        <button type="button" class="btn-accept" [disabled]="isActionPending(confirmMission)" (click)="confirmAcceptMission()">
+          {{ isActionPending(confirmMission) ? 'Acceptation...' : 'Confirmer' }}
+        </button>
+      </div>
+    </section>
   </div>
 </div>
