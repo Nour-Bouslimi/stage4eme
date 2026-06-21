@@ -1,23 +1,31 @@
 <div class="driver-search-page">
   <div class="search-breadcrumb">
     <span class="crumb">Accueil</span>
-    <span class="crumb-separator">></span>
-    <span class="crumb active">Recherche de livreurs</span>
+    <span class="crumb-separator">&gt;</span>
+    <span class="crumb active">{{ getPageTitle() }}</span>
   </div>
 
-  <section class="mission-summary" *ngIf="mission">
+  <section class="mission-summary" *ngIf="mode === 'mission' && mission">
     <div class="summary-route">
       <mat-icon class="route-icon departure">place</mat-icon>
-      <strong>{{ mission.depart.ville || mission.depart.rue }}</strong>
+      <strong>{{ getAddressLabel(mission.adresseRamassage) }}</strong>
       <mat-icon class="route-arrow">navigation</mat-icon>
-      <strong>{{ mission.destination.ville || mission.destination.rue }}</strong>
+      <strong>{{ getAddressLabel(mission.adresseLivraison) }}</strong>
     </div>
     <div class="summary-meta">{{ getMissionSummaryLabel() }}</div>
     <button class="modify-btn" type="button" (click)="modifyMission()">Modifier</button>
   </section>
 
-  <div class="search-grid" *ngIf="!loading && mission">
-    <section class="map-panel">
+  <section class="all-drivers-summary" *ngIf="mode === 'all'">
+    <div>
+      <p class="summary-kicker">Recherche livreurs</p>
+      <h1 class="summary-title">Tous les livreurs disponibles</h1>
+      <p class="summary-text">Recherchez par nom ou filtrez par type de véhicule.</p>
+    </div>
+  </section>
+
+  <div class="search-grid" [class.single]="mode === 'all'" *ngIf="!loading && (mode === 'all' || mission)">
+    <section class="map-panel" *ngIf="mode === 'mission'">
       <div class="map-surface">
         <div class="map-grid"></div>
         <div class="map-road road-a"></div>
@@ -129,7 +137,7 @@
     <p>Chargement des livreurs...</p>
   </div>
 
-  <div class="empty-state page-empty" *ngIf="!loading && !mission">
+  <div class="empty-state page-empty" *ngIf="!loading && mode === 'mission' && !mission">
     <mat-icon>local_shipping</mat-icon>
     <h2>Mission introuvable</h2>
     <p>La recherche de livreurs nécessite une mission valide.</p>

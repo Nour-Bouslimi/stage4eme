@@ -5,6 +5,8 @@ import { UserService } from '../../../core/services/user.service';
 import { User, VehicleType } from '../../../core/models/user.model';
 import { Mission, MissionCategory } from '../../../core/models/mission.model';
 
+type DriverSearchMode = 'mission' | 'all';
+
 @Component({
   selector: 'app-driver-search',
   templateUrl: './driver-search.component.html',
@@ -18,6 +20,7 @@ export class DriverSearchComponent implements OnInit {
   loading = true;
   searchQuery = '';
   selectedFilter: 'all' | VehicleType = 'all';
+  mode: DriverSearchMode = 'all';
 
   vehicleTypes: { value: VehicleType; label: string }[] = [
     { value: VehicleType.BICYCLETTE, label: 'Bicyclette' },
@@ -39,16 +42,23 @@ export class DriverSearchComponent implements OnInit {
 
   ngOnInit(): void {
     this.missionId = this.route.snapshot.paramMap.get('missionId') || '';
-    this.loadData();
+    this.mode = this.missionId ? 'mission' : 'all';
+
+    if (this.mode === 'mission') {
+      this.loadMissionData();
+      return;
+    }
+
+    this.loadAllDrivers();
   }
 
-  loadData(): void {
+  loadMissionData(): void {
     this.loading = true;
 
     this.missionService.getMissionById(this.missionId).subscribe({
       next: (mission) => {
         this.mission = mission;
-        this.loadDrivers();
+        this.loadAllDrivers();
       },
       error: () => {
         this.loading = false;
@@ -56,8 +66,10 @@ export class DriverSearchComponent implements OnInit {
     });
   }
 
-  loadDrivers(): void {
-    this.missionService.getLivreursCompatibles(this.missionId).subscribe({
+  loadAllDrivers(): void {
+    this.loading = true;
+
+    this.userService.getLivreursDisponibles().subscribe({
       next: (drivers) => {
         this.drivers = drivers;
         this.applyFilters();
@@ -79,9 +91,14 @@ export class DriverSearchComponent implements OnInit {
   }
 
   contactDriver(driverId: string): void {
-    this.router.navigate(['/client/chat', this.missionId], {
-      queryParams: { driverId }
-    });
+    if (this.mode === 'mission' && this.missionId) {
+      this.router.navigate(['/client/chat', this.missionId], {
+        queryParams: { driverId }
+      });
+      return;
+    }
+
+    console.log('Contacter livreur:', driverId);
   }
 
   viewDriverProfile(driverId: string): void {
@@ -94,8 +111,30 @@ export class DriverSearchComponent implements OnInit {
     });
   }
 
+  getPageTitle(): string {
+    return this.mode === 'mission' ? 'Recherche de livreurs' : 'Livreurs disponibles';
+  }
+
   getMissionNumber(): string {
     return this.mission?.id ? `#${this.mission.id.slice(0, 8).toUpperCase()}` : '';
+  }
+
+  getAddressLabel(addressValue: string | null | undefined): string {
+    if (!addressValue) {
+      return '';
+    }
+
+    try {
+      const parsed = JSON.parse(addressValue) as { rue?: string; ville?: string };
+      const parts = [parsed.rue, parsed.ville].filter((part) => !!part && part.trim().length > 0);
+      if (parts.length > 0) {
+        return parts.join(', ');
+      }
+    } catch {
+      // Keep plain text values as-is.
+    }
+
+    return addressValue;
   }
 
   getMissionRouteLabel(): string {
@@ -103,7 +142,9 @@ export class DriverSearchComponent implements OnInit {
       return '';
     }
 
-    return `${this.mission.depart.ville || this.mission.depart.rue || 'Départ'} · ${this.mission.destination.ville || this.mission.destination.rue || 'Destination'}`;
+    const depart = this.getAddressLabel(this.mission.adresseRamassage) || 'Départ';
+    const destination = this.getAddressLabel(this.mission.adresseLivraison) || 'Destination';
+    return `${depart} · ${destination}`;
   }
 
   getMissionSummaryLabel(): string {
@@ -183,11 +224,9 @@ export class DriverSearchComponent implements OnInit {
       case VehicleType.VOITURE:
         return 'directions_car';
       case VehicleType.PICKUP:
-        return 'local_shipping';
       case VehicleType.FOURGONNETTE:
         return 'local_shipping';
       case VehicleType.PETIT_CAMION:
-        return 'airport_shuttle';
       case VehicleType.GROS_CAMION:
         return 'airport_shuttle';
       default:
@@ -196,7 +235,7 @@ export class DriverSearchComponent implements OnInit {
   }
 
   getVehicleLabel(type: VehicleType): string {
-    return this.vehicleTypes.find(v => v.value === type)?.label || type;
+    return this.vehicleTypes.find((v) => v.value === type)?.label || type;
   }
 
   getDriverDistance(driver: User): number {
@@ -213,7 +252,11 @@ export class DriverSearchComponent implements OnInit {
   }
 
   getDriverRate(driver: User): number {
-    const base = driver.vehicule?.type === VehicleType.BICYCLETTE ? 12 : driver.vehicule?.type === VehicleType.MOTO ? 18 : driver.vehicule?.type === VehicleType.SCOOTER ? 16 : driver.vehicule?.type === VehicleType.VOITURE ? 14 : 20;
+    const base =
+      driver.vehicule?.type === VehicleType.BICYCLETTE ? 12 :
+      driver.vehicule?.type === VehicleType.MOTO ? 18 :
+      driver.vehicule?.type === VehicleType.SCOOTER ? 16 :
+      driver.vehicule?.type === VehicleType.VOITURE ? 14 : 20;
     return base;
   }
 
@@ -239,7 +282,12 @@ export class DriverSearchComponent implements OnInit {
 
     this.filteredDrivers = this.drivers.filter((driver) => {
       const matchesFilter = this.selectedFilter === 'all' || driver.vehicule?.type === this.selectedFilter;
-      const matchesQuery = !query || `${driver.prenom} ${driver.nom}`.toLowerCase().includes(query);
+      const fullName = `${driver.prenom} ${driver.nom}`.toLowerCase();
+      const matchesQuery =
+        !query ||
+        fullName.includes(query) ||
+        (driver.vehicule?.type ? this.getVehicleLabel(driver.vehicule.type).toLowerCase().includes(query) : false);
+
       return matchesFilter && matchesQuery;
     });
   }

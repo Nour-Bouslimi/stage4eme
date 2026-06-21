@@ -213,6 +213,13 @@
   flex: 1 1 0;
 }
 
+.field-error {
+  margin: 8px 0 0;
+  font-size: 0.88rem;
+  color: #c2410c;
+  line-height: 1.4;
+}
+
 .textarea-shell {
   align-items: flex-start;
   min-height: 138px;
@@ -346,6 +353,13 @@
   gap: 18px;
   padding: 0 22px 22px;
   margin-top: 18px;
+}
+
+.estimation-card {
+  margin-bottom: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
 }
 
 .stat-box {
@@ -545,6 +559,10 @@
   gap: 14px;
 }
 
+.price-list.compact {
+  gap: 12px;
+}
+
 .price-row {
   display: flex;
   align-items: center;
@@ -555,6 +573,10 @@
 
 .price-row strong {
   color: var(--text-1);
+}
+
+.price-row strong.is-emphasized {
+  color: var(--secondary);
 }
 
 .price-total {
@@ -571,6 +593,58 @@
   color: var(--secondary);
   font-size: 1.4rem;
   font-weight: 800;
+}
+
+.price-total.compact {
+  padding-top: 0;
+  border-top: 0;
+  padding-bottom: 4px;
+}
+
+.estimation-state {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  border-radius: 18px;
+  padding: 14px 16px;
+  line-height: 1.45;
+}
+
+.estimation-state p {
+  margin: 0;
+}
+
+.estimation-loading {
+  background: #eef4ff;
+  color: var(--primary);
+}
+
+.estimation-error {
+  background: #fff1ef;
+  color: #c2410c;
+}
+
+.estimation-error mat-icon,
+.estimation-hint mat-icon {
+  flex: 0 0 auto;
+}
+
+.estimation-hint {
+  background: #f3f6fb;
+  color: var(--text-2);
+}
+
+.price-meta {
+  background: #f3f6fb;
+  border-radius: 18px;
+  padding: 14px 16px;
+  color: var(--text-2);
+  font-size: 0.92rem;
+  line-height: 1.45;
+}
+
+.price-meta p {
+  margin: 0;
 }
 
 .price-disclaimer {
@@ -660,6 +734,10 @@
   .category-grid,
   .vehicle-grid {
     grid-template-columns: 1fr;
+  }
+
+  .estimation-state {
+    align-items: flex-start;
   }
 
   .date-grid {

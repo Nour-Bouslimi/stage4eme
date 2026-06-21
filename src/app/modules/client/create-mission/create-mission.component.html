@@ -19,7 +19,7 @@
       <div class="step-line" [class.active]="currentStep >= 2"></div>
       <div class="step-item" [class.active]="currentStep >= 2" [class.completed]="currentStep > 2">
         <div class="step-badge">{{ currentStep > 2 ? '✓' : '2' }}</div>
-        <span>Détails</span>
+        <span>Details</span>
       </div>
       <div class="step-line" [class.active]="currentStep >= 3"></div>
       <div class="step-item" [class.active]="currentStep >= 3">
@@ -35,7 +35,7 @@
         <article class="glass-card address-card">
           <div class="card-title-row">
             <span class="card-emoji">📍</span>
-            <h2>Point de départ</h2>
+            <h2>Point de depart</h2>
           </div>
           <label class="field-shell">
             <mat-icon>place</mat-icon>
@@ -73,7 +73,7 @@
 
           <div class="map-marker departure" aria-hidden="true">
             <mat-icon>location_on</mat-icon>
-            <span>Départ</span>
+            <span>Depart</span>
           </div>
 
           <div class="map-marker destination" aria-hidden="true">
@@ -88,19 +88,59 @@
           <div class="stat-box stat-distance">
             <mat-icon>near_me</mat-icon>
             <div>
-              <span class="stat-label">Distance estimée</span>
-              <strong>{{ estimatedDistance }} km</strong>
+              <span class="stat-label">Distance estimee</span>
+              <strong>{{ formatDistance(selectedDistanceKm) }} km</strong>
             </div>
           </div>
 
           <div class="stat-box stat-duration">
             <mat-icon>schedule</mat-icon>
             <div>
-              <span class="stat-label">Durée estimée</span>
-              <strong>~{{ estimatedDuration }} min</strong>
+              <span class="stat-label">Duree estimee</span>
+              <strong>~{{ formatDuration(selectedDurationMin) }} min</strong>
             </div>
           </div>
         </div>
+      </article>
+
+      <article class="glass-card estimation-card">
+        <div class="card-title-row">
+          <span class="card-emoji">💰</span>
+          <h2>Estimation du prix</h2>
+        </div>
+
+        <div class="estimation-state estimation-loading" *ngIf="estimationLoading">
+          <mat-progress-spinner diameter="22" mode="indeterminate"></mat-progress-spinner>
+          <span>Calcul en cours...</span>
+        </div>
+
+        <div class="estimation-state estimation-error" *ngIf="!estimationLoading && estimationError">
+          <mat-icon>error_outline</mat-icon>
+          <p>{{ estimationError }}</p>
+        </div>
+
+        <div class="estimation-state estimation-hint" *ngIf="!estimationLoading && !estimationError && !estimation">
+          <mat-icon>info</mat-icon>
+          <p>{{ estimationHint }}</p>
+        </div>
+
+        <ng-container *ngIf="estimation">
+          <div class="price-total compact">
+            <span>Total estime</span>
+            <strong>{{ formatMoney(selectedPriceTnd) }} TND</strong>
+          </div>
+
+          <div class="price-list compact" *ngIf="breakdownRows.length > 0">
+            <div class="price-row" *ngFor="let row of breakdownRows">
+              <span>{{ row.label }}</span>
+              <strong>{{ formatMoney(row.value) }} TND</strong>
+            </div>
+          </div>
+
+          <div class="price-meta" *ngIf="!hasPricingDetails()">
+            <p>Le backend a renvoye uniquement le total estime.</p>
+          </div>
+        </ng-container>
       </article>
 
       <div class="actions-row">
@@ -108,7 +148,7 @@
           <mat-icon>chevron_left</mat-icon>
           Annuler
         </button>
-        <button type="button" class="btn btn-primary" (click)="nextStep()">
+        <button type="button" class="btn btn-primary" (click)="nextStep()" [disabled]="!isStepOneValid()">
           Suivant
           <mat-icon>chevron_right</mat-icon>
         </button>
@@ -120,7 +160,7 @@
         <div class="details-column">
           <article class="glass-card option-card">
             <div class="section-heading">
-              <h2>Catégorie</h2>
+              <h2>Categorie</h2>
             </div>
             <div class="choice-grid category-grid">
               <button
@@ -138,7 +178,7 @@
 
           <article class="glass-card option-card">
             <div class="section-heading">
-              <h2>Type de véhicule</h2>
+              <h2>Type de vehicule</h2>
             </div>
             <div class="choice-grid vehicle-grid">
               <button
@@ -156,17 +196,19 @@
 
           <article class="glass-card option-card">
             <div class="section-heading">
-              <h2>Date & Heure</h2>
+              <h2>Date & heure</h2>
             </div>
             <div class="date-grid">
               <label class="field-shell compact">
                 <mat-icon>event</mat-icon>
                 <input type="date" formControlName="dateDemandee" />
               </label>
+              <p class="field-error" *ngIf="isFieldInvalid('dateDemandee')">La date demandee est obligatoire.</p>
               <label class="field-shell compact">
                 <mat-icon>schedule</mat-icon>
                 <input type="time" formControlName="heureDemandee" />
               </label>
+              <p class="field-error" *ngIf="isFieldInvalid('heureDemandee')">L'heure demandee est obligatoire.</p>
             </div>
           </article>
         </div>
@@ -174,7 +216,7 @@
         <div class="details-column">
           <article class="glass-card metric-card">
             <div class="metric-header">
-              <h2>Poids estimé</h2>
+              <h2>Poids estime</h2>
               <strong>{{ createMissionForm.get('poidsEstime')?.value }} kg</strong>
             </div>
             <input
@@ -193,11 +235,12 @@
           </article>
 
           <article class="glass-card form-card">
-            <h2>Volume (m³)</h2>
+            <h2>Volume (m3)</h2>
             <label class="field-shell">
               <mat-icon>scale</mat-icon>
               <input type="number" formControlName="volumeEstime" step="0.1" min="0.1" />
             </label>
+            <p class="field-error" *ngIf="isFieldInvalid('volumeEstime')">Le volume est obligatoire.</p>
           </article>
 
           <article class="glass-card form-card">
@@ -206,18 +249,18 @@
               <textarea
                 rows="5"
                 formControlName="description"
-                placeholder="Carton fragile contenant de la vaisselle. Manipuler avec précaution."
+                placeholder="Carton fragile contenant de la vaisselle. Manipuler avec precaution."
               ></textarea>
             </label>
           </article>
 
           <article class="glass-card form-card">
-            <h2>Instructions spéciales</h2>
+            <h2>Instructions speciales</h2>
             <label class="textarea-shell">
               <textarea
                 rows="4"
                 formControlName="instructionsSpeciales"
-                placeholder="Ex: Code d'accès, étage, instructions particulières..."
+                placeholder="Ex: Code d'acces, etage, instructions particulieres..."
               ></textarea>
             </label>
           </article>
@@ -229,7 +272,7 @@
           <mat-icon>chevron_left</mat-icon>
           Retour
         </button>
-        <button type="button" class="btn btn-primary" (click)="nextStep()">
+        <button type="button" class="btn btn-primary" (click)="nextStep()" [disabled]="!isStepTwoValid()">
           Suivant
           <mat-icon>chevron_right</mat-icon>
         </button>
@@ -239,11 +282,11 @@
     <section class="step-panel" *ngIf="currentStep === 3">
       <div class="confirmation-grid">
         <article class="glass-card summary-card">
-          <h2>Récapitulatif de la mission</h2>
+          <h2>Recapitulatif de la mission</h2>
 
           <div class="summary-list">
             <div class="summary-row">
-              <span>Départ</span>
+              <span>Depart</span>
               <strong>{{ createMissionForm.get('adresseRamassage')?.value }}</strong>
             </div>
             <div class="summary-row">
@@ -252,14 +295,14 @@
             </div>
             <div class="summary-row">
               <span>Distance</span>
-              <strong>{{ estimatedDistance }} km • ~{{ estimatedDuration }} min</strong>
+              <strong>{{ formatDistance(selectedDistanceKm) }} km • ~{{ formatDuration(selectedDurationMin) }} min</strong>
             </div>
             <div class="summary-row">
-              <span>Catégorie</span>
+              <span>Categorie</span>
               <strong>{{ categoryLabel }}</strong>
             </div>
             <div class="summary-row">
-              <span>Véhicule</span>
+              <span>Vehicule</span>
               <strong>{{ vehicleLabel }}</strong>
             </div>
             <div class="summary-row">
@@ -267,12 +310,12 @@
               <strong>{{ routeDateTimeLabel }}</strong>
             </div>
             <div class="summary-row">
-              <span>Poids estimé</span>
+              <span>Poids estime</span>
               <strong>{{ createMissionForm.get('poidsEstime')?.value }} kg</strong>
             </div>
             <div class="summary-row">
               <span>Volume</span>
-              <strong>{{ createMissionForm.get('volumeEstime')?.value }} m³</strong>
+              <strong>{{ createMissionForm.get('volumeEstime')?.value }} m3</strong>
             </div>
           </div>
 
@@ -285,28 +328,26 @@
         <article class="glass-card price-card">
           <h2>Estimation du prix</h2>
 
+          <div class="estimation-state estimation-hint compact" *ngIf="!estimationLoading && !estimation">
+            <mat-icon>info</mat-icon>
+            <p>{{ estimationHint }}</p>
+          </div>
+
+          <div class="estimation-state estimation-loading compact" *ngIf="estimationLoading">
+            <mat-progress-spinner diameter="22" mode="indeterminate"></mat-progress-spinner>
+            <span>Actualisation de l'estimation...</span>
+          </div>
+
           <div class="price-list">
-            <div class="price-row">
-              <span>Tarif de base</span>
-              <strong>{{ basePrice | number:'1.2-2' }} €</strong>
-            </div>
-            <div class="price-row">
-              <span>Distance ({{ estimatedDistance }} km)</span>
-              <strong>{{ distancePrice | number:'1.2-2' }} €</strong>
-            </div>
-            <div class="price-row">
-              <span>Supplément poids</span>
-              <strong>{{ weightSurcharge | number:'1.2-2' }} €</strong>
-            </div>
-            <div class="price-row">
-              <span>Frais de service</span>
-              <strong>{{ serviceFee | number:'1.2-2' }} €</strong>
+            <div class="price-row" *ngFor="let row of breakdownRows">
+              <span>{{ row.label }}</span>
+              <strong>{{ formatMoney(row.value) }} TND</strong>
             </div>
           </div>
 
           <div class="price-total">
-            <span>Total estimé</span>
-            <strong>{{ estimatedPrice | number:'1.2-2' }} €</strong>
+            <span>Total estime</span>
+            <strong>{{ formatMoney(selectedPriceTnd) }} TND</strong>
           </div>
 
           <button type="button" class="btn btn-primary btn-submit" [disabled]="loading" (click)="onSubmit()">
@@ -314,7 +355,7 @@
             <span *ngIf="loading">Publication en cours...</span>
           </button>
 
-          <p class="price-disclaimer">Le prix final peut varier selon le livreur accepté.</p>
+          <p class="price-disclaimer">Le prix final peut varier selon le livreur accepte.</p>
         </article>
       </div>
 

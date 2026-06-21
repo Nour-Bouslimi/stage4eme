@@ -23,7 +23,7 @@
           type="text"
           [(ngModel)]="searchQuery"
           (input)="onSearch()"
-          placeholder="Rechercher par ID, adresse..."
+          placeholder="Rechercher par adresse de départ ou de destination..."
           class="search-input"
         />
       </div>
@@ -41,7 +41,6 @@
     <table class="missions-table">
       <thead>
         <tr>
-          <th>ID</th>
           <th>Trajet</th>
           <th>Catégorie</th>
           <th>Livreur</th>
@@ -53,17 +52,16 @@
       </thead>
       <tbody>
         <tr *ngFor="let mission of paginatedMissions">
-          <td><span class="mission-id">#{{ mission.id.slice(0, 8) }}</span></td>
           <td>
             <div class="route-info">
-              <span class="route-point">{{ mission.depart.ville }}</span>
+              <span class="route-point">{{ getAddressLabel(mission.adresseRamassage) }}</span>
               <div class="route-divider">→</div>
-              <span class="route-subpoint">{{ mission.destination.ville }}</span>
+              <span class="route-subpoint">{{ getAddressLabel(mission.adresseLivraison) }}</span>
             </div>
           </td>
-          <td><span class="category-badge">{{ mission.categorie }}</span></td>
+          <td><span class="category-badge">{{ getCategoryLabel(mission.categorie) }}</span></td>
           <td><span class="driver-name" [class.muted]="!mission.livreurId">{{ getDriverLabel(mission) }}</span></td>
-          <td>{{ mission.createdAt | date:'dd MMM HH:mm' }}</td>
+          <td>{{ getMissionDateLabel(mission) }}</td>
           <td><span class="price">{{ mission.prix ? (mission.prix | number:'1.2-2') + ' €' : '—' }}</span></td>
           <td>
             <span class="status-badge" [class]="getStatusColor(mission.statut)">
@@ -74,6 +72,36 @@
             <div class="action-buttons">
               <button class="action-btn" type="button" (click)="viewMission(mission.id)" mat-icon-button aria-label="Voir la mission">
                 <mat-icon>visibility</mat-icon>
+              </button>
+              <button
+                class="action-btn edit"
+                type="button"
+                *ngIf="canModifyMission(mission)"
+                (click)="openEditModal(mission)"
+                mat-icon-button
+                aria-label="Modifier la mission"
+              >
+                <mat-icon>edit</mat-icon>
+              </button>
+              <button
+                class="action-btn cancel"
+                type="button"
+                *ngIf="canCancelMission(mission)"
+                (click)="askCancelMission(mission)"
+                mat-icon-button
+                aria-label="Annuler la mission"
+              >
+                <mat-icon>cancel</mat-icon>
+              </button>
+              <button
+                class="action-btn restore"
+                type="button"
+                *ngIf="canRestoreMission(mission)"
+                (click)="askRestoreMission(mission)"
+                mat-icon-button
+                aria-label="Remettre en cours"
+              >
+                <mat-icon>play_arrow</mat-icon>
               </button>
               <button class="action-btn" type="button" (click)="contactDriver(mission.id)" mat-icon-button aria-label="Message">
                 <mat-icon>chat_bubble_outline</mat-icon>
@@ -117,5 +145,104 @@
   <div class="loading-state" *ngIf="loading">
     <mat-spinner diameter="40"></mat-spinner>
     <p>Chargement...</p>
+  </div>
+
+  <div class="mission-modal-backdrop" *ngIf="actionMission && actionMode" (click)="closeActionModal()">
+    <div class="mission-modal confirm-modal" (click)="$event.stopPropagation()">
+      <div class="mission-modal-header">
+        <div>
+          <p class="modal-eyebrow">Confirmation</p>
+          <h3>{{ getActionConfirmTitle() }}</h3>
+        </div>
+        <button class="modal-close-btn" type="button" (click)="closeActionModal()" aria-label="Fermer">
+          <mat-icon>close</mat-icon>
+        </button>
+      </div>
+
+      <p class="confirm-message">{{ getActionConfirmMessage() }}</p>
+
+      <div class="modal-actions">
+        <button type="button" class="modal-btn secondary" (click)="closeActionModal()">Non</button>
+        <button type="button" class="modal-btn primary" (click)="confirmAction()" [disabled]="submittingAction">
+          <span *ngIf="!submittingAction">{{ actionMode === 'restore' ? 'Remettre en cours' : 'Oui, annuler' }}</span>
+          <span *ngIf="submittingAction">Traitement...</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div class="mission-modal-backdrop" *ngIf="isEditModalOpen" (click)="closeEditModal()">
+    <div class="mission-modal" *ngIf="editingMission" (click)="$event.stopPropagation()">
+      <div class="mission-modal-header">
+        <div>
+          <p class="modal-eyebrow">Modifier la mission</p>
+          <h3>{{ getAddressLabel(editingMission.adresseRamassage) }} → {{ getAddressLabel(editingMission.adresseLivraison) }}</h3>
+        </div>
+        <button class="modal-close-btn" type="button" (click)="closeEditModal()" aria-label="Fermer">
+          <mat-icon>close</mat-icon>
+        </button>
+      </div>
+
+      <div class="mission-modal-status">
+        <span class="status-badge" [class]="getStatusColor(editingMission.statut)">
+          {{ getStatusLabel(editingMission.statut) }}
+        </span>
+      </div>
+
+      <div class="mission-edit-grid">
+        <label class="edit-field">
+          <span>Adresse de départ</span>
+          <textarea [(ngModel)]="editForm.adresseRamassage" name="adresseRamassage" rows="3"></textarea>
+        </label>
+        <label class="edit-field">
+          <span>Adresse de destination</span>
+          <textarea [(ngModel)]="editForm.adresseLivraison" name="adresseLivraison" rows="3"></textarea>
+        </label>
+        <label class="edit-field">
+          <span>Catégorie</span>
+          <select [(ngModel)]="editForm.categorie" name="categorie">
+            <option *ngFor="let category of categoryOptions" [ngValue]="category.value">{{ category.label }}</option>
+          </select>
+        </label>
+        <label class="edit-field">
+          <span>Véhicule requis</span>
+          <select [(ngModel)]="editForm.typeVehiculeRequis" name="typeVehiculeRequis">
+            <option *ngFor="let vehicle of vehicleOptions" [value]="vehicle">{{ vehicle }}</option>
+          </select>
+        </label>
+        <label class="edit-field">
+          <span>Poids estimé (kg)</span>
+          <input type="number" [(ngModel)]="editForm.poidsEstime" name="poidsEstime" min="1" max="500" />
+        </label>
+        <label class="edit-field">
+          <span>Volume estimé (m³)</span>
+          <input type="number" [(ngModel)]="editForm.volumeEstime" name="volumeEstime" min="0.1" step="0.1" />
+        </label>
+        <label class="edit-field">
+          <span>Date demandée</span>
+          <input type="date" [(ngModel)]="editForm.dateDemandee" name="dateDemandee" />
+        </label>
+        <label class="edit-field">
+          <span>Heure demandée</span>
+          <input type="time" [(ngModel)]="editForm.heureDemandee" name="heureDemandee" />
+        </label>
+        <label class="edit-field full">
+          <span>Description</span>
+          <textarea [(ngModel)]="editForm.description" name="description" rows="4"></textarea>
+        </label>
+        <label class="edit-field full">
+          <span>Instructions spéciales</span>
+          <textarea [(ngModel)]="editForm.instructionsSpeciales" name="instructionsSpeciales" rows="4"></textarea>
+        </label>
+      </div>
+
+      <div class="modal-actions">
+        <button type="button" class="modal-btn secondary" (click)="closeEditModal()">Annuler</button>
+        <button type="button" class="modal-btn primary" (click)="saveMissionEdits()" [disabled]="savingMission">
+          <span *ngIf="!savingMission">Enregistrer</span>
+          <span *ngIf="savingMission">Enregistrement...</span>
+        </button>
+      </div>
+    </div>
   </div>
 </div>

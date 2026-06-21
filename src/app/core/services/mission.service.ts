@@ -44,12 +44,31 @@ export class MissionService {
     );
   }
 
-  refuserMission(id: string): Observable<Mission> {
-    return this.updateStatut(id, MissionStatus.ANNULEE);
+  updateMission(id: string, data: Partial<Mission>): Observable<Mission> {
+    const payload: Record<string, unknown> = { ...data };
+
+    if (typeof payload['typeVehiculeRequis'] === 'string') {
+      payload['typeVehiculeRequis'] = this.mapVehicleToApi(payload['typeVehiculeRequis'] as string);
+    }
+
+    if (typeof payload['vehiculeRequis'] === 'string') {
+      payload['vehiculeRequis'] = this.mapVehicleToApi(payload['vehiculeRequis'] as string);
+    }
+
+    return this.http.patch<Mission>(`${this.apiUrl}/missions/${id}`, payload).pipe(
+      map((mission) => normalizeMission(mission))
+    );
   }
 
-  updateStatut(id: string, statut: MissionStatus): Observable<Mission> {
-    return this.http.patch<Mission>(`${this.apiUrl}/missions/${id}/status`, { statut }).pipe(
+  refuserMission(id: string, raisonAnnulation?: string): Observable<Mission> {
+    return this.updateStatut(id, MissionStatus.ANNULEE, raisonAnnulation);
+  }
+
+  updateStatut(id: string, statut: MissionStatus, raisonAnnulation?: string): Observable<Mission> {
+    return this.http.patch<Mission>(`${this.apiUrl}/missions/${id}/status`, {
+      statut,
+      raisonAnnulation
+    }).pipe(
       map((mission) => normalizeMission(mission))
     );
   }
@@ -58,7 +77,26 @@ export class MissionService {
     return this.http.get<any[]>(`${this.apiUrl}/missions/${id}/livreurs-compatibles`);
   }
 
-  annulerMission(id: string): Observable<Mission> {
-    return this.updateStatut(id, MissionStatus.ANNULEE);
+  annulerMission(id: string, raisonAnnulation?: string): Observable<Mission> {
+    return this.updateStatut(id, MissionStatus.ANNULEE, raisonAnnulation);
+  }
+
+  remettreMissionEnCours(id: string): Observable<Mission> {
+    return this.updateStatut(id, MissionStatus.EN_ATTENTE);
+  }
+
+  private mapVehicleToApi(value: string): string {
+    const mapping: Record<string, string> = {
+      Bicyclette: 'BICYCLETTE',
+      Moto: 'MOTO',
+      Scooter: 'SCOOTER',
+      Voiture: 'VOITURE',
+      Pickup: 'PICKUP',
+      Camionnette: 'FOURGONNETTE',
+      'Petit camion': 'PETIT_CAMION',
+      'Gros camion': 'GROS_CAMION'
+    };
+
+    return mapping[value] ?? value;
   }
 }

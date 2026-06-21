@@ -32,6 +32,7 @@ const routes: Routes = [
       { path: 'dashboard', component: ClientDashboardComponent },
       { path: 'profile', component: ClientProfileComponent },
       { path: 'create-mission', component: CreateMissionComponent },
+      { path: 'livreurs-disponibles', component: DriverSearchComponent },
       { path: 'driver-search/:missionId', component: DriverSearchComponent },
       { path: 'tracking/:missionId', component: TrackingComponent },
       { path: 'chat', component: ClientChatComponent },

@@ -83,24 +83,24 @@
 
       <div class="missions-table" *ngIf="!loading">
         <div class="table-header">
-          <div class="table-cell">ID</div>
           <div class="table-cell">Trajet</div>
+          <div class="table-cell">Catégorie</div>
           <div class="table-cell">Statut</div>
           <div class="table-cell">Livreur</div>
           <div class="table-cell">Date</div>
           <div class="table-cell">Actions</div>
         </div>
 
-        <div class="table-row" *ngFor="let mission of missions.slice(0, 5)">
+        <div class="table-row" *ngFor="let mission of activeMissions.slice(0, 5)">
           <div class="table-cell">
-            <span class="mission-id">#{{ mission.id.slice(0, 8) }}</span>
+            <div class="route-info stacked">
+              <span class="route-point">{{ getAddressLabel(mission.adresseRamassage) }}</span>
+              <span class="route-divider">→</span>
+              <span class="route-subpoint">{{ getAddressLabel(mission.adresseLivraison) }}</span>
+            </div>
           </div>
           <div class="table-cell">
-            <div class="route-info">
-              <span class="route-point">{{ mission.depart.ville }}</span>
-              <mat-icon class="route-arrow">arrow_forward</mat-icon>
-              <span class="route-point">{{ mission.destination.ville }}</span>
-            </div>
+            <span class="category-badge">{{ getCategoryLabel(mission.categorie) }}</span>
           </div>
           <div class="table-cell">
             <span class="status-badge" [class]="getStatusColor(mission.statut)">
@@ -108,25 +108,25 @@
             </span>
           </div>
           <div class="table-cell">
-            <div class="driver-info" *ngIf="mission.livreurId">
+            <div class="driver-info" *ngIf="mission.livreur">
               <div class="driver-avatar">
-                <img src="assets/default-avatar.svg" alt="Driver" />
+                <img [src]="mission.livreur.avatar || 'assets/default-avatar.svg'" alt="Livreur" />
               </div>
-              <span>Livreur assigné</span>
+              <span>{{ getDriverLabel(mission) }}</span>
             </div>
-            <span class="no-driver" *ngIf="!mission.livreurId">Non assigné</span>
+            <span class="no-driver" *ngIf="!mission.livreur">Non assigné</span>
           </div>
           <div class="table-cell">
             {{ mission.createdAt | date:'dd/MM/yyyy' }}
           </div>
           <div class="table-cell">
-            <button class="action-btn" (click)="viewMission(mission.id)">
+            <button class="action-btn" type="button" (click)="viewMission(mission)" aria-label="Voir les détails">
               <mat-icon>visibility</mat-icon>
             </button>
           </div>
         </div>
 
-        <div class="empty-state" *ngIf="missions.length === 0">
+        <div class="empty-state" *ngIf="activeMissions.length === 0">
           <mat-icon class="empty-icon">inbox</mat-icon>
           <p>Aucune mission en cours</p>
         </div>
@@ -140,13 +140,13 @@
     <div class="drivers-section">
       <div class="section-header">
         <h2 class="section-title">Livreurs disponibles</h2>
-        <a class="view-all-link" routerLink="/client/create-mission">Voir tout</a>
+        <a class="view-all-link" routerLink="/client/livreurs-disponibles">Voir tout</a>
       </div>
 
       <div class="drivers-list">
         <div class="driver-card" *ngFor="let driver of availableDrivers">
           <div class="driver-avatar">
-            <img [src]="driver.avatar || 'assets/default-avatar.svg'" alt="Driver" />
+            <img [src]="driver.avatar || 'assets/default-avatar.svg'" alt="Livreur" />
           </div>
           <div class="driver-details">
             <p class="driver-name">{{ driver.prenom }} {{ driver.nom }}</p>
@@ -164,6 +164,33 @@
         <div class="empty-state" *ngIf="availableDrivers.length === 0">
           <mat-icon class="empty-icon">person_search</mat-icon>
           <p>Aucun livreur disponible</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="mission-modal-backdrop" *ngIf="isMissionModalOpen" (click)="closeMissionModal()">
+    <div class="mission-modal" *ngIf="selectedMission" (click)="$event.stopPropagation()">
+      <div class="mission-modal-header">
+        <div>
+          <p class="modal-eyebrow">Détails de la mission</p>
+          <h3>{{ getAddressLabel(selectedMission.adresseRamassage) }} → {{ getAddressLabel(selectedMission.adresseLivraison) }}</h3>
+        </div>
+        <button class="modal-close-btn" type="button" (click)="closeMissionModal()" aria-label="Fermer">
+          <mat-icon>close</mat-icon>
+        </button>
+      </div>
+
+      <div class="mission-modal-status">
+        <span class="status-badge" [class]="getStatusColor(selectedMission.statut)">
+          {{ getStatusLabel(selectedMission.statut) }}
+        </span>
+      </div>
+
+      <div class="mission-details-grid">
+        <div class="detail-item" *ngFor="let detail of getMissionDetails(selectedMission)">
+          <span class="detail-label">{{ detail.label }}</span>
+          <span class="detail-value">{{ detail.value }}</span>
         </div>
       </div>
     </div>

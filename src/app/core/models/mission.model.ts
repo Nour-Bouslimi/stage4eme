@@ -36,6 +36,18 @@ export interface Notation {
   [key: string]: unknown;
 }
 
+export interface MissionPricingBreakdown {
+  baseFare?: number | null;
+  distanceFare?: number | null;
+  timeFare?: number | null;
+  weightFare?: number | null;
+  volumeFare?: number | null;
+  vehicleFare?: number | null;
+  serviceFee?: number | null;
+  total?: number | null;
+  [key: string]: unknown;
+}
+
 export interface Mission {
   id: string;
   adresseRamassage: string;
@@ -91,6 +103,10 @@ export interface CreateMissionRequest {
   instructionsSpeciales?: string;
   dateDemandee: string;
   heureDemandee: string;
+  latitudeRamassage?: number | null;
+  longitudeRamassage?: number | null;
+  latitudeLivraison?: number | null;
+  longitudeLivraison?: number | null;
 }
 
 export interface UpdateStatusRequest {
@@ -108,6 +124,28 @@ export interface MissionApiRequest {
   dateDemandee?: string;
   heureDemandee?: string;
   instructionsSpeciales?: string;
+  latitudeRamassage?: number | null;
+  longitudeRamassage?: number | null;
+  latitudeLivraison?: number | null;
+  longitudeLivraison?: number | null;
+}
+
+export interface MissionEstimateRequest extends MissionApiRequest {
+  latitudeRamassage?: number | null;
+  longitudeRamassage?: number | null;
+  latitudeLivraison?: number | null;
+  longitudeLivraison?: number | null;
+}
+
+export interface MissionEstimateResponse {
+  distanceKm?: number | null;
+  dureeEstimee?: number | null;
+  prixEstime?: number | null;
+  pricing?: MissionPricingBreakdown | null;
+  start?: unknown;
+  end?: unknown;
+  route?: unknown;
+  [key: string]: unknown;
 }
 
 const toDate = (value: Date | string | null | undefined): Date | string | undefined => {
@@ -324,6 +362,10 @@ export function toMissionApiRequest(request: CreateMissionRequest): MissionApiRe
     description: request.description,
     instructionsSpeciales: request.instructionsSpeciales,
     dateDemandee: request.dateDemandee,
-    heureDemandee: request.heureDemandee
+    heureDemandee: request.heureDemandee,
+    latitudeRamassage: request.latitudeRamassage,
+    longitudeRamassage: request.longitudeRamassage,
+    latitudeLivraison: request.latitudeLivraison,
+    longitudeLivraison: request.longitudeLivraison
   };
 }

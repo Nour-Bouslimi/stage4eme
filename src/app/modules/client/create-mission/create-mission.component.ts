@@ -1,9 +1,28 @@
-import { Component, OnInit } from '@angular/core';
-import { AbstractControl, FormBuilder, FormGroup, ValidationErrors, ValidatorFn, Validators } from '@angular/forms';
+import { Component, OnDestroy, OnInit } from '@angular/core';
+import {
+  AbstractControl,
+  FormBuilder,
+  FormGroup,
+  ValidationErrors,
+  ValidatorFn,
+  Validators
+} from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
+import { Subject, of } from 'rxjs';
+import {
+  catchError,
+  debounceTime,
+  distinctUntilChanged,
+  filter,
+  map,
+  switchMap,
+  takeUntil,
+  tap
+} from 'rxjs/operators';
+import { MissionCategory, CreateMissionRequest, MissionEstimateRequest, Mission } from '../../../core/models/mission.model';
+import { MissionEstimation, MissionEstimationService } from '../../../core/services/mission-estimation.service';
 import { MissionService } from '../../../core/services/mission.service';
 import { ToastService } from '../../../shared/components/toast/toast.service';
-import { MissionCategory, CreateMissionRequest } from '../../../core/models/mission.model';
 
 type CategoryOption = {
   value: MissionCategory;
@@ -17,22 +36,34 @@ type VehicleOption = {
   icon: string;
 };
 
+type PricingRow = {
+  label: string;
+  value: number | null | undefined;
+  emphasize?: boolean;
+};
+
 @Component({
   selector: 'app-create-mission',
   templateUrl: './create-mission.component.html',
   styleUrls: ['./create-mission.component.css']
 })
-export class CreateMissionComponent implements OnInit {
+export class CreateMissionComponent implements OnInit, OnDestroy {
   currentStep = 1;
   createMissionForm!: FormGroup;
   loading = false;
+  estimationLoading = false;
+  estimationError: string | null = null;
+  estimation: MissionEstimation | null = null;
+  editingMissionId: string | null = null;
+
+  private readonly destroy$ = new Subject<void>();
 
   categories: CategoryOption[] = [
     { value: MissionCategory.COLIS, label: 'Colis Express', icon: 'inventory_2' },
-    { value: MissionCategory.MEUBLES, label: 'Déménagement meubles', icon: 'weekend' },
-    { value: MissionCategory.DEMENAGEMENT, label: 'Déménagement complet', icon: 'moving' },
+    { value: MissionCategory.MEUBLES, label: 'Demenagement meubles', icon: 'weekend' },
+    { value: MissionCategory.DEMENAGEMENT, label: 'Demenagement complet', icon: 'moving' },
     { value: MissionCategory.COURSES, label: 'Courses', icon: 'shopping_cart' },
-    { value: MissionCategory.MATERIAUX, label: 'Matériaux', icon: 'construction' },
+    { value: MissionCategory.MATERIAUX, label: 'Materiaux', icon: 'construction' },
     { value: MissionCategory.PERSONNALISE, label: 'Autre', icon: 'add' }
   ];
 
@@ -46,6 +77,7 @@ export class CreateMissionComponent implements OnInit {
   constructor(
     private fb: FormBuilder,
     private missionService: MissionService,
+    private missionEstimationService: MissionEstimationService,
     private router: Router,
     private route: ActivatedRoute,
     private toastService: ToastService
@@ -53,11 +85,23 @@ export class CreateMissionComponent implements OnInit {
 
   ngOnInit(): void {
     this.initForm();
+    this.setupEstimationWatcher();
 
+    this.editingMissionId = this.route.snapshot.queryParamMap.get('missionId');
     const initialType = this.route.snapshot.queryParamMap.get('type');
+
+    if (this.editingMissionId) {
+      this.loadMissionForEdit(this.editingMissionId);
+    }
+
     if (initialType) {
       this.selectCategory(this.mapQueryCategory(initialType));
     }
+  }
+
+  ngOnDestroy(): void {
+    this.destroy$.next();
+    this.destroy$.complete();
   }
 
   initForm(): void {
@@ -66,11 +110,15 @@ export class CreateMissionComponent implements OnInit {
     this.createMissionForm = this.fb.group({
       adresseRamassage: ['', [Validators.required, this.nonBlankValidator()]],
       adresseLivraison: ['', [Validators.required, this.nonBlankValidator()]],
+      latitudeRamassage: [null],
+      longitudeRamassage: [null],
+      latitudeLivraison: [null],
+      longitudeLivraison: [null],
       categorie: [MissionCategory.COLIS, Validators.required],
       poidsEstime: [30, [Validators.required, Validators.min(1), Validators.max(500)]],
       volumeEstime: [0.5, [Validators.required, Validators.min(0.1), Validators.max(50)]],
       typeVehiculeRequis: ['VOITURE', Validators.required],
-      description: ['Carton fragile contenant de la vaisselle. Manipuler avec précaution.', [Validators.required, Validators.minLength(10)]],
+      description: ['Carton fragile contenant de la vaisselle. Manipuler avec precaution.'],
       instructionsSpeciales: [''],
       dateDemandee: [this.formatDateInput(today), Validators.required],
       heureDemandee: ['14:00', Validators.required]
@@ -85,36 +133,39 @@ export class CreateMissionComponent implements OnInit {
     return this.createMissionForm?.get('typeVehiculeRequis')?.value ?? 'VOITURE';
   }
 
-  get estimatedDistance(): number {
-    const start = this.createMissionForm?.get('adresseRamassage')?.value ?? '';
-    const end = this.createMissionForm?.get('adresseLivraison')?.value ?? '';
-    const base = Math.max(start.length + end.length, 12);
-    return Number((6 + (base % 37) / 5).toFixed(1));
+  get selectedDistanceKm(): number | null {
+    return this.estimation?.distanceKm ?? null;
   }
 
-  get estimatedDuration(): number {
-    return Math.round(this.estimatedDistance * 2.6);
+  get selectedDurationMin(): number | null {
+    return this.estimation?.dureeEstimee ?? null;
   }
 
-  get estimatedPrice(): number {
-    return Number((this.basePrice + this.distancePrice + this.weightSurcharge + this.serviceFee).toFixed(2));
+  get selectedPriceTnd(): number | null {
+    return this.estimation?.pricing?.total ?? this.estimation?.prixEstime ?? null;
   }
 
-  get basePrice(): number {
-    return 8.5;
+  get priceRows(): PricingRow[] {
+    const pricing = this.estimation?.pricing;
+
+    if (!pricing) {
+      return [];
+    }
+
+    return [
+      { label: 'Tarif de base', value: pricing.baseFare },
+      { label: 'Cout distance', value: pricing.distanceFare },
+      { label: 'Supplement poids', value: pricing.weightFare },
+      { label: 'Supplement volume', value: pricing.volumeFare },
+      { label: 'Supplement vehicule', value: pricing.vehicleFare },
+      { label: 'Frais de service', value: pricing.serviceFee },
+      { label: 'Cout temps', value: pricing.timeFare },
+      { label: 'Total estime', value: pricing.total ?? this.estimation?.prixEstime, emphasize: true }
+    ].filter((row) => row.value != null);
   }
 
-  get distancePrice(): number {
-    return Number((this.estimatedDistance * 0.9).toFixed(2));
-  }
-
-  get weightSurcharge(): number {
-    const rawWeight = Number(this.createMissionForm?.get('poidsEstime')?.value);
-    return Number(Math.max(0, (rawWeight - 20) * 0.04).toFixed(2));
-  }
-
-  get serviceFee(): number {
-    return 1.8;
+  get breakdownRows(): PricingRow[] {
+    return this.priceRows.filter((row) => !row.emphasize);
   }
 
   get routeDateTimeLabel(): string {
@@ -126,12 +177,15 @@ export class CreateMissionComponent implements OnInit {
     }
 
     const dateTime = new Date(`${dateValue}T${timeValue || '00:00'}`);
-    return dateTime.toLocaleDateString('fr-FR', {
-      weekday: 'long',
-      day: 'numeric',
-      month: 'long',
-      year: 'numeric'
-    }) + ` à ${dateTime.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}`;
+    return (
+      dateTime.toLocaleDateString('fr-FR', {
+        weekday: 'long',
+        day: 'numeric',
+        month: 'long',
+        year: 'numeric'
+      }) +
+      ` a ${dateTime.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}`
+    );
   }
 
   get categoryLabel(): string {
@@ -146,9 +200,49 @@ export class CreateMissionComponent implements OnInit {
     return this.createMissionForm?.get('instructionsSpeciales')?.value ?? '';
   }
 
+  get estimationHint(): string {
+    if (this.estimationLoading) {
+      return "Calcul de l'estimation en cours...";
+    }
+
+    if (this.estimationError) {
+      return this.estimationError;
+    }
+
+    if (!this.canEstimate()) {
+      return 'Saisissez les deux adresses pour afficher la distance, la duree et le prix.';
+    }
+
+    if (!this.estimation) {
+      return "L'estimation apparaitra des que le backend repondra.";
+    }
+
+    return 'Estimation mise a jour automatiquement.';
+  }
+
+  isFieldInvalid(controlName: string): boolean {
+    const control = this.createMissionForm.get(controlName);
+    return !!control && control.invalid && (control.touched || control.dirty);
+  }
+
+  isStepOneValid(): boolean {
+    return !!this.createMissionForm.get('adresseRamassage')?.valid && !!this.createMissionForm.get('adresseLivraison')?.valid;
+  }
+
+  isStepTwoValid(): boolean {
+    return (
+      !!this.createMissionForm.get('categorie')?.valid &&
+      !!this.createMissionForm.get('poidsEstime')?.valid &&
+      !!this.createMissionForm.get('volumeEstime')?.valid &&
+      !!this.createMissionForm.get('typeVehiculeRequis')?.valid &&
+      !!this.createMissionForm.get('dateDemandee')?.valid &&
+      !!this.createMissionForm.get('heureDemandee')?.valid
+    );
+  }
+
   nextStep(): void {
     if (this.currentStep === 1) {
-      if (this.createMissionForm.get('adresseRamassage')?.invalid || this.createMissionForm.get('adresseLivraison')?.invalid) {
+      if (!this.isStepOneValid()) {
         this.toastService.warning('Veuillez renseigner les deux adresses.');
         this.createMissionForm.get('adresseRamassage')?.markAsTouched();
         this.createMissionForm.get('adresseLivraison')?.markAsTouched();
@@ -160,16 +254,8 @@ export class CreateMissionComponent implements OnInit {
     }
 
     if (this.currentStep === 2) {
-      if (
-        this.createMissionForm.get('categorie')?.invalid ||
-        this.createMissionForm.get('poidsEstime')?.invalid ||
-        this.createMissionForm.get('volumeEstime')?.invalid ||
-        this.createMissionForm.get('typeVehiculeRequis')?.invalid ||
-        this.createMissionForm.get('description')?.invalid ||
-        this.createMissionForm.get('dateDemandee')?.invalid ||
-        this.createMissionForm.get('heureDemandee')?.invalid
-      ) {
-        this.toastService.warning('Veuillez compléter les détails de la mission.');
+      if (!this.isStepTwoValid()) {
+        this.toastService.warning('Veuillez completer les details de la mission.');
         this.createMissionForm.markAllAsTouched();
         return;
       }
@@ -206,7 +292,146 @@ export class CreateMissionComponent implements OnInit {
 
     this.loading = true;
 
-    const payload: CreateMissionRequest = {
+    const payload = this.buildCreatePayload();
+
+    const request$ = this.editingMissionId
+      ? this.missionService.updateMission(this.editingMissionId, payload as Partial<Mission>)
+      : this.missionService.creerMission(payload);
+
+    request$.subscribe({
+      next: (mission) => {
+        this.loading = false;
+        this.toastService.success(this.editingMissionId ? 'Mission modifiee avec succes' : 'Mission creee avec succes');
+        this.router.navigate(['/client/driver-search', mission.id || this.editingMissionId]);
+      },
+      error: () => {
+        this.loading = false;
+        this.toastService.error(this.editingMissionId ? 'Erreur lors de la modification de la mission' : 'Erreur lors de la creation de la mission');
+      }
+    });
+  }
+
+  cancel(): void {
+    this.router.navigate(['/client/dashboard']);
+  }
+
+  formatMoney(value: number | null | undefined): string {
+    if (value == null || Number.isNaN(value)) {
+      return '--';
+    }
+
+    return new Intl.NumberFormat('fr-TN', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    }).format(value);
+  }
+
+  formatDistance(value: number | null | undefined): string {
+    if (value == null || Number.isNaN(value)) {
+      return '--';
+    }
+
+    return new Intl.NumberFormat('fr-TN', {
+      minimumFractionDigits: 1,
+      maximumFractionDigits: 2
+    }).format(value);
+  }
+
+  formatDuration(value: number | null | undefined): string {
+    if (value == null || Number.isNaN(value)) {
+      return '--';
+    }
+
+    return new Intl.NumberFormat('fr-TN', {
+      maximumFractionDigits: 0
+    }).format(value);
+  }
+
+  hasPricingDetails(): boolean {
+    return this.breakdownRows.length > 0;
+  }
+
+  private setupEstimationWatcher(): void {
+    this.createMissionForm.valueChanges
+      .pipe(
+        debounceTime(450),
+        map(() => this.buildEstimateRequest()),
+        distinctUntilChanged((previous, current) => this.requestKey(previous) === this.requestKey(current)),
+        tap((request) => {
+          if (!request) {
+            this.resetEstimation();
+            return;
+          }
+
+          this.estimationLoading = true;
+          this.estimationError = null;
+        }),
+        filter((request): request is MissionEstimateRequest => !!request),
+        switchMap((request) =>
+          this.missionEstimationService.estimate(request).pipe(
+            map((estimation) => ({ kind: 'success' as const, estimation })),
+            catchError((error) =>
+              of({
+                kind: 'error' as const,
+                message: this.extractErrorMessage(error)
+              })
+            )
+          )
+        ),
+        takeUntil(this.destroy$)
+      )
+      .subscribe((result) => {
+        this.estimationLoading = false;
+
+        if (result.kind === 'success') {
+          this.estimation = result.estimation;
+          this.estimationError = null;
+          return;
+        }
+
+        this.estimation = null;
+        this.estimationError = result.message;
+      });
+  }
+
+  private loadMissionForEdit(missionId: string): void {
+    this.missionService.getMissionById(missionId).subscribe({
+      next: (mission) => {
+        this.patchFormFromMission(mission);
+      },
+      error: () => {
+        this.toastService.error('Impossible de charger la mission a modifier.');
+      }
+    });
+  }
+
+  private patchFormFromMission(mission: Mission): void {
+    const depart = this.parseAddressValue(mission.adresseRamassage);
+    const destination = this.parseAddressValue(mission.adresseLivraison);
+
+    this.createMissionForm.patchValue(
+      {
+        adresseRamassage: depart?.label ?? mission.adresseRamassage ?? '',
+        adresseLivraison: destination?.label ?? mission.adresseLivraison ?? '',
+        latitudeRamassage: depart?.latitude ?? mission.latitudeRamassage ?? null,
+        longitudeRamassage: depart?.longitude ?? mission.longitudeRamassage ?? null,
+        latitudeLivraison: destination?.latitude ?? mission.latitudeLivraison ?? null,
+        longitudeLivraison: destination?.longitude ?? mission.longitudeLivraison ?? null,
+        categorie: mission.categorie,
+        poidsEstime: mission.poidsEstime ?? 30,
+        volumeEstime: mission.volumeEstime ?? 0.5,
+        typeVehiculeRequis: mission.typeVehiculeRequis ?? 'VOITURE',
+        description: mission.description ?? '',
+        instructionsSpeciales: mission.instructionsSpeciales ?? '',
+        dateDemandee: mission.dateDemandee ?? this.createMissionForm.get('dateDemandee')?.value,
+        heureDemandee: mission.heureDemandee ?? this.createMissionForm.get('heureDemandee')?.value
+      },
+      { emitEvent: true }
+    );
+  }
+
+  private buildCreatePayload(): CreateMissionRequest {
+    return {
       adresseRamassage: String(this.createMissionForm.get('adresseRamassage')?.value || '').trim(),
       adresseLivraison: String(this.createMissionForm.get('adresseLivraison')?.value || '').trim(),
       categorie: this.createMissionForm.get('categorie')?.value,
@@ -216,24 +441,119 @@ export class CreateMissionComponent implements OnInit {
       description: this.createMissionForm.get('description')?.value,
       instructionsSpeciales: this.createMissionForm.get('instructionsSpeciales')?.value,
       dateDemandee: this.createMissionForm.get('dateDemandee')?.value,
-      heureDemandee: this.createMissionForm.get('heureDemandee')?.value
+      heureDemandee: this.createMissionForm.get('heureDemandee')?.value,
+      latitudeRamassage: this.toNullableNumber(this.createMissionForm.get('latitudeRamassage')?.value),
+      longitudeRamassage: this.toNullableNumber(this.createMissionForm.get('longitudeRamassage')?.value),
+      latitudeLivraison: this.toNullableNumber(this.createMissionForm.get('latitudeLivraison')?.value),
+      longitudeLivraison: this.toNullableNumber(this.createMissionForm.get('longitudeLivraison')?.value)
     };
-
-    this.missionService.creerMission(payload).subscribe({
-      next: (mission) => {
-        this.loading = false;
-        this.toastService.success('Mission creee avec succes');
-        this.router.navigate(['/client/driver-search', mission.id]);
-      },
-      error: () => {
-        this.loading = false;
-        this.toastService.error('Erreur lors de la creation de la mission');
-      }
-    });
   }
 
-  cancel(): void {
-    this.router.navigate(['/client/dashboard']);
+  private buildEstimateRequest(): MissionEstimateRequest | null {
+    const adresseRamassage = String(this.createMissionForm.get('adresseRamassage')?.value || '').trim();
+    const adresseLivraison = String(this.createMissionForm.get('adresseLivraison')?.value || '').trim();
+
+    if (!adresseRamassage || !adresseLivraison) {
+      return null;
+    }
+
+    return {
+      ...this.buildCreatePayload(),
+      description: undefined,
+      instructionsSpeciales: undefined
+    };
+  }
+
+  private canEstimate(): boolean {
+    return !!this.buildEstimateRequest();
+  }
+
+  private resetEstimation(): void {
+    this.estimation = null;
+    this.estimationError = null;
+    this.estimationLoading = false;
+  }
+
+  private requestKey(request: MissionEstimateRequest | null): string {
+    return request ? JSON.stringify(request) : '';
+  }
+
+  private parseAddressValue(value: string | null | undefined): { label: string; latitude: number | null; longitude: number | null } | null {
+    if (!value) {
+      return null;
+    }
+
+    try {
+      const parsed = JSON.parse(value) as {
+        rue?: string;
+        ville?: string;
+        codePostal?: string;
+        pays?: string;
+        latitude?: number;
+        longitude?: number;
+      };
+
+      const label = [parsed.rue, parsed.ville, parsed.codePostal, parsed.pays]
+        .filter((part) => !!part && String(part).trim().length > 0)
+        .join(', ');
+
+      return {
+        label: label || value,
+        latitude: typeof parsed.latitude === 'number' ? parsed.latitude : null,
+        longitude: typeof parsed.longitude === 'number' ? parsed.longitude : null
+      };
+    } catch {
+      return { label: value, latitude: null, longitude: null };
+    }
+  }
+
+  private extractErrorMessage(error: unknown): string {
+    if (!error || typeof error !== 'object') {
+      return "Impossible de calculer l'estimation pour le moment.";
+    }
+
+    const payload = error as Record<string, unknown>;
+    const errorBody = payload['error'];
+
+    if (typeof errorBody === 'string' && errorBody.trim()) {
+      return errorBody;
+    }
+
+    if (errorBody && typeof errorBody === 'object') {
+      const errorObject = errorBody as Record<string, unknown>;
+      const message = errorObject['message'];
+
+      if (typeof message === 'string' && message.trim()) {
+        return message;
+      }
+
+      if (Array.isArray(message) && message.length > 0) {
+        const firstMessage = message[0];
+        if (typeof firstMessage === 'string' && firstMessage.trim()) {
+          return firstMessage;
+        }
+      }
+    }
+
+    const message = payload['message'];
+    if (typeof message === 'string' && message.trim()) {
+      return message;
+    }
+
+    return "Impossible de calculer l'estimation pour le moment.";
+  }
+
+  private toNullableNumber(value: unknown): number | null {
+    if (typeof value === 'number' && Number.isFinite(value)) {
+      return value;
+    }
+
+    if (typeof value === 'string' && value.trim()) {
+      const parsed = Number(value);
+      return Number.isFinite(parsed) ? parsed : null;
+    }
+
+    return null;
   }
 
   private formatDateInput(date: Date): string {
