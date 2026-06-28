@@ -1,6 +1,7 @@
 import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, CreateDateColumn, Unique, OneToOne } from 'typeorm';
 import { Utilisateur } from '../../users/entities/user.entity';
 import { Mission } from '../../missions/entities/mission.entity';
+import { Appreciation } from '../enums/appreciation.enum';
 
 @Entity('notations')
 @Unique(['mission'])
@@ -10,6 +11,9 @@ export class Notation {
 
   @Column({ type: 'int' })
   etoiles: number;
+
+  @Column({ type: 'enum', enum: Appreciation, array: true, nullable: true })
+  appreciations: Appreciation[];
 
   @Column({ nullable: true })
   commentaire: string;

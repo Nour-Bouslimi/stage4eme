@@ -1,14 +1,17 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, InternalServerErrorException, Logger, NotFoundException, UnauthorizedException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
 import * as bcrypt from 'bcrypt';
-import { Repository } from 'typeorm';
+import { randomBytes } from 'crypto';
+import { DeepPartial, Repository } from 'typeorm';
 import { RoleUtilisateur } from '../../common/enums/role-utilisateur.enum';
 import { StatutDisponibilite } from '../../common/enums/statut-disponibilite.enum';
 import { TypeVehicule } from '../../common/enums/type-vehicule.enum';
+import { MailService } from '../mail/mail.service';
 import { CreateLivreurDto } from './dto/create-livreur.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
-import { Utilisateur } from './entities/user.entity';
 import { DisponibiliteLivreur } from './entities/disponibilite-livreur.entity';
+import { Utilisateur } from './entities/user.entity';
 
 type AvailabilityInput = {
   day?: string;
@@ -21,11 +24,15 @@ type AvailabilityInput = {
 
 @Injectable()
 export class UsersService {
+  private readonly logger = new Logger(UsersService.name);
+
   constructor(
     @InjectRepository(Utilisateur)
     private readonly usersRepository: Repository<Utilisateur>,
     @InjectRepository(DisponibiliteLivreur)
     private readonly disponibiliteRepository: Repository<DisponibiliteLivreur>,
+    private readonly mailService: MailService,
+    private readonly configService: ConfigService,
   ) {}
 
   private normalizeVehicle(input: Partial<CreateLivreurDto> | Partial<Utilisateur>) {
@@ -49,19 +56,52 @@ export class UsersService {
     };
   }
 
+  private generateTemporaryPassword(length = 12) {
+    const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789!@#$%^&*';
+    const specials = '!@#$%^&*';
+
+    while (true) {
+      const bytes = randomBytes(length);
+      let password = '';
+      for (let i = 0; i < length; i += 1) {
+        password += alphabet[bytes[i] % alphabet.length];
+      }
+
+      const hasUpper = /[A-Z]/.test(password);
+      const hasLower = /[a-z]/.test(password);
+      const hasNumber = /\d/.test(password);
+      const hasSpecial = new RegExp(`[${specials.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}]`).test(password);
+
+      if (hasUpper && hasLower && hasNumber && hasSpecial) {
+        return password;
+      }
+    }
+  }
+
+  private validateTemporaryPassword(password: string) {
+    if (!password || password.length < 10) {
+      throw new BadRequestException('Le mot de passe temporaire doit contenir au moins 10 caracteres');
+    }
+    if (!/[A-Z]/.test(password) || !/[a-z]/.test(password) || !/\d/.test(password) || !/[^A-Za-z0-9]/.test(password)) {
+      throw new BadRequestException('Le mot de passe temporaire doit contenir une majuscule, une minuscule, un chiffre et un caractere special');
+    }
+  }
+
+  private getFrontendLoginUrl() {
+    const frontendUrl = this.configService.get<string>('FRONTEND_URL') || 'http://localhost:4200';
+    return new URL('/login', frontendUrl).toString();
+  }
+
   async create(payload: Partial<Utilisateur>) {
     const user = this.usersRepository.create(payload as any);
     return this.usersRepository.save(user);
   }
 
   async save(user: Partial<Utilisateur>) {
-    return this.usersRepository.save(user as Utilisateur);
+    return this.usersRepository.save(user as DeepPartial<Utilisateur>);
   }
 
   async resetPassword(userId: string, plainPassword: string) {
-    const before = await this.findById(userId);
-    
-
     const motDePasseHash = await bcrypt.hash(plainPassword, 10);
 
     await this.usersRepository.update(
@@ -71,17 +111,36 @@ export class UsersService {
         resetPasswordTokenHash: null,
         resetPasswordTokenExpiresAt: null,
         resetPasswordRequestedAt: null,
+        mustChangePassword: false,
       } as any,
     );
 
-    const after = await this.findById(userId);
-   
-    return after;
+    return this.findById(userId);
+  }
+
+  async changePassword(userId: string, currentPassword: string, newPassword: string) {
+    const user = await this.findById(userId);
+    if (!user) throw new NotFoundException('Utilisateur non trouve');
+
+    const match = await bcrypt.compare(currentPassword, user.motDePasseHash);
+    if (!match) {
+      throw new UnauthorizedException('Mot de passe actuel invalide');
+    }
+
+    this.validateTemporaryPassword(newPassword);
+
+    user.motDePasseHash = await bcrypt.hash(newPassword, 10);
+    user.mustChangePassword = false;
+    user.resetPasswordTokenHash = null;
+    user.resetPasswordTokenExpiresAt = null;
+    user.resetPasswordRequestedAt = null;
+
+    return this.usersRepository.save(user);
   }
 
   async findByEmail(email: string) {
     const normalizedEmail = email.trim().toLowerCase();
-    
+
     return this.usersRepository
       .createQueryBuilder('user')
       .leftJoinAndSelect('user.disponibilites', 'disponibilites')
@@ -134,16 +193,32 @@ export class UsersService {
   }
 
   async findLivreursDisponibles() {
-    return this.usersRepository.find({
-      where: {
-        role: RoleUtilisateur.LIVREUR,
-        estActif: true,
-        estEnLigne: true,
-        statutDisponibilite: StatutDisponibilite.DISPONIBLE,
-      },
-      order: { updatedAt: 'DESC' },
-      relations: { disponibilites: true } as any,
-    });
+    const where = {
+      role: RoleUtilisateur.LIVREUR,
+      estActif: true,
+      statutDisponibilite: StatutDisponibilite.DISPONIBLE,
+    };
+
+    const [count, users] = await Promise.all([
+      this.usersRepository.count({
+        where,
+      }),
+      this.usersRepository.find({
+        where,
+        order: { updatedAt: 'DESC' },
+        relations: { disponibilites: true } as any,
+      }),
+    ]);
+
+    this.logger.log(
+      `[GET /users/livreurs-disponibles] matched=${count} returned=${users.length} criteria=${JSON.stringify({
+        role: where.role,
+        estActif: where.estActif,
+        statutDisponibilite: where.statutDisponibilite,
+      })}`,
+    );
+
+    return users;
   }
 
   async findLivreurById(id: string) {
@@ -158,42 +233,94 @@ export class UsersService {
     const existing = await this.findByEmail(dto.email);
     if (existing) throw new BadRequestException('Email déjà utilisé');
 
-    const hash = await bcrypt.hash(dto.motDePasse, 10);
+    const temporaryPassword = dto.motDePasse?.trim() || this.generateTemporaryPassword();
+    this.validateTemporaryPassword(temporaryPassword);
     const vehicle = this.normalizeVehicle(dto);
-    const user = this.usersRepository.create({
-      email: dto.email,
-      motDePasseHash: hash,
-      telephone: dto.telephone,
-      cin: dto.cin,
-      photoCin: dto.photoCin,
-      typeVehicule: vehicle.typeVehicule as TypeVehicule,
-      immatriculationVehicule: vehicle.immatriculationVehicule,
-      photoVehicule: vehicle.photoVehicule,
-      poidsMaxKg: vehicle.poidsMaxKg,
-      volumeMaxM3: vehicle.volumeMaxM3,
-      rayonServiceKm: vehicle.rayonServiceKm,
-      statutDisponibilite: dto.statutDisponibilite || StatutDisponibilite.DISPONIBLE,
-      noteMoyenne: dto.noteMoyenne || 0,
-      totalNotes: dto.totalNotes || 0,
-      latitudeActuelle: dto.latitudeActuelle,
-      longitudeActuelle: dto.longitudeActuelle,
-      estEnLigne: typeof dto.estEnLigne === 'boolean' ? dto.estEnLigne : true,
-      role: RoleUtilisateur.LIVREUR,
-    } as any);
 
-    const saved = (await this.usersRepository.save(user as unknown as Utilisateur)) as unknown as Utilisateur;
-    if (dto.disponibilites?.length) {
-      await this.setDisponibilites(saved.id, dto.disponibilites);
+    const created = await this.usersRepository.manager.transaction(async (manager) => {
+      const usersRepo = manager.getRepository(Utilisateur);
+      const disponibiliteRepo = manager.getRepository(DisponibiliteLivreur);
+      const hash = await bcrypt.hash(temporaryPassword, 10);
+
+      const user = usersRepo.create({
+        email: dto.email.trim().toLowerCase(),
+        motDePasseHash: hash,
+        telephone: dto.telephone,
+        cin: dto.cin,
+        photoCin: dto.photoCin,
+        typeVehicule: vehicle.typeVehicule as TypeVehicule,
+        immatriculationVehicule: vehicle.immatriculationVehicule,
+        photoVehicule: vehicle.photoVehicule,
+        poidsMaxKg: vehicle.poidsMaxKg,
+        volumeMaxM3: vehicle.volumeMaxM3,
+        rayonServiceKm: vehicle.rayonServiceKm,
+        statutDisponibilite: dto.statutDisponibilite || StatutDisponibilite.DISPONIBLE,
+        noteMoyenne: dto.noteMoyenne || 0,
+        totalNotes: dto.totalNotes || 0,
+        latitudeActuelle: dto.latitudeActuelle,
+        longitudeActuelle: dto.longitudeActuelle,
+        estEnLigne: typeof dto.estEnLigne === 'boolean' ? dto.estEnLigne : true,
+        role: RoleUtilisateur.LIVREUR,
+        mustChangePassword: true,
+      } as DeepPartial<Utilisateur>);
+
+      const savedUser = await usersRepo.save(user);
+
+      if (dto.disponibilites?.length) {
+        const slots = dto.disponibilites.map(
+          (slot): DeepPartial<DisponibiliteLivreur> => ({
+            ...this.normalizeAvailability(slot),
+            livreur: { id: savedUser.id } as DeepPartial<Utilisateur>,
+          }),
+        );
+        await disponibiliteRepo.save(slots);
+      }
+
+      return usersRepo.findOne({
+        where: { id: savedUser.id },
+        relations: {
+          disponibilites: true,
+          missionsCreees: true,
+          missionsAcceptees: true,
+          notesDonnees: true,
+          messages: true,
+          notifications: true,
+        } as any,
+      });
+    });
+
+    if (!created) {
+      throw new InternalServerErrorException('Impossible de creer le compte livreur');
     }
-    return this.findById(saved.id);
+
+    try {
+      await this.mailService.sendLivreurCreatedEmail({
+        to: created.email,
+        prenom: created.prenom,
+        nom: created.nom,
+        email: created.email,
+        temporaryPassword,
+        loginUrl: this.getFrontendLoginUrl(),
+      });
+    } catch (error) {
+      await this.usersRepository.delete(created.id);
+      throw new InternalServerErrorException("Le compte a ete annule car l'email de creation n'a pas pu etre envoye");
+    }
+
+    return {
+      user: created,
+      temporaryPassword,
+      emailSent: true,
+    };
   }
 
   async updateProfile(id: string, dto: UpdateUserDto) {
     const user = await this.findById(id);
-    if (!user) throw new NotFoundException('Utilisateur non trouvé');
+    if (!user) throw new NotFoundException('Utilisateur non trouve');
 
     if (typeof dto.motDePasse === 'string' && dto.motDePasse.trim()) {
       user.motDePasseHash = await bcrypt.hash(dto.motDePasse, 10);
+      user.mustChangePassword = false;
     }
     if (typeof dto.email === 'string') user.email = dto.email;
     if (typeof dto.prenom === 'string') user.prenom = dto.prenom;
@@ -230,7 +357,7 @@ export class UsersService {
 
   async setDisponibilites(userId: string, disponibilites: AvailabilityInput[]) {
     const user = await this.findById(userId);
-    if (!user) throw new NotFoundException('Utilisateur non trouvé');
+    if (!user) throw new NotFoundException('Utilisateur non trouve');
 
     await this.disponibiliteRepository
       .createQueryBuilder()
@@ -248,20 +375,20 @@ export class UsersService {
 
   async deactivateUser(id: string) {
     const user = await this.findById(id);
-    if (!user) throw new NotFoundException('Utilisateur non trouvé');
+    if (!user) throw new NotFoundException('Utilisateur non trouve');
     user.estActif = false;
     return this.usersRepository.save(user);
   }
 
   async removeUser(id: string) {
     const user = await this.findById(id);
-    if (!user) throw new NotFoundException('Utilisateur non trouvé');
+    if (!user) throw new NotFoundException('Utilisateur non trouve');
     await this.usersRepository.remove(user);
   }
 
   async updateLocation(id: string, latitude?: number, longitude?: number, estEnLigne?: boolean) {
     const user = await this.findById(id);
-    if (!user) throw new NotFoundException('Utilisateur non trouvé');
+    if (!user) throw new NotFoundException('Utilisateur non trouve');
 
     if (typeof latitude === 'number') {
       user.latitudeActuelle = latitude;
@@ -283,7 +410,7 @@ export class UsersService {
 
   async updatePhoto(id: string, photoUrl: string) {
     const user = await this.findById(id);
-    if (!user) throw new NotFoundException('Utilisateur non trouvé');
+    if (!user) throw new NotFoundException('Utilisateur non trouve');
     user.photo = photoUrl;
     return this.usersRepository.save(user);
   }

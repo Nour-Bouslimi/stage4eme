@@ -1,10 +1,12 @@
 import {
+  IsEmail,
   IsNotEmpty,
   IsOptional,
   IsNumber,
   IsString,
   IsBoolean,
   IsDateString,
+  MinLength,
   ValidateNested,
   IsArray,
 } from 'class-validator';
@@ -60,12 +62,14 @@ class AvailabilityInputDto {
 }
 
 export class CreateLivreurDto {
-  @IsNotEmpty()
+  @IsEmail()
   email: string;
 
-  @IsNotEmpty()
-  @Transform(({ value, obj }) => obj.password ?? value)
-  motDePasse: string;
+  @IsOptional()
+  @IsString()
+  @MinLength(10)
+  @Transform(({ value, obj }) => obj.password ?? obj.temporaryPassword ?? obj.tempPassword ?? value)
+  motDePasse?: string;
 
   @IsOptional()
   telephone?: string;

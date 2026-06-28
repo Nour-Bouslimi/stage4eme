@@ -1,4 +1,4 @@
-import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, Inject, Injectable, NotFoundException, forwardRef } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { In, Repository } from 'typeorm';
 import { StatutDisponibilite } from '../../common/enums/statut-disponibilite.enum';
@@ -23,6 +23,7 @@ export class MissionsService {
     private missionRepo: Repository<Mission>,
     private matching: MatchingService,
     private usersService: UsersService,
+    @Inject(forwardRef(() => GeolocationService))
     private geolocationService: GeolocationService,
     private notificationsService: NotificationsService,
     private notificationsGateway: NotificationsGateway,
@@ -127,8 +128,8 @@ export class MissionsService {
     const ramassage = await this.resolveCoordinates(dto.adresseRamassage, dto.latitudeRamassage, dto.longitudeRamassage);
     const livraison = await this.resolveCoordinates(dto.adresseLivraison, dto.latitudeLivraison, dto.longitudeLivraison);
     const route = await this.geolocationService.route({
-      start: { lat: ramassage.latitude, lng: ramassage.longitude, address: dto.adresseRamassage },
-      end: { lat: livraison.latitude, lng: livraison.longitude, address: dto.adresseLivraison },
+      start: { lat: ramassage.latitude, lng: ramassage.longitude },
+      end: { lat: livraison.latitude, lng: livraison.longitude },
     });
 
     const distanceKm = route.distanceKm;

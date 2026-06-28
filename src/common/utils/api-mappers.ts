@@ -79,6 +79,7 @@ export const toPublicUser = (user: Utilisateur | Partial<Utilisateur> | null | u
     avatar: user.photo ?? null,
     role: user.role ?? null,
     estActif: typeof user.estActif === 'boolean' ? user.estActif : true,
+    mustChangePassword: typeof user.mustChangePassword === 'boolean' ? user.mustChangePassword : false,
     cin: user.cin ?? null,
     photoCin: user.photoCin ?? null,
     typeVehicule: user.typeVehicule ?? null,

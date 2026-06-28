@@ -53,6 +53,9 @@ export class Utilisateur {
   @Column({ default: true })
   estActif: boolean;
 
+  @Column({ default: false })
+  mustChangePassword: boolean;
+
   @Column({ nullable: true })
   cin: string;
 

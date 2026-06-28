@@ -2,6 +2,7 @@ import { Injectable, NotFoundException, BadRequestException } from '@nestjs/comm
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Notation } from './entities/notation.entity';
+import { CreateRatingDto } from './dto/create-rating.dto';
 import { MissionsService } from '../missions/missions.service';
 import { UsersService } from '../users/users.service';
 
@@ -14,7 +15,7 @@ export class RatingsService {
     private usersService: UsersService,
   ) {}
 
-  async createRating(clientId: string, dto: any) {
+  async createRating(clientId: string, dto: CreateRatingDto) {
     const mission = await this.missionsService.findEntityById(dto.missionId);
     if (!mission) throw new NotFoundException('Mission introuvable');
     if (!mission.livreur) throw new BadRequestException('Mission sans livreur');
@@ -22,6 +23,7 @@ export class RatingsService {
     if (existing) throw new BadRequestException('Mission déjà notée');
     const rating = this.notationRepo.create({
       etoiles: dto.etoiles,
+      appreciations: dto.appreciations,
       commentaire: dto.commentaire,
       client: { id: clientId } as any,
       livreur: mission.livreur as any,

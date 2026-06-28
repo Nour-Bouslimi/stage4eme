@@ -7,6 +7,7 @@ import { CloudinaryService } from '../cloudinary/cloudinary.service';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { RolesGuard } from '../../common/guards/roles.guard';
+import { AllowMustChangePassword } from '../../common/decorators/allow-password-change.decorator';
 import { CreateLivreurDto } from './dto/create-livreur.dto';
 import { UpdateLocationDto } from './dto/update-location.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
@@ -48,11 +49,16 @@ export class UsersController {
     dto.photoCin = (await this.uploadFirstFile(files.photoCin)) ?? dto.photoCin;
     dto.photoVehicule = (await this.uploadFirstFile(files.photoVehicule)) ?? dto.photoVehicule;
 
-    const user = await this.usersService.createLivreur(dto);
-    return toPublicUser(user);
+    const result = await this.usersService.createLivreur(dto);
+    return {
+      ...toPublicUser(result.user),
+      message: 'Livreur cree avec succes',
+      emailSent: result.emailSent,
+    };
   }
 
   @UseGuards(JwtAuthGuard)
+  @AllowMustChangePassword()
   @Patch('me')
   @UseInterceptors(
     FileFieldsInterceptor(

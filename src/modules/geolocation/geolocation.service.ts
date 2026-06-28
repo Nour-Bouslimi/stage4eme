@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import { UsersService } from '../users/users.service';
 
 @Injectable()
@@ -65,38 +65,65 @@ export class GeolocationService {
   }
 
   async route(input: {
-    start?: { lat?: number; lng?: number; address?: string };
-    end?: { lat?: number; lng?: number; address?: string };
+    start: { lat: number; lng: number };
+    end: { lat: number; lng: number };
   }) {
-    const start = await this.resolvePoint(input.start);
-    const end = await this.resolvePoint(input.end);
+    const start = this.normalizePoint(input.start, 'depart');
+    const end = this.normalizePoint(input.end, 'arrivee');
+
+    try {
+      const url = `https://router.project-osrm.org/route/v1/driving/${start.lng},${start.lat};${end.lng},${end.lat}?overview=full&geometries=geojson&steps=false`;
+      const response = await fetch(url);
+
+      if (response.ok) {
+        const payload = (await response.json()) as {
+          routes?: Array<{
+            distance?: number;
+            duration?: number;
+            geometry?: { coordinates?: Array<[number, number]> };
+          }>;
+        };
+        const route = payload.routes?.[0];
+
+        if (route?.distance != null && route.duration != null) {
+          const polyline =
+            route.geometry?.coordinates?.map(([lng, lat]) => [lat, lng] as [number, number]) ?? [
+              [start.lat, start.lng] as [number, number],
+              [end.lat, end.lng] as [number, number],
+            ];
+
+          return {
+            distanceKm: Number((route.distance / 1000).toFixed(2)),
+            durationMinutes: Math.max(1, Math.round(route.duration / 60)),
+            polyline,
+          };
+        }
+      }
+    } catch {
+      // fallback below
+    }
+
     const distanceKm = this.haversineDistance(start.lat, start.lng, end.lat, end.lng);
     const durationMinutes = Math.max(1, Math.round((distanceKm / 35) * 60));
     return {
       distanceKm,
       durationMinutes,
-      start,
-      end,
       polyline: [
-        [start.lat, start.lng],
-        [end.lat, end.lng],
+        [start.lat, start.lng] as [number, number],
+        [end.lat, end.lng] as [number, number],
       ],
     };
   }
 
-  private async resolvePoint(point?: { lat?: number; lng?: number; address?: string }) {
-    if (!point) {
-      return { lat: 0, lng: 0, address: null };
+  private normalizePoint(point: { lat: number; lng: number }, label: string) {
+    const lat = Number(point?.lat);
+    const lng = Number(point?.lng);
+
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+      throw new BadRequestException(`Les coordonnees de ${label} sont invalides`);
     }
-    if (typeof point.lat === 'number' && typeof point.lng === 'number') {
-      return { lat: point.lat, lng: point.lng, address: point.address ?? null };
-    }
-    if (point.address) {
-      const results = await this.geocode(point.address);
-      const first = results[0];
-      return { lat: first.latitude, lng: first.longitude, address: first.address };
-    }
-    return { lat: 0, lng: 0, address: null };
+
+    return { lat, lng };
   }
 
   private haversineDistance(lat1: number, lon1: number, lat2: number, lon2: number) {

@@ -3,6 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 import { createHash, randomBytes } from 'crypto';
+import { ChangePasswordDto } from './dto/change-password.dto';
 import { InscriptionClientDto } from './dto/inscription-client.dto';
 import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
@@ -28,6 +29,7 @@ export class AuthService {
       role: user.role,
       prenom: user.prenom,
       nom: user.nom,
+      mustChangePassword: (user as any).mustChangePassword ?? false,
     });
   }
 
@@ -35,6 +37,7 @@ export class AuthService {
     return {
       accessToken: this.buildToken(user),
       user: toPublicUser(user),
+      forcePasswordChange: !!user.mustChangePassword,
     };
   }
 
@@ -55,6 +58,7 @@ export class AuthService {
       derniereActivite: dto.derniereActivite ? new Date(dto.derniereActivite) : undefined,
       role: RoleUtilisateur.CLIENT,
       estActif: true,
+      mustChangePassword: false,
     } as any);
     return this.createAuthResponse(user);
   }
@@ -72,6 +76,7 @@ export class AuthService {
       nom: dto.nom,
       role: RoleUtilisateur.ADMIN,
       estActif: true,
+      mustChangePassword: false,
     } as any);
     return this.createAuthResponse(user);
   }
@@ -106,6 +111,16 @@ export class AuthService {
   async login(user: any) {
     if (!user) throw new UnauthorizedException();
     return this.createAuthResponse(user);
+  }
+
+  async changePassword(userId: string, dto: ChangePasswordDto) {
+    const confirmation = dto.confirmPassword ?? dto.passwordConfirmation;
+    if (confirmation && confirmation !== dto.newPassword) {
+      throw new BadRequestException('La confirmation du mot de passe ne correspond pas');
+    }
+
+    const updatedUser = await this.usersService.changePassword(userId, dto.currentPassword, dto.newPassword);
+    return this.createAuthResponse(updatedUser);
   }
 
   async forgotPassword(dto: ForgotPasswordDto) {
