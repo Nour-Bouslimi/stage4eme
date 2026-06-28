@@ -14,10 +14,14 @@ type MissionTab = 'all' | 'available' | 'accepted' | 'completed';
 export class LivreurMissionsComponent implements OnInit {
   missions: Mission[] = [];
   filteredMissions: Mission[] = [];
+  paginatedMissions: Mission[] = [];
   loading = true;
+  loadError: string | null = null;
   actionMissionId: string | null = null;
   selectedTab: MissionTab = 'all';
   searchQuery = '';
+  currentPage = 1;
+  pageSize = 4;
   currentUserId: string | null = null;
   selectedMission: Mission | null = null;
   detailModalOpen = false;
@@ -40,14 +44,19 @@ export class LivreurMissionsComponent implements OnInit {
 
   loadMissions(): void {
     this.loading = true;
+    this.loadError = null;
 
     this.missionService.getMissionsForLivreur().subscribe({
       next: (missions) => {
-        this.missions = missions;
+        this.missions = [...missions].sort((a, b) => this.getMissionDateValue(b) - this.getMissionDateValue(a));
         this.applyFilters();
         this.loading = false;
       },
-      error: () => {
+      error: (error: HttpErrorResponse) => {
+        this.missions = [];
+        this.filteredMissions = [];
+        this.paginatedMissions = [];
+        this.loadError = this.getHttpErrorMessage(error);
         this.loading = false;
       }
     });
@@ -55,10 +64,12 @@ export class LivreurMissionsComponent implements OnInit {
 
   selectTab(tab: MissionTab): void {
     this.selectedTab = tab;
+    this.currentPage = 1;
     this.applyFilters();
   }
 
   onSearchChange(): void {
+    this.currentPage = 1;
     this.applyFilters();
   }
 
@@ -198,7 +209,7 @@ export class LivreurMissionsComponent implements OnInit {
   getMissionMeta(mission: Mission): string {
     const distance = mission.distanceKm ?? mission.distance;
     const weight = mission.poidsEstime ?? mission.poids;
-    return `${distance != null ? `${distance} km` : '~-- km'} · ${this.getCategoryLabel(mission)} · ~${weight ?? '--'} kg`;
+    return `${distance != null ? `${distance} km` : '-- km'} · ${this.getCategoryLabel(mission)} · ~${weight ?? '--'} kg`;
   }
 
   getCategoryLabel(mission: Mission): string {
@@ -206,15 +217,15 @@ export class LivreurMissionsComponent implements OnInit {
       case 'LIVRAISON_COLIS':
         return 'Colis Express';
       case 'DEMENAGEMENT_MEUBLES':
-        return 'Demenagement meubles';
+        return 'Déménagement meubles';
       case 'DEMENAGEMENT_COMPLET':
-        return 'Demenagement complet';
+        return 'Déménagement complet';
       case 'LIVRAISON_COURSES':
         return 'Courses';
       case 'MATERIAUX_CONSTRUCTION':
-        return 'Materiaux';
+        return 'Matériaux';
       default:
-        return 'Mission personnalisee';
+        return 'Mission personnalisée';
     }
   }
 
@@ -235,6 +246,19 @@ export class LivreurMissionsComponent implements OnInit {
     }
 
     return addressValue;
+  }
+
+  getRouteCityLabel(addressValue: string | null | undefined): string {
+    if (!addressValue) {
+      return 'Adresse non définie';
+    }
+
+    try {
+      const parsed = JSON.parse(addressValue) as { ville?: string; rue?: string; codePostal?: string };
+      return parsed.ville || parsed.rue || parsed.codePostal || 'Adresse non définie';
+    } catch {
+      return addressValue;
+    }
   }
 
   canAcceptMission(mission: Mission): boolean {
@@ -262,10 +286,76 @@ export class LivreurMissionsComponent implements OnInit {
     return this.canAcceptMission(mission) || this.canCancelAcceptance(mission);
   }
 
-  private patchMission(missionId: string, patch: Partial<Mission>): void {
-    this.missions = this.missions.map((mission) =>
-      mission.id === missionId ? { ...mission, ...patch } : mission
-    );
+  getTabCount(tab: MissionTab): number {
+    if (tab === 'all') {
+      return this.missions.length;
+    }
+
+    if (tab === 'available') {
+      return this.missions.filter((mission) => mission.statut === MissionStatus.EN_ATTENTE).length;
+    }
+
+    if (tab === 'accepted') {
+      return this.missions.filter(
+        (mission) =>
+          mission.statut === MissionStatus.ACCEPTEE ||
+          mission.statut === MissionStatus.EN_ROUTE ||
+          mission.statut === MissionStatus.EN_LIVRAISON
+      ).length;
+    }
+
+    if (tab === 'completed') {
+      return this.missions.filter((mission) => mission.statut === MissionStatus.TERMINEE).length;
+    }
+
+    return 0;
+  }
+
+  getFilteredCountLabel(): string {
+    return `${this.filteredMissions.length} mission${this.filteredMissions.length > 1 ? 's' : ''} trouvée${this.filteredMissions.length > 1 ? 's' : ''}`;
+  }
+
+  getPaginationLabel(): string {
+    if (this.filteredMissions.length === 0) {
+      return 'Aucune mission affichée';
+    }
+
+    const start = (this.currentPage - 1) * this.pageSize + 1;
+    const end = Math.min(this.currentPage * this.pageSize, this.filteredMissions.length);
+    return `Affichage ${start} à ${end} sur ${this.filteredMissions.length} missions`;
+  }
+
+  get totalPages(): number {
+    return Math.max(1, Math.ceil(this.filteredMissions.length / this.pageSize));
+  }
+
+  get visiblePages(): number[] {
+    return Array.from({ length: this.totalPages }, (_, index) => index + 1);
+  }
+
+  onPageChange(page: number): void {
+    if (page < 1 || page > this.totalPages) {
+      return;
+    }
+
+    this.currentPage = page;
+    this.updatePagination();
+  }
+
+  getMissionDateLabel(mission: Mission): string {
+    const source = mission.dateDemandee ?? mission.createdAt;
+    const date = source ? new Date(source) : null;
+
+    if (!date || Number.isNaN(date.getTime())) {
+      return 'Date non définie';
+    }
+
+    return new Intl.DateTimeFormat('fr-FR', {
+      day: '2-digit',
+      month: 'short',
+      hour: '2-digit',
+      minute: '2-digit'
+    }).format(date);
   }
 
   formatDistance(value: number | null | undefined): string {
@@ -316,19 +406,31 @@ export class LivreurMissionsComponent implements OnInit {
       const matchesTab = this.matchesTab(mission);
       const routeLabel = this.getMissionRouteLabel(mission).toLowerCase();
       const categoryLabel = this.getCategoryLabel(mission).toLowerCase();
+      const statusLabel = this.getStatusLabel(mission.statut).toLowerCase();
+      const missionId = mission.id?.toLowerCase() ?? '';
+      const clientLabel = mission.client ? `${mission.client.prenom} ${mission.client.nom}`.toLowerCase() : '';
+      const description = `${mission.description ?? ''} ${mission.instructionsSpeciales ?? ''}`.toLowerCase();
       const matchesQuery =
         !query ||
+        missionId.includes(query) ||
         routeLabel.includes(query) ||
         categoryLabel.includes(query) ||
-        (mission.client ? `${mission.client.prenom} ${mission.client.nom}`.toLowerCase().includes(query) : false);
+        statusLabel.includes(query) ||
+        clientLabel.includes(query) ||
+        description.includes(query) ||
+        this.getAddressLabel(mission.adresseRamassage).toLowerCase().includes(query) ||
+        this.getAddressLabel(mission.adresseLivraison).toLowerCase().includes(query);
 
       return matchesTab && matchesQuery;
     });
+
+    this.currentPage = Math.min(this.currentPage, this.totalPages);
+    this.updatePagination();
   }
 
   private matchesTab(mission: Mission): boolean {
     if (this.selectedTab === 'all') {
-      return mission.statut !== MissionStatus.TERMINEE && mission.statut !== MissionStatus.ANNULEE;
+      return true;
     }
 
     if (this.selectedTab === 'available') {
@@ -348,6 +450,24 @@ export class LivreurMissionsComponent implements OnInit {
     }
 
     return true;
+  }
+
+  private patchMission(missionId: string, patch: Partial<Mission>): void {
+    this.missions = this.missions.map((mission) =>
+      mission.id === missionId ? { ...mission, ...patch } : mission
+    );
+  }
+
+  private updatePagination(): void {
+    const start = (this.currentPage - 1) * this.pageSize;
+    this.paginatedMissions = this.filteredMissions.slice(start, start + this.pageSize);
+  }
+
+  private getMissionDateValue(mission: Mission): number {
+    const source = mission.dateDemandee ?? mission.createdAt;
+    const date = source ? new Date(source) : new Date(0);
+    const value = date.getTime();
+    return Number.isNaN(value) ? 0 : value;
   }
 
   private getHttpErrorMessage(error: HttpErrorResponse): string {

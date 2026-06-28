@@ -37,11 +37,11 @@
             </label>
           </div>
           <div class="avatar-info">
-            <h3 class="user-name">{{ user.prenom }} {{ user.nom }}</h3>
+            <h3 class="user-name">{{ getDisplayName(user) }}</h3>
             <div class="user-rating">
               <mat-icon class="star-icon">star</mat-icon>
-              <span>{{ user.note || 'N/A' }}</span>
-              <span class="review-count">({{ user.nombreAvis || 0 }} avis)</span>
+              <span>{{ user.noteMoyenne ?? user.note ?? 'N/A' }}</span>
+              <span class="review-count">({{ user.totalNotes ?? user.nombreAvis || 0 }} avis)</span>
             </div>
             <div class="user-role-badge">
               <span>Livreur</span>
@@ -52,7 +52,7 @@
         <div class="form-grid">
           <div class="form-group">
             <label for="prenom">Prénom</label>
-            <input id="prenom" type="text" formControlName="prenom" [readonly]="!editing" class="form-input" />
+            <input id="prenom" type="text" formControlName="prenom" [readonly]="!editing" class="form-input" [placeholder]="editing ? 'Jean' : 'Non renseigné'" />
             <small class="field-error" *ngIf="editing && profileForm.get('prenom')?.touched && profileForm.get('prenom')?.invalid">
               {{ getFieldError('prenom') }}
             </small>
@@ -60,7 +60,7 @@
 
           <div class="form-group">
             <label for="nom">Nom</label>
-            <input id="nom" type="text" formControlName="nom" [readonly]="!editing" class="form-input" />
+            <input id="nom" type="text" formControlName="nom" [readonly]="!editing" class="form-input" [placeholder]="editing ? 'Dupont' : 'Non renseigné'" />
             <small class="field-error" *ngIf="editing && profileForm.get('nom')?.touched && profileForm.get('nom')?.invalid">
               {{ getFieldError('nom') }}
             </small>
@@ -68,7 +68,7 @@
 
           <div class="form-group">
             <label for="email">Email</label>
-            <input id="email" type="email" formControlName="email" [readonly]="!editing" class="form-input" />
+            <input id="email" type="email" formControlName="email" [readonly]="!editing" class="form-input" [placeholder]="editing ? 'nom@exemple.com' : 'Non renseigné'" />
             <small class="field-error" *ngIf="editing && profileForm.get('email')?.touched && profileForm.get('email')?.invalid">
               {{ getFieldError('email') }}
             </small>
@@ -76,7 +76,7 @@
 
           <div class="form-group">
             <label for="telephone">Téléphone</label>
-            <input id="telephone" type="tel" formControlName="telephone" [readonly]="!editing" class="form-input" />
+            <input id="telephone" type="tel" formControlName="telephone" [readonly]="!editing" class="form-input" [placeholder]="editing ? '0612345678' : 'Non renseigné'" />
             <small class="field-error" *ngIf="editing && profileForm.get('telephone')?.touched && profileForm.get('telephone')?.invalid">
               {{ getFieldError('telephone') }}
             </small>
@@ -84,7 +84,7 @@
 
           <div class="form-group">
             <label for="cin">CIN</label>
-            <input id="cin" type="text" formControlName="cin" [readonly]="!editing" class="form-input" />
+            <input id="cin" type="text" formControlName="cin" [readonly]="!editing" class="form-input" [placeholder]="editing ? 'CIN' : 'Non renseigné'" />
             <small class="field-error" *ngIf="editing && profileForm.get('cin')?.touched && profileForm.get('cin')?.invalid">
               {{ getFieldError('cin') }}
             </small>
@@ -149,7 +149,7 @@
           <div class="form-grid">
             <div class="form-group">
               <label for="vehiculeType">Type de véhicule</label>
-              <select id="vehiculeType" formControlName="vehiculeType" [disabled]="!editing" class="form-select">
+              <select id="vehiculeType" formControlName="vehiculeType" class="form-select">
                 <option *ngFor="let type of vehicleTypes" [value]="type.value">
                   {{ type.label }}
                 </option>
@@ -158,7 +158,7 @@
 
             <div class="form-group">
               <label for="vehiculeImmatriculation">Immatriculation</label>
-              <input id="vehiculeImmatriculation" type="text" formControlName="vehiculeImmatriculation" [readonly]="!editing" class="form-input" />
+              <input id="vehiculeImmatriculation" type="text" formControlName="vehiculeImmatriculation" [readonly]="!editing" class="form-input" [placeholder]="editing ? '123 TN 1234' : 'Non renseigné'" />
               <small class="field-error" *ngIf="editing && profileForm.get('vehiculeImmatriculation')?.touched && profileForm.get('vehiculeImmatriculation')?.invalid">
                 {{ getFieldError('vehiculeImmatriculation') }}
               </small>
@@ -166,7 +166,7 @@
 
             <div class="form-group">
               <label for="vehiculePoidsMax">Poids max (kg)</label>
-              <input id="vehiculePoidsMax" type="number" formControlName="vehiculePoidsMax" [readonly]="!editing" class="form-input" />
+              <input id="vehiculePoidsMax" type="number" formControlName="vehiculePoidsMax" [readonly]="!editing" class="form-input" [placeholder]="editing ? '1000' : 'Non renseigné'" />
               <small class="field-error" *ngIf="editing && profileForm.get('vehiculePoidsMax')?.touched && profileForm.get('vehiculePoidsMax')?.invalid">
                 {{ getFieldError('vehiculePoidsMax') }}
               </small>
@@ -174,7 +174,7 @@
 
             <div class="form-group">
               <label for="vehiculeVolumeMax">Volume max (m³)</label>
-              <input id="vehiculeVolumeMax" type="number" formControlName="vehiculeVolumeMax" [readonly]="!editing" class="form-input" />
+              <input id="vehiculeVolumeMax" type="number" formControlName="vehiculeVolumeMax" [readonly]="!editing" class="form-input" [placeholder]="editing ? '5' : 'Non renseigné'" />
               <small class="field-error" *ngIf="editing && profileForm.get('vehiculeVolumeMax')?.touched && profileForm.get('vehiculeVolumeMax')?.invalid">
                 {{ getFieldError('vehiculeVolumeMax') }}
               </small>
@@ -182,7 +182,7 @@
 
             <div class="form-group full-width">
               <label for="vehiculeRayonService">Rayon de service (km)</label>
-              <input id="vehiculeRayonService" type="number" formControlName="vehiculeRayonService" [readonly]="!editing" class="form-input" />
+              <input id="vehiculeRayonService" type="number" formControlName="vehiculeRayonService" [readonly]="!editing" class="form-input" [placeholder]="editing ? '20' : 'Non renseigné'" />
               <small class="field-error" *ngIf="editing && profileForm.get('vehiculeRayonService')?.touched && profileForm.get('vehiculeRayonService')?.invalid">
                 {{ getFieldError('vehiculeRayonService') }}
               </small>
@@ -211,12 +211,12 @@
           </span>
         </div>
         <div class="summary-info">
-          <h3>{{ user.prenom }} {{ user.nom }}</h3>
+          <h3>{{ getDisplayName(user) }}</h3>
           <p>CIN: {{ getCinLabel() }}</p>
           <div class="summary-rating">
             <mat-icon class="star-icon">star</mat-icon>
-            <strong>{{ user.note || 'N/A' }}</strong>
-            <span>({{ user.nombreAvis || 0 }} avis)</span>
+            <strong>{{ user.noteMoyenne ?? user.note ?? 'N/A' }}</strong>
+            <span>({{ user.totalNotes ?? user.nombreAvis || 0 }} avis)</span>
           </div>
         </div>
       </div>

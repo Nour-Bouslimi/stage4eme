@@ -8,18 +8,20 @@ import {
   Validators
 } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
-import { Subject, of } from 'rxjs';
+import { Subject, of, combineLatest, forkJoin } from 'rxjs';
 import {
   catchError,
   debounceTime,
   distinctUntilChanged,
   filter,
   map,
+  startWith,
   switchMap,
   takeUntil,
   tap
 } from 'rxjs/operators';
 import { MissionCategory, CreateMissionRequest, MissionEstimateRequest, Mission } from '../../../core/models/mission.model';
+import { GeolocationService } from '../../../core/services/geolocation.service';
 import { MissionEstimation, MissionEstimationService } from '../../../core/services/mission-estimation.service';
 import { MissionService } from '../../../core/services/mission.service';
 import { ToastService } from '../../../shared/components/toast/toast.service';
@@ -42,6 +44,13 @@ type PricingRow = {
   emphasize?: boolean;
 };
 
+type MapMarker = {
+  lat: number;
+  lng: number;
+  popup?: string;
+  icon?: string;
+};
+
 @Component({
   selector: 'app-create-mission',
   templateUrl: './create-mission.component.html',
@@ -55,6 +64,11 @@ export class CreateMissionComponent implements OnInit, OnDestroy {
   estimationError: string | null = null;
   estimation: MissionEstimation | null = null;
   editingMissionId: string | null = null;
+  geocodingLoading = false;
+  geocodingError: string | null = null;
+  mapCenter: [number, number] = [34.0, 9.0];
+  mapZoom = 6;
+  mapMarkers: MapMarker[] = [];
 
   private readonly destroy$ = new Subject<void>();
 
@@ -78,6 +92,7 @@ export class CreateMissionComponent implements OnInit, OnDestroy {
     private fb: FormBuilder,
     private missionService: MissionService,
     private missionEstimationService: MissionEstimationService,
+    private geolocationService: GeolocationService,
     private router: Router,
     private route: ActivatedRoute,
     private toastService: ToastService
@@ -86,6 +101,7 @@ export class CreateMissionComponent implements OnInit, OnDestroy {
   ngOnInit(): void {
     this.initForm();
     this.setupEstimationWatcher();
+    this.setupAddressGeocodingWatcher();
 
     this.editingMissionId = this.route.snapshot.queryParamMap.get('missionId');
     const initialType = this.route.snapshot.queryParamMap.get('type');
@@ -123,6 +139,10 @@ export class CreateMissionComponent implements OnInit, OnDestroy {
       dateDemandee: [this.formatDateInput(today), Validators.required],
       heureDemandee: ['14:00', Validators.required]
     });
+  }
+
+  get hasMapMarkers(): boolean {
+    return this.mapMarkers.length > 0;
   }
 
   get selectedCategory(): MissionCategory {
@@ -394,6 +414,102 @@ export class CreateMissionComponent implements OnInit, OnDestroy {
       });
   }
 
+  private setupAddressGeocodingWatcher(): void {
+    const departControl = this.createMissionForm.get('adresseRamassage');
+    const destinationControl = this.createMissionForm.get('adresseLivraison');
+
+    if (!departControl || !destinationControl) {
+      return;
+    }
+
+    combineLatest([
+      departControl.valueChanges.pipe(startWith(departControl.value)),
+      destinationControl.valueChanges.pipe(startWith(destinationControl.value))
+    ])
+      .pipe(
+        debounceTime(500),
+        map(([depart, destination]) => ({
+          depart: String(depart || '').trim(),
+          destination: String(destination || '').trim()
+        })),
+        distinctUntilChanged((previous, current) => previous.depart === current.depart && previous.destination === current.destination),
+        tap(({ depart, destination }) => {
+          if (!depart || !destination) {
+            this.clearMapPreview();
+            return;
+          }
+
+          this.geocodingLoading = true;
+          this.geocodingError = null;
+        }),
+        switchMap(({ depart, destination }) => {
+          if (!depart || !destination) {
+            return of(null);
+          }
+
+          return forkJoin({
+            depart: this.geolocationService.geocodeAddress(depart),
+            destination: this.geolocationService.geocodeAddress(destination)
+          }).pipe(
+            catchError(() =>
+              of({
+                depart: null,
+                destination: null
+              })
+            )
+          );
+        }),
+        takeUntil(this.destroy$)
+      )
+      .subscribe((result) => {
+        this.geocodingLoading = false;
+
+        if (!result) {
+          return;
+        }
+
+        const depart = this.extractCoordinates(result.depart);
+        const destination = this.extractCoordinates(result.destination);
+
+        if (!depart || !destination) {
+          this.mapMarkers = [];
+          this.geocodingError = 'Impossible de localiser une ou plusieurs adresses en Tunisie.';
+          return;
+        }
+
+        this.createMissionForm.patchValue(
+          {
+            latitudeRamassage: depart.lat,
+            longitudeRamassage: depart.lng,
+            latitudeLivraison: destination.lat,
+            longitudeLivraison: destination.lng
+          }
+        );
+
+        this.mapMarkers = [
+          {
+            lat: depart.lat,
+            lng: depart.lng,
+            popup: 'Depart',
+            icon: '<div class="custom-map-pin custom-map-pin--departure"><span></span></div>'
+          },
+          {
+            lat: destination.lat,
+            lng: destination.lng,
+            popup: 'Destination',
+            icon: '<div class="custom-map-pin custom-map-pin--destination"><span></span></div>'
+          }
+        ];
+
+        this.mapCenter = [
+          (depart.lat + destination.lat) / 2,
+          (depart.lng + destination.lng) / 2
+        ];
+        this.mapZoom = 8;
+        this.geocodingError = null;
+      });
+  }
+
   private loadMissionForEdit(missionId: string): void {
     this.missionService.getMissionById(missionId).subscribe({
       next: (mission) => {
@@ -408,6 +524,25 @@ export class CreateMissionComponent implements OnInit, OnDestroy {
   private patchFormFromMission(mission: Mission): void {
     const depart = this.parseAddressValue(mission.adresseRamassage);
     const destination = this.parseAddressValue(mission.adresseLivraison);
+
+    if (depart?.latitude != null && depart?.longitude != null && destination?.latitude != null && destination?.longitude != null) {
+      this.mapMarkers = [
+        {
+          lat: depart.latitude,
+          lng: depart.longitude,
+          popup: 'Depart',
+          icon: '<div class="custom-map-pin custom-map-pin--departure"><span></span></div>'
+        },
+        {
+          lat: destination.latitude,
+          lng: destination.longitude,
+          popup: 'Destination',
+          icon: '<div class="custom-map-pin custom-map-pin--destination"><span></span></div>'
+        }
+      ];
+      this.mapCenter = [(depart.latitude + destination.latitude) / 2, (depart.longitude + destination.longitude) / 2];
+      this.mapZoom = 8;
+    }
 
     this.createMissionForm.patchValue(
       {
@@ -476,6 +611,33 @@ export class CreateMissionComponent implements OnInit, OnDestroy {
 
   private requestKey(request: MissionEstimateRequest | null): string {
     return request ? JSON.stringify(request) : '';
+  }
+
+  private clearMapPreview(): void {
+    this.mapMarkers = [];
+    this.geocodingError = null;
+    this.geocodingLoading = false;
+    this.mapCenter = [34.0, 9.0];
+    this.mapZoom = 6;
+  }
+
+  private extractCoordinates(result: unknown): { lat: number; lng: number } | null {
+    if (!result || typeof result !== 'object') {
+      return null;
+    }
+
+    const payload = result as Record<string, unknown>;
+    const latValue = payload['lat'];
+    const lonValue = payload['lon'];
+
+    const lat = typeof latValue === 'string' ? Number(latValue) : typeof latValue === 'number' ? latValue : NaN;
+    const lng = typeof lonValue === 'string' ? Number(lonValue) : typeof lonValue === 'number' ? lonValue : NaN;
+
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+      return null;
+    }
+
+    return { lat, lng };
   }
 
   private parseAddressValue(value: string | null | undefined): { label: string; latitude: number | null; longitude: number | null } | null {

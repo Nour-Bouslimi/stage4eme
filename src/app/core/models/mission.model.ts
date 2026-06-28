@@ -33,7 +33,9 @@ export interface Address {
 
 export interface Notation {
   id?: string;
-  [key: string]: unknown;
+  note?: number;
+  commentaire?: string;
+  tags?: string[];
 }
 
 export interface MissionPricingBreakdown {

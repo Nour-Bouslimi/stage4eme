@@ -1,92 +1,132 @@
 <div class="livreur-missions">
-  <div class="page-header">
-    <h1 class="page-title">Missions en cours</h1>
-    <p class="page-subtitle">Consultez, acceptez ou retirez votre acceptation des missions</p>
-  </div>
-
-  <div class="tabs-section">
-    <div class="tabs">
-      <button class="tab-btn" [class.active]="selectedTab === 'all'" (click)="selectTab('all')">Toutes</button>
-      <button class="tab-btn" [class.active]="selectedTab === 'available'" (click)="selectTab('available')">Disponibles</button>
-      <button class="tab-btn" [class.active]="selectedTab === 'accepted'" (click)="selectTab('accepted')">En cours</button>
-      <button class="tab-btn" [class.active]="selectedTab === 'completed'" (click)="selectTab('completed')">Terminées</button>
+  <div class="page-hero">
+    <div>
+      <p class="eyebrow">Livreur</p>
+      <h1 class="page-title">Missions en cours</h1>
+      <p class="page-subtitle">Consultez, filtrez et recherchez les missions disponibles ou déjà prises en charge.</p>
+    </div>
+    <div class="hero-metrics">
+      <div class="metric-card">
+        <span class="metric-value">{{ getTabCount('all') }}</span>
+        <span class="metric-label">Missions</span>
+      </div>
+      <div class="metric-card accent">
+        <span class="metric-value">{{ getTabCount('available') }}</span>
+        <span class="metric-label">Disponibles</span>
+      </div>
     </div>
   </div>
 
-  <div class="toolbar">
-    <div class="search-box">
-      <mat-icon>search</mat-icon>
-      <input
-        type="text"
-        [(ngModel)]="searchQuery"
-        (input)="onSearchChange()"
-        placeholder="Rechercher par ville, client ou catégorie..."
-      />
+  <div class="filters-panel">
+    <div class="tabs" role="tablist" aria-label="Filtrer les missions">
+      <button class="tab-btn" [class.active]="selectedTab === 'all'" (click)="selectTab('all')">
+        Toutes <span>{{ getTabCount('all') }}</span>
+      </button>
+      <button class="tab-btn" [class.active]="selectedTab === 'available'" (click)="selectTab('available')">
+        Disponibles <span>{{ getTabCount('available') }}</span>
+      </button>
+      <button class="tab-btn" [class.active]="selectedTab === 'accepted'" (click)="selectTab('accepted')">
+        En cours <span>{{ getTabCount('accepted') }}</span>
+      </button>
+      <button class="tab-btn" [class.active]="selectedTab === 'completed'" (click)="selectTab('completed')">
+        Terminées <span>{{ getTabCount('completed') }}</span>
+      </button>
     </div>
-    <div class="results-count">{{ filteredMissions.length }} mission(s) trouvée(s)</div>
+
+    <div class="search-row">
+      <label class="search-box">
+        <mat-icon>search</mat-icon>
+        <input
+          type="text"
+          [(ngModel)]="searchQuery"
+          (input)="onSearchChange()"
+          placeholder="Rechercher par ville, client, catégorie ou ID..."
+        />
+      </label>
+      <div class="results-pill">{{ getFilteredCountLabel() }}</div>
+    </div>
+  </div>
+
+  <div class="error-banner" *ngIf="loadError">
+    <mat-icon>error_outline</mat-icon>
+    <span>{{ loadError }}</span>
+    <button type="button" class="link-btn" (click)="loadMissions()">Réessayer</button>
+  </div>
+
+  <div class="loading-state" *ngIf="loading">
+    <mat-spinner diameter="40"></mat-spinner>
+    <p>Chargement des missions...</p>
   </div>
 
   <div class="missions-grid" *ngIf="!loading">
-    <article class="mission-card" *ngFor="let mission of filteredMissions">
-      <div class="card-header">
-        <div class="mission-title">{{ getMissionRouteLabel(mission) }}</div>
+    <article class="mission-card" *ngFor="let mission of paginatedMissions">
+      <div class="card-top">
+        <div>
+          <div class="mission-route-short">
+            {{ getRouteCityLabel(mission.adresseRamassage) }} <span>→</span> {{ getRouteCityLabel(mission.adresseLivraison) }}
+          </div>
+        </div>
         <span class="status-badge" [class]="getStatusColor(mission.statut)">
           {{ getStatusLabel(mission.statut) }}
         </span>
-        <p class="confirm-error" *ngIf="acceptErrorMessage">{{ acceptErrorMessage }}</p>
       </div>
 
-      <div class="card-body">
-        <div class="route-info">
-          <div class="route-point start">
-            <mat-icon class="point-icon">trip_origin</mat-icon>
-            <span>{{ getAddressLabel(mission.adresseRamassage) }}</span>
-          </div>
-          <mat-icon class="route-arrow">arrow_downward</mat-icon>
-          <div class="route-point end">
-            <mat-icon class="point-icon">flag</mat-icon>
-            <span>{{ getAddressLabel(mission.adresseLivraison) }}</span>
+      <div class="card-route">
+        <div class="route-line start">
+          <mat-icon>trip_origin</mat-icon>
+          <div>
+            <span>Départ</span>
+            <strong>{{ getAddressLabel(mission.adresseRamassage) }}</strong>
           </div>
         </div>
-
-        <div class="mission-details">
-          <div class="detail-item">
-            <mat-icon class="detail-icon">category</mat-icon>
-            <span>{{ getCategoryLabel(mission) }}</span>
-          </div>
-          <div class="detail-item">
-            <mat-icon class="detail-icon">fitness_center</mat-icon>
-            <span>{{ mission.poidsEstime ?? mission.poids ?? 'N/A' }} kg</span>
-          </div>
-          <div class="detail-item">
-            <mat-icon class="detail-icon">straighten</mat-icon>
-            <span>~{{ mission.distanceKm ?? mission.distance ?? 'N/A' }} km</span>
-          </div>
-          <div class="detail-item">
-            <mat-icon class="detail-icon">payments</mat-icon>
-            <span>{{ mission.prixEstime ?? mission.prix ?? 'N/A' }} TND</span>
-          </div>
+        <div class="route-divider">
+          <mat-icon>south</mat-icon>
         </div>
-
-        <div class="mission-meta">
-          <span *ngIf="mission.client">Client: {{ mission.client.prenom }} {{ mission.client.nom }}</span>
+        <div class="route-line end">
+          <mat-icon>flag</mat-icon>
+          <div>
+            <span>Destination</span>
+            <strong>{{ getAddressLabel(mission.adresseLivraison) }}</strong>
+          </div>
         </div>
       </div>
 
-      <div class="card-footer">
-        <button
-          *ngIf="canCancelAcceptance(mission)"
-          class="btn-cancel"
-          type="button"
-          [disabled]="isActionPending(mission)"
-          (click)="cancelAcceptance(mission)"
-        >
-          {{ isActionPending(mission) ? 'Annulation...' : "Annuler l'acceptation" }}
-        </button>
+      <div class="mission-details">
+        <div class="detail-item">
+          <mat-icon>category</mat-icon>
+          <span>{{ getCategoryLabel(mission) }}</span>
+        </div>
+        <div class="detail-item">
+          <mat-icon>fitness_center</mat-icon>
+          <span>{{ mission.poidsEstime ?? mission.poids ?? 'N/A' }} kg</span>
+        </div>
+        <div class="detail-item">
+          <mat-icon>straighten</mat-icon>
+          <span>~{{ mission.distanceKm ?? mission.distance ?? 'N/A' }} km</span>
+        </div>
+        <div class="detail-item">
+          <mat-icon>payments</mat-icon>
+          <span>{{ mission.prixEstime ?? mission.prix ?? 'N/A' }} TND</span>
+        </div>
+        <div class="detail-item">
+          <mat-icon>schedule</mat-icon>
+          <span>{{ getMissionDateLabel(mission) }}</span>
+        </div>
+        <div class="detail-item" *ngIf="mission.client">
+          <mat-icon>person</mat-icon>
+          <span>{{ mission.client.prenom }} {{ mission.client.nom }}</span>
+        </div>
+      </div>
 
+      <div class="mission-note" *ngIf="mission.description || mission.instructionsSpeciales">
+        <p *ngIf="mission.description">{{ mission.description }}</p>
+        <p *ngIf="mission.instructionsSpeciales" class="muted">{{ mission.instructionsSpeciales }}</p>
+      </div>
+
+      <div class="card-actions">
         <button
           *ngIf="canAcceptMission(mission)"
-          class="btn-accept"
+          class="btn primary"
           type="button"
           [disabled]="isActionPending(mission)"
           (click)="acceptMission(mission)"
@@ -94,21 +134,48 @@
           {{ isActionPending(mission) ? 'Acceptation...' : 'Accepter' }}
         </button>
 
-        <button class="btn-view" type="button" (click)="viewMission(mission.id)">
+        <button
+          *ngIf="canCancelAcceptance(mission)"
+          class="btn danger"
+          type="button"
+          [disabled]="isActionPending(mission)"
+          (click)="cancelAcceptance(mission)"
+        >
+          {{ isActionPending(mission) ? 'Annulation...' : "Annuler l'acceptation" }}
+        </button>
+
+        <button class="btn ghost" type="button" (click)="viewMission(mission.id)">
           Voir détails
         </button>
       </div>
     </article>
 
     <div class="empty-state" *ngIf="filteredMissions.length === 0">
-      <mat-icon class="empty-icon">inbox</mat-icon>
-      <p>Aucune mission trouvée</p>
+      <mat-icon>inbox</mat-icon>
+      <h3>Aucune mission trouvée</h3>
+      <p>Essaie un autre filtre ou une autre recherche.</p>
     </div>
   </div>
 
-  <div class="loading-state" *ngIf="loading">
-    <mat-spinner diameter="40"></mat-spinner>
-    <p>Chargement des missions...</p>
+  <div class="pagination-bar" *ngIf="!loading && filteredMissions.length > 0">
+    <div class="pagination-label">{{ getPaginationLabel() }}</div>
+    <div class="pagination-controls">
+      <button class="page-btn" type="button" (click)="onPageChange(currentPage - 1)" [disabled]="currentPage === 1">
+        <mat-icon>chevron_left</mat-icon>
+      </button>
+      <button
+        class="page-btn number"
+        type="button"
+        *ngFor="let page of visiblePages"
+        [class.active]="page === currentPage"
+        (click)="onPageChange(page)"
+      >
+        {{ page }}
+      </button>
+      <button class="page-btn" type="button" (click)="onPageChange(currentPage + 1)" [disabled]="currentPage === totalPages">
+        <mat-icon>chevron_right</mat-icon>
+      </button>
+    </div>
   </div>
 
   <div class="modal-backdrop" *ngIf="detailModalOpen || confirmModalOpen">
@@ -159,7 +226,7 @@
           </div>
           <div class="detail-row">
             <span>Client</span>
-            <strong>{{ selectedMission.client?.prenom }} {{ selectedMission.client?.nom }}</strong>
+            <strong>{{ selectedMission.client.prenom }} {{ selectedMission.client.nom }}</strong>
           </div>
           <div class="detail-row">
             <span>Créée le</span>
@@ -180,7 +247,7 @@
       </div>
 
       <div class="modal-footer">
-        <button type="button" class="btn-view" (click)="closeDetailModal()">Fermer</button>
+        <button type="button" class="btn ghost" (click)="closeDetailModal()">Fermer</button>
       </div>
     </section>
 
@@ -196,9 +263,7 @@
       </div>
 
       <div class="modal-body">
-        <p class="confirm-text">
-          Vous allez accepter la mission suivante :
-        </p>
+        <p class="confirm-text">Vous allez accepter la mission suivante :</p>
         <div class="confirm-route">
           <strong>{{ getMissionRouteLabel(confirmMission) }}</strong>
           <span>{{ getCategoryLabel(confirmMission) }}</span>
@@ -208,8 +273,8 @@
       </div>
 
       <div class="modal-footer">
-        <button type="button" class="btn-view" (click)="closeConfirmModal()">Annuler</button>
-        <button type="button" class="btn-accept" [disabled]="isActionPending(confirmMission)" (click)="confirmAcceptMission()">
+        <button type="button" class="btn ghost" (click)="closeConfirmModal()">Annuler</button>
+        <button type="button" class="btn primary" [disabled]="isActionPending(confirmMission)" (click)="confirmAcceptMission()">
           {{ isActionPending(confirmMission) ? 'Acceptation...' : 'Confirmer' }}
         </button>
       </div>

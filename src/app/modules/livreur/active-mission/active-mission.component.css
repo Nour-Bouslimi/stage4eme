@@ -52,6 +52,7 @@
 }
 
 .map-section {
+  position: relative;
   background: var(--surface);
   border-radius: 12px;
   overflow: hidden;
@@ -61,6 +62,51 @@
 .map-container {
   height: 100%;
   min-height: 400px;
+}
+
+.mission-summary-strip {
+  position: absolute;
+  top: 16px;
+  left: 16px;
+  right: 16px;
+  z-index: 500;
+  display: grid;
+  grid-template-columns: 1.2fr 1.8fr;
+  gap: 12px;
+  pointer-events: none;
+}
+
+.summary-chip {
+  background: rgba(255, 255, 255, 0.96);
+  border: 1px solid rgba(26, 60, 110, 0.08);
+  border-radius: 14px;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.12);
+  padding: 12px 14px;
+  backdrop-filter: blur(8px);
+}
+
+.summary-label {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-2);
+  margin-bottom: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.summary-chip strong {
+  display: block;
+  font-size: 14px;
+  color: var(--text-1);
+  line-height: 1.35;
+}
+
+.summary-subtext {
+  display: block;
+  margin-top: 4px;
+  font-size: 13px;
+  color: var(--text-2);
 }
 
 .control-panel {

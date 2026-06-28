@@ -31,10 +31,12 @@ export class AuthService {
     return this.http.post<unknown>(`${this.apiUrl}/auth/login`, normalizedCredentials).pipe(
       map(response => this.normalizeLoginResponse(response)),
       tap(response => {
+        const currentUser = normalizeUser(this.withDisplayFallbacks(response.user));
         localStorage.setItem('token', response.accessToken);
-        localStorage.setItem('role', response.user.role);
-        localStorage.setItem('userId', response.user.id);
-        this.currentUserSubject.next(normalizeUser(response.user));
+        localStorage.setItem('role', currentUser.role);
+        localStorage.setItem('userId', currentUser.id);
+        localStorage.setItem('currentUser', JSON.stringify(currentUser));
+        this.currentUserSubject.next(currentUser);
       })
     );
   }
@@ -72,6 +74,7 @@ export class AuthService {
     localStorage.removeItem('token');
     localStorage.removeItem('role');
     localStorage.removeItem('userId');
+    localStorage.removeItem('currentUser');
     this.currentUserSubject.next(null);
   }
 
@@ -96,12 +99,32 @@ export class AuthService {
     return this.currentUserSubject.value;
   }
 
+  setCurrentUser(user: User): void {
+    const normalizedUser = normalizeUser(this.withDisplayFallbacks(user));
+    localStorage.setItem('currentUser', JSON.stringify(normalizedUser));
+    localStorage.setItem('role', normalizedUser.role);
+    localStorage.setItem('userId', normalizedUser.id);
+    this.currentUserSubject.next(normalizedUser);
+  }
+
   private loadUserFromStorage(): void {
+    const storedUser = localStorage.getItem('currentUser');
+
+    if (storedUser) {
+      try {
+        const parsedUser = JSON.parse(storedUser) as Partial<User>;
+        this.currentUserSubject.next(normalizeUser(this.withDisplayFallbacks(parsedUser)));
+        return;
+      } catch (error) {
+        console.warn('Unable to parse currentUser from storage', error);
+      }
+    }
+
     const userId = localStorage.getItem('userId');
     const role = localStorage.getItem('role');
 
     if (userId && role) {
-      this.currentUserSubject.next(normalizeUser({
+      this.currentUserSubject.next(normalizeUser(this.withDisplayFallbacks({
         id: userId,
         role: role as UserRole,
         email: '',
@@ -118,7 +141,7 @@ export class AuthService {
         disponible: true,
         createdAt: new Date(),
         updatedAt: new Date()
-      }));
+      })));
     }
   }
 
@@ -161,8 +184,21 @@ export class AuthService {
 
     return {
       accessToken,
-      user: normalizedUser
+      user: normalizeUser(this.withDisplayFallbacks(normalizedUser))
     };
+  }
+
+  private withDisplayFallbacks(user: Partial<User>): Partial<User> {
+    const result: Partial<User> = { ...user };
+
+    if (!result.prenom?.trim() && result.email?.trim()) {
+      const localPart = result.email.split('@')[0]?.trim();
+      if (localPart) {
+        result.prenom = localPart.charAt(0).toUpperCase() + localPart.slice(1);
+      }
+    }
+
+    return result;
   }
 
   private decodeJwtUser(token: string): Partial<User> {

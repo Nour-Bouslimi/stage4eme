@@ -27,6 +27,10 @@ export interface CreateLivreurPayload {
   photoVehiculeFile?: File;
 }
 
+interface CreateLivreurResponse {
+  user?: User;
+}
+
 @Injectable({
   providedIn: 'root'
 })
@@ -85,10 +89,10 @@ export class UserService {
   }
 
   createLivreur(data: CreateLivreurPayload | FormData): Observable<User> {
-    const formData = data instanceof FormData ? data : this.buildCreateLivreurFormData(data);
+    const body = this.shouldUseFormData(data) ? this.buildCreateLivreurFormData(data as CreateLivreurPayload) : this.buildCreateLivreurJsonBody(data as CreateLivreurPayload);
 
-    return this.http.post<User>(`${this.apiUrl}/users/create-livreur`, formData).pipe(
-      map(user => normalizeUser(user))
+    return this.http.post<CreateLivreurResponse | User>(`${this.apiUrl}/users/create-livreur`, body).pipe(
+      map(response => normalizeUser(this.extractCreateLivreurUser(response)))
     );
   }
 
@@ -155,5 +159,41 @@ export class UserService {
     }
 
     return formData;
+  }
+
+  private buildCreateLivreurJsonBody(data: CreateLivreurPayload): Record<string, unknown> {
+    const body: Record<string, unknown> = {
+      prenom: data.prenom,
+      nom: data.nom,
+      email: data.email,
+      telephone: data.telephone,
+      motDePasse: data.motDePasse,
+      cin: data.cin,
+      typeVehicule: data.typeVehicule,
+      immatriculationVehicule: data.immatriculationVehicule,
+      poidsMaxKg: data.poidsMaxKg,
+      volumeMaxM3: data.volumeMaxM3,
+      rayonServiceKm: data.rayonServiceKm
+    };
+
+    return Object.fromEntries(
+      Object.entries(body).filter(([, value]) => value !== undefined && value !== null && value !== '')
+    );
+  }
+
+  private shouldUseFormData(data: CreateLivreurPayload | FormData): boolean {
+    if (data instanceof FormData) {
+      return true;
+    }
+
+    return !!data.photoCinFile || !!data.photoVehiculeFile;
+  }
+
+  private extractCreateLivreurUser(response: CreateLivreurResponse | User): Partial<User> {
+    if ('user' in response && response.user) {
+      return response.user;
+    }
+
+    return response as Partial<User>;
   }
 }

@@ -6,14 +6,31 @@
     </button>
     <div>
       <h1 class="page-title">Mission active</h1>
-      <p class="page-subtitle" *ngIf="mission">#{{ mission.id.slice(0, 8) }}</p>
+      <p class="page-subtitle" *ngIf="mission">{{ getClientName() }}</p>
     </div>
   </div>
 
   <div class="mission-layout" *ngIf="!loading && mission">
     <div class="map-section">
+      <div class="mission-summary-strip">
+        <div class="summary-chip">
+          <span class="summary-label">Client</span>
+          <strong>{{ getClientName() }}</strong>
+          <span class="summary-subtext">{{ getClientPhone() }}</span>
+        </div>
+        <div class="summary-chip">
+          <span class="summary-label">Trajet</span>
+          <strong>{{ getRouteSummary() }}</strong>
+        </div>
+      </div>
       <div class="map-container">
-        <app-map height="100%"></app-map>
+        <app-map
+          height="100%"
+          [markers]="mapMarkers"
+          [center]="mapCenter"
+          [zoom]="mapZoom"
+          [fitToMarkers]="true"
+        ></app-map>
       </div>
     </div>
 
@@ -24,11 +41,11 @@
         </div>
         <div class="client-details">
           <div class="client-avatar">
-            <img src="assets/default-avatar.svg" alt="Client" />
+            <img src="assets/default-avatar.svg" [alt]="getClientName()" />
           </div>
           <div class="client-info">
-            <p class="client-name">Client</p>
-            <p class="client-phone">+216 XX XXX XXX</p>
+            <p class="client-name">{{ getClientName() }}</p>
+            <p class="client-phone">{{ getClientPhone() }}</p>
           </div>
         </div>
         <div class="client-actions">
@@ -48,20 +65,22 @@
           <h3 class="card-title">Progression de la mission</h3>
         </div>
         <div class="stepper">
-          <div
+          <button
+            type="button"
             class="step"
             *ngFor="let step of statusSteps"
             [class.active]="currentStatus === step.value"
             [class.completed]="isStatusCompleted(step.value)"
-            (click)="updateStatus(step.value)"
+            [disabled]="isStatusLocked(step.value)"
+            (click)="updateMissionStatus(step.value)"
           >
             <div class="step-icon">
               <mat-icon>{{ step.icon }}</mat-icon>
             </div>
             <span class="step-label">{{ step.label }}</span>
-          </div>
+          </button>
         </div>
-        <button class="update-btn" (click)="updateStatus(getNextStatus())">
+        <button class="update-btn" (click)="updateMissionStatus(getNextStatus())">
           Mettre à jour le statut
         </button>
       </div>
@@ -75,7 +94,7 @@
             <mat-icon class="point-icon">location_on</mat-icon>
             <div class="point-details">
               <span class="point-label">Départ</span>
-              <span class="point-address">{{ mission.depart.rue }}, {{ mission.depart.ville }}</span>
+              <span class="point-address">{{ getDepartureLabel() }}</span>
             </div>
           </div>
           <div class="route-line"></div>
@@ -83,7 +102,7 @@
             <mat-icon class="point-icon">flag</mat-icon>
             <div class="point-details">
               <span class="point-label">Destination</span>
-              <span class="point-address">{{ mission.destination.rue }}, {{ mission.destination.ville }}</span>
+              <span class="point-address">{{ getDestinationLabel() }}</span>
             </div>
           </div>
         </div>

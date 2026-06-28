@@ -236,6 +236,94 @@
   margin-bottom: 24px;
 }
 
+.map-shell {
+  position: relative;
+  width: 100%;
+}
+
+.map-shell app-map {
+  display: block;
+  width: 100%;
+}
+
+.map-overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.map-badge {
+  position: absolute;
+  left: 18px;
+  top: 18px;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  background: rgba(255, 255, 255, 0.95);
+  color: var(--text-1);
+  border-radius: 999px;
+  padding: 10px 14px;
+  box-shadow: 0 10px 24px rgba(26, 60, 110, 0.12);
+  font-size: 0.92rem;
+  font-weight: 600;
+  pointer-events: none;
+}
+
+.map-badge mat-spinner {
+  width: 18px;
+  height: 18px;
+}
+
+.map-badge--error {
+  top: auto;
+  bottom: 18px;
+  color: #9a3412;
+  background: rgba(255, 247, 237, 0.96);
+}
+
+.map-badge--error mat-icon {
+  font-size: 18px;
+  width: 18px;
+  height: 18px;
+  color: #ea580c;
+}
+
+.map-legend {
+  position: absolute;
+  left: 18px;
+  bottom: 18px;
+  display: inline-flex;
+  align-items: center;
+  gap: 14px;
+  background: rgba(255, 255, 255, 0.96);
+  color: var(--text-2);
+  border-radius: 999px;
+  padding: 10px 14px;
+  box-shadow: 0 10px 24px rgba(26, 60, 110, 0.12);
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.legend-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+}
+
+.legend-dot--departure {
+  background: #ff6b2c;
+}
+
+.legend-dot--destination {
+  background: #1a3c6e;
+}
+
 .map-surface {
   position: relative;
   min-height: 470px;

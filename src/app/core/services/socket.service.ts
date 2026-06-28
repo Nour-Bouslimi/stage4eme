@@ -2,7 +2,6 @@ import { Injectable } from '@angular/core';
 import { io, Socket } from 'socket.io-client';
 import { Observable, fromEvent } from 'rxjs';
 import { environment } from '../../../environments/environment';
-import { AuthService } from './auth.service';
 
 @Injectable({
   providedIn: 'root'
@@ -10,11 +9,11 @@ import { AuthService } from './auth.service';
 export class SocketService {
   private socket: Socket | null = null;
 
-  constructor(private authService: AuthService) {}
+  constructor() {}
 
   connect(): void {
-    const token = this.authService.getToken();
-    if (token && !this.socket) {
+    if (!this.socket) {
+      const token = localStorage.getItem('token');
       this.socket = io(environment.socketUrl, {
         auth: { token },
         transports: ['websocket']
@@ -35,13 +34,13 @@ export class SocketService {
 
   joinRoom(missionId: string): void {
     if (this.socket) {
-      this.socket.emit('joinRoom', missionId);
+      this.socket.emit('joinRoom', { missionId });
     }
   }
 
   leaveRoom(missionId: string): void {
     if (this.socket) {
-      this.socket.emit('leaveRoom', missionId);
+      this.socket.emit('leaveRoom', { missionId });
     }
   }
 
@@ -61,9 +60,29 @@ export class SocketService {
     }
   }
 
-  sendLocation(missionId: string, lat: number, lng: number): void {
+  sendLocation(dataOrMissionId: {
+    userId: string;
+    missionId: string;
+    latitude: number;
+    longitude: number;
+  } | string, latitude?: number, longitude?: number): void {
     if (this.socket) {
-      this.socket.emit('location:update', { missionId, lat, lng });
+      if (typeof dataOrMissionId === 'string') {
+        this.socket.emit('location:update', {
+          missionId: dataOrMissionId,
+          latitude,
+          longitude
+        });
+        return;
+      }
+
+      this.socket.emit('location:update', dataOrMissionId);
+    }
+  }
+
+  updateMissionStatus(missionId: string, statut: string): void {
+    if (this.socket) {
+      this.socket.emit('mission:updateStatus', { missionId, statut });
     }
   }
 
@@ -91,6 +110,13 @@ export class SocketService {
   onLocationUpdate(): Observable<any> {
     if (this.socket) {
       return fromEvent(this.socket, 'location:receive');
+    }
+    return new Observable();
+  }
+
+  onStatusChange(): Observable<any> {
+    if (this.socket) {
+      return fromEvent(this.socket, 'mission:statusChanged');
     }
     return new Observable();
   }

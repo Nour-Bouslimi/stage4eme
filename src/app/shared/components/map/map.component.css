@@ -1,5 +1,16 @@
+:host {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
 .map-container {
   width: 100%;
+  height: 100%;
+  min-height: 470px;
+  min-width: 0;
+  display: block;
   border-radius: var(--radius-card);
   overflow: hidden;
 }
@@ -8,23 +19,60 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  background: transparent;
+  border: none;
 }
 
-.default-marker {
-  width: 32px;
-  height: 32px;
-  background: var(--secondary);
+.tracking-pin {
+  width: 40px;
+  height: 40px;
   border-radius: 50% 50% 50% 0;
   transform: rotate(-45deg);
-  border: 2px solid white;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid #ffffff;
+  box-shadow: 0 10px 20px rgba(8, 24, 48, 0.24);
 }
 
-.default-marker::after {
-  content: '';
-  width: 12px;
-  height: 12px;
-  background: white;
-  border-radius: 50%;
+.tracking-pin span {
   transform: rotate(45deg);
+  font-size: 16px;
+  line-height: 1;
+}
+
+.tracking-pin--departure {
+  background: #ff6b2c;
+}
+
+.tracking-pin--destination {
+  background: #1a3c6e;
+}
+
+.tracking-pin--driver {
+  background: #22c55e;
+  border-radius: 50%;
+  transform: none;
+  animation: pulse 2s infinite;
+}
+
+.tracking-pin--driver span {
+  transform: none;
+}
+
+.tracking-pin--default {
+  background: #64748b;
+  border-radius: 50% 50% 50% 0;
+}
+
+@keyframes pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.42);
+  }
+  70% {
+    box-shadow: 0 0 0 12px rgba(34, 197, 94, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(34, 197, 94, 0);
+  }
 }

@@ -42,7 +42,7 @@
             <input
               type="text"
               formControlName="adresseRamassage"
-              placeholder="12 Rue du Faubourg Saint-Antoine, Paris 11e"
+              placeholder="Avenue Habib Bourguiba, Tunis"
             />
           </label>
         </article>
@@ -57,31 +57,46 @@
             <input
               type="text"
               formControlName="adresseLivraison"
-              placeholder="45 Avenue Victor Hugo, Vincennes 94300"
+              placeholder="Rue de Marseille, Tunis"
             />
           </label>
         </article>
       </div>
 
       <article class="glass-card map-card">
-        <div class="map-surface">
-          <div class="map-grid"></div>
-          <div class="map-road road-a"></div>
-          <div class="map-road road-b"></div>
-          <div class="map-road road-c"></div>
-          <div class="map-road road-d"></div>
+        <div class="map-shell">
+          <app-map
+            [height]="'470px'"
+            [markers]="mapMarkers"
+            [center]="mapCenter"
+            [zoom]="mapZoom"
+            [fitToMarkers]="hasMapMarkers"
+          ></app-map>
 
-          <div class="map-marker departure" aria-hidden="true">
-            <mat-icon>location_on</mat-icon>
-            <span>Depart</span>
+          <div class="map-overlay">
+            <div class="map-badge" *ngIf="geocodingLoading">
+              <mat-spinner diameter="18"></mat-spinner>
+              <span>Recherche des coordonnées...</span>
+            </div>
+
+            <div class="map-badge map-badge--error" *ngIf="geocodingError">
+              <mat-icon>warning</mat-icon>
+              <span>{{ geocodingError }}</span>
+            </div>
+
+            <div class="map-legend" *ngIf="hasMapMarkers">
+              <span class="legend-item">
+                <span class="legend-dot legend-dot--departure"></span>
+                Depart
+              </span>
+              <span class="legend-item">
+                <span class="legend-dot legend-dot--destination"></span>
+                Destination
+              </span>
+            </div>
+
+            <div class="map-credit">&copy; DeliverEase Maps</div>
           </div>
-
-          <div class="map-marker destination" aria-hidden="true">
-            <mat-icon>navigation</mat-icon>
-            <span>Destination</span>
-          </div>
-
-          <div class="map-credit">© DeliverEase Maps</div>
         </div>
 
         <div class="map-stats">

@@ -152,7 +152,7 @@
             <p class="driver-name">{{ driver.prenom }} {{ driver.nom }}</p>
             <div class="driver-rating">
               <mat-icon class="star-icon">star</mat-icon>
-              <span>{{ driver.note || 'N/A' }}</span>
+              <span>{{ driver.noteMoyenne ?? driver.note ?? 'N/A' }}</span>
             </div>
             <p class="driver-distance">~2 km</p>
           </div>

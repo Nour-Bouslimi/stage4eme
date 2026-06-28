@@ -2,11 +2,25 @@ import { Component, OnInit } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { Mission } from '../../../core/models/mission.model';
 import { MissionService } from '../../../core/services/mission.service';
+import { RatingService } from '../../../core/services/rating.service';
 import { ToastService } from '../../../shared/components/toast/toast.service';
 import { User } from '../../../core/models/user.model';
 
+export enum Appreciation {
+  PONCTUEL = 'ponctuel',
+  PROFESSIONNEL = 'professionnel',
+  SOIGNEUX = 'soigneux',
+  RAPIDE = 'rapide',
+  COMMUNICATIF = 'communicatif',
+  COURTOIS = 'courtois',
+  RETARD = 'retard',
+  IMPOLI = 'impoli',
+  MAUVAIS_SERVICE = 'mauvais_service',
+  NON_PROFESSIONNEL = 'non_professionnel'
+}
+
 type RatingTag = {
-  value: string;
+  value: Appreciation;
   label: string;
 };
 
@@ -21,17 +35,22 @@ export class RatingComponent implements OnInit {
   rating = 0;
   selectedTags: string[] = [];
   comment = '';
+  ratingId: string | null = null;
   loading = true;
   submitting = false;
   submitted = false;
 
   availableTags: RatingTag[] = [
-    { value: 'ponctuel', label: 'Ponctuel' },
-    { value: 'professionnel', label: 'Professionnel' },
-    { value: 'soigneux', label: 'Soigneux' },
-    { value: 'rapide', label: 'Rapide' },
-    { value: 'communicatif', label: 'Communicatif' },
-    { value: 'courtois', label: 'Courtois' }
+    { value: Appreciation.PONCTUEL, label: 'Ponctuel' },
+    { value: Appreciation.PROFESSIONNEL, label: 'Professionnel' },
+    { value: Appreciation.SOIGNEUX, label: 'Soigneux' },
+    { value: Appreciation.RAPIDE, label: 'Rapide' },
+    { value: Appreciation.COMMUNICATIF, label: 'Communicatif' },
+    { value: Appreciation.COURTOIS, label: 'Courtois' },
+    { value: Appreciation.RETARD, label: 'Retard' },
+    { value: Appreciation.IMPOLI, label: 'Impoli' },
+    { value: Appreciation.MAUVAIS_SERVICE, label: 'Mauvais service' },
+    { value: Appreciation.NON_PROFESSIONNEL, label: 'Non professionnel' }
   ];
 
   private readonly ratingLabels: Record<number, string> = {
@@ -46,6 +65,7 @@ export class RatingComponent implements OnInit {
     private route: ActivatedRoute,
     private router: Router,
     private missionService: MissionService,
+    private ratingService: RatingService,
     private toastService: ToastService
   ) {}
 
@@ -60,6 +80,12 @@ export class RatingComponent implements OnInit {
     this.missionService.getMissionById(this.missionId).subscribe({
       next: (mission) => {
         this.mission = mission;
+        this.ratingId = mission.notation?.id ?? null;
+        this.rating = mission.notation?.note ?? 0;
+        this.selectedTags = Array.isArray(mission.notation?.tags)
+          ? mission.notation.tags.map((tag) => String(tag))
+          : [];
+        this.comment = mission.notation?.commentaire ?? '';
         this.loading = false;
       },
       error: () => {
@@ -91,22 +117,84 @@ export class RatingComponent implements OnInit {
   }
 
   submitRating(): void {
-    if (this.rating === 0) {
-      this.toastService.warning('Veuillez sélectionner une note');
+    if (!this.isFormComplete()) {
+      this.toastService.warning('Veuillez sélectionner une note et au moins un tag');
       return;
     }
 
     this.submitting = true;
 
-    setTimeout(() => {
-      this.submitting = false;
-      this.submitted = true;
-      this.toastService.success('Merci pour votre évaluation !');
-    }, 900);
+    const appreciationValues = this.selectedTags.length > 0 ? this.selectedTags : undefined;
+
+    const payload = {
+      missionId: this.missionId,
+      etoiles: this.rating,
+      appreciations: appreciationValues,
+      tags: appreciationValues,
+      commentaire: this.comment?.trim() || undefined
+    };
+
+    const request$ = this.ratingId
+      ? this.ratingService.updateRating(this.ratingId, {
+          etoiles: this.rating,
+          appreciations: appreciationValues,
+          tags: appreciationValues,
+          commentaire: this.comment?.trim() || undefined
+        })
+      : this.ratingService.createRating(payload);
+
+    // debug: log payload before sending
+    // eslint-disable-next-line no-console
+    console.debug('[Rating] sending payload', payload);
+
+    request$.subscribe({
+      next: () => {
+        this.loadMission();
+        this.submitted = true;
+        this.submitting = false;
+        this.toastService.success('Merci pour votre évaluation !');
+      },
+      error: (err) => {
+        this.submitting = false;
+        // try to extract a helpful error message from the server
+        // eslint-disable-next-line no-console
+        console.error('[Rating] submit error', err);
+        const serverMessage = err?.error?.message || err?.error?.messageDetail || err?.message || null;
+        if (serverMessage) {
+          this.toastService.error(String(serverMessage));
+        } else {
+          this.toastService.error("Impossible d'envoyer votre évaluation pour le moment");
+        }
+      }
+    });
   }
 
   skipRating(): void {
     this.router.navigate(['/client/history']);
+  }
+
+  deleteRating(): void {
+    if (!this.ratingId) {
+      return;
+    }
+
+    this.submitting = true;
+    this.ratingService.deleteRating(this.ratingId).subscribe({
+      next: () => {
+        this.ratingId = null;
+        this.rating = 0;
+        this.selectedTags = [];
+        this.comment = '';
+        this.submitted = false;
+        this.submitting = false;
+        this.toastService.success('Votre avis a été supprimé');
+        this.loadMission();
+      },
+      error: () => {
+        this.submitting = false;
+        this.toastService.error("Impossible de supprimer votre avis pour le moment");
+      }
+    });
   }
 
   goHome(): void {
@@ -126,7 +214,7 @@ export class RatingComponent implements OnInit {
   }
 
   getMissionReference(): string {
-    return this.mission?.id ? `Mission #${this.mission.id}` : 'Mission';
+    return 'Mission';
   }
 
   getPickupLabel(): string {
@@ -174,6 +262,10 @@ export class RatingComponent implements OnInit {
       .slice(0, 2)
       .map((part) => part.charAt(0).toUpperCase())
       .join('');
+  }
+
+  public isFormComplete(): boolean {
+    return this.rating > 0 && this.selectedTags.length > 0;
   }
 
   private formatLocationLabel(city?: string | null, street?: string | null, fallback?: string | null): string {

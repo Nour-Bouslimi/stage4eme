@@ -1,7 +1,8 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
-import { map } from 'rxjs/operators';
+import { catchError, map } from 'rxjs/operators';
+import { of } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import {
   Mission,
@@ -42,7 +43,11 @@ export class MissionService {
 
   getMyLivreurMissions(): Observable<Mission[]> {
     return this.http.get<Mission[]>(`${this.apiUrl}/missions/livreur/me`).pipe(
-      map((missions) => missions.map((mission) => normalizeMission(mission)))
+      map((missions) => missions.map((mission) => normalizeMission(mission))),
+      catchError((error) => {
+        console.warn('Unable to load missions for current livreur, falling back to empty list', error);
+        return of([]);
+      })
     );
   }
 
@@ -58,6 +63,10 @@ export class MissionService {
         }
 
         return normalizeMission(response);
+      }),
+      catchError((error) => {
+        console.warn('Unable to load active mission for current livreur, falling back to null', error);
+        return of(null);
       })
     );
   }
@@ -66,6 +75,21 @@ export class MissionService {
     return this.http.get<Mission>(`${this.apiUrl}/missions/${id}`).pipe(
       map((mission) => normalizeMission(mission))
     );
+  }
+
+  rateMission(id: string, payload: { note: number; tags?: string[]; commentaire?: string | null }): Observable<Mission> {
+    const notationPayload: Record<string, unknown> = {
+      note: payload.note,
+      tags: payload.tags?.length ? payload.tags : undefined
+    };
+
+    if (payload.commentaire !== undefined) {
+      notationPayload['commentaire'] = payload.commentaire;
+    }
+
+    return this.updateMission(id, {
+      notation: notationPayload
+    });
   }
 
   accepterMission(id: string): Observable<Mission> {

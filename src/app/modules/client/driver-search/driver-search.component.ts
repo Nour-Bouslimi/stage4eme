@@ -1,5 +1,7 @@
 import { Component, OnInit } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
+import { forkJoin, of } from 'rxjs';
+import { catchError } from 'rxjs/operators';
 import { MissionService } from '../../../core/services/mission.service';
 import { UserService } from '../../../core/services/user.service';
 import { User, VehicleType } from '../../../core/models/user.model';
@@ -17,10 +19,17 @@ export class DriverSearchComponent implements OnInit {
   mission: Mission | null = null;
   drivers: User[] = [];
   filteredDrivers: User[] = [];
+  paginatedDrivers: User[] = [];
+  totalDrivers = 0;
+  availableDriversCount = 0;
   loading = true;
   searchQuery = '';
   selectedFilter: 'all' | VehicleType = 'all';
   mode: DriverSearchMode = 'all';
+  currentPage = 1;
+  pageSize = 4;
+  selectedDriver: User | null = null;
+  detailModalOpen = false;
 
   vehicleTypes: { value: VehicleType; label: string }[] = [
     { value: VehicleType.BICYCLETTE, label: 'Bicyclette' },
@@ -69,13 +78,30 @@ export class DriverSearchComponent implements OnInit {
   loadAllDrivers(): void {
     this.loading = true;
 
-    this.userService.getLivreursDisponibles().subscribe({
-      next: (drivers) => {
-        this.drivers = drivers;
+    const availableDrivers$ = this.userService.getLivreursDisponibles().pipe(
+      catchError(() => of([] as User[]))
+    );
+
+    const totalDrivers$ = this.userService.getLivreurs().pipe(
+      catchError(() => of([] as User[]))
+    );
+
+    forkJoin({
+      availableDrivers: availableDrivers$,
+      totalDrivers: totalDrivers$
+    }).subscribe({
+      next: ({ availableDrivers, totalDrivers }) => {
+        this.drivers = availableDrivers;
+        this.availableDriversCount = availableDrivers.length;
+        this.totalDrivers = totalDrivers.length || availableDrivers.length;
         this.applyFilters();
         this.loading = false;
       },
       error: () => {
+        this.drivers = [];
+        this.filteredDrivers = [];
+        this.availableDriversCount = 0;
+        this.totalDrivers = 0;
         this.loading = false;
       }
     });
@@ -83,10 +109,12 @@ export class DriverSearchComponent implements OnInit {
 
   filterDrivers(filter: 'all' | VehicleType): void {
     this.selectedFilter = filter;
+    this.currentPage = 1;
     this.applyFilters();
   }
 
   onSearchChange(): void {
+    this.currentPage = 1;
     this.applyFilters();
   }
 
@@ -102,7 +130,13 @@ export class DriverSearchComponent implements OnInit {
   }
 
   viewDriverProfile(driverId: string): void {
-    console.log('Voir profil livreur:', driverId);
+    this.selectedDriver = this.drivers.find((driver) => driver.id === driverId) ?? null;
+    this.detailModalOpen = !!this.selectedDriver;
+  }
+
+  closeDriverDetail(): void {
+    this.detailModalOpen = false;
+    this.selectedDriver = null;
   }
 
   modifyMission(): void {
@@ -113,6 +147,37 @@ export class DriverSearchComponent implements OnInit {
 
   getPageTitle(): string {
     return this.mode === 'mission' ? 'Recherche de livreurs' : 'Livreurs disponibles';
+  }
+
+  getAvailabilitySummary(): string {
+    return `${this.availableDriversCount} disponibles sur ${this.totalDrivers} livreurs`;
+  }
+
+  get totalPages(): number {
+    return Math.max(1, Math.ceil(this.filteredDrivers.length / this.pageSize));
+  }
+
+  get visiblePages(): number[] {
+    return Array.from({ length: this.totalPages }, (_, index) => index + 1);
+  }
+
+  getPaginationLabel(): string {
+    if (this.filteredDrivers.length === 0) {
+      return 'Aucun livreur affiché';
+    }
+
+    const start = (this.currentPage - 1) * this.pageSize + 1;
+    const end = Math.min(this.currentPage * this.pageSize, this.filteredDrivers.length);
+    return `Affichage ${start} à ${end} sur ${this.filteredDrivers.length} livreurs`;
+  }
+
+  onPageChange(page: number): void {
+    if (page < 1 || page > this.totalPages) {
+      return;
+    }
+
+    this.currentPage = page;
+    this.updatePagination();
   }
 
   getMissionNumber(): string {
@@ -261,7 +326,7 @@ export class DriverSearchComponent implements OnInit {
   }
 
   getDriverRating(driver: User): number {
-    return Number((driver.note || this.hashToRange(driver.id + 'rating', 4.1, 4.9)).toFixed(1));
+    return Number((driver.noteMoyenne ?? driver.note ?? this.hashToRange(driver.id + 'rating', 4.1, 4.9)).toFixed(1));
   }
 
   getDriverStatusLabel(driver: User): string {
@@ -269,8 +334,27 @@ export class DriverSearchComponent implements OnInit {
   }
 
   getDriverSubtitle(driver: User): string {
-    const vehicleLabel = driver.vehicule?.type ? this.getVehicleLabel(driver.vehicule.type) : 'Livreur';
+    const vehicleLabel = this.getDriverVehicleLabel(driver);
     return `${vehicleLabel} · ${this.getDriverDistance(driver)} km`;
+  }
+
+  getDriverVehicleLabel(driver: User): string {
+    const vehicleType = driver.vehicule?.type ?? driver.typeVehicule;
+    return vehicleType ? this.getVehicleLabel(vehicleType as VehicleType) : 'Livreur';
+  }
+
+  getDriverDetails(driver: User): Array<{ label: string; value: string }> {
+    return [
+      { label: 'Nom', value: `${driver.prenom || ''} ${driver.nom || ''}`.trim() || 'N/A' },
+      { label: 'Email', value: driver.email || 'N/A' },
+      { label: 'Téléphone', value: driver.telephone || 'N/A' },
+      { label: 'Véhicule', value: driver.vehicule?.type ? this.getVehicleLabel(driver.vehicule.type) : 'N/A' },
+      { label: 'Distance', value: `${this.getDriverDistance(driver)} km` },
+      { label: 'Missions', value: `${this.getDriverMissions(driver)} missions` },
+      { label: 'Tarif', value: `${this.getDriverRate(driver)} €/h` },
+      { label: 'Note', value: `${this.getDriverRating(driver)}` },
+      { label: 'Statut', value: this.getDriverStatusLabel(driver) }
+    ];
   }
 
   goBack(): void {
@@ -290,6 +374,14 @@ export class DriverSearchComponent implements OnInit {
 
       return matchesFilter && matchesQuery;
     });
+
+    this.currentPage = Math.min(this.currentPage, this.totalPages);
+    this.updatePagination();
+  }
+
+  private updatePagination(): void {
+    const start = (this.currentPage - 1) * this.pageSize;
+    this.paginatedDrivers = this.filteredDrivers.slice(start, start + this.pageSize);
   }
 
   private hashToRange(seed: string, min: number, max: number): number {

@@ -21,6 +21,7 @@
       <p class="summary-kicker">Recherche livreurs</p>
       <h1 class="summary-title">Tous les livreurs disponibles</h1>
       <p class="summary-text">Recherchez par nom ou filtrez par type de véhicule.</p>
+
     </div>
   </section>
 
@@ -80,10 +81,14 @@
         </button>
       </div>
 
-      <div class="results-count">{{ filteredDrivers.length }} livreurs trouvés</div>
+      <div class="results-count">
+        {{ filteredDrivers.length }} livreurs trouvés
+        <span class="results-divider" *ngIf="mode === 'all' && !loading">·</span>
+        <span class="results-total" *ngIf="mode === 'all' && !loading">{{ getAvailabilitySummary() }}</span>
+      </div>
 
-      <div class="drivers-list" *ngIf="filteredDrivers.length > 0">
-        <article class="driver-card" *ngFor="let driver of filteredDrivers">
+      <div class="drivers-list" *ngIf="paginatedDrivers.length > 0">
+        <article class="driver-card" *ngFor="let driver of paginatedDrivers">
           <div class="driver-top">
             <div class="driver-avatar">
               <img [src]="driver.avatar || 'assets/default-avatar.svg'" [alt]="driver.prenom + ' ' + driver.nom" />
@@ -114,6 +119,14 @@
             </span>
 
             <button
+              class="detail-btn"
+              type="button"
+              (click)="viewDriverProfile(driver.id)"
+            >
+              Détail
+            </button>
+
+            <button
               *ngIf="driver.disponible"
               class="contact-btn"
               type="button"
@@ -123,6 +136,27 @@
             </button>
           </div>
         </article>
+      </div>
+
+      <div class="pagination-bar" *ngIf="filteredDrivers.length > 0">
+        <div class="pagination-label">{{ getPaginationLabel() }}</div>
+        <div class="pagination-controls">
+          <button class="page-btn" type="button" (click)="onPageChange(currentPage - 1)" [disabled]="currentPage === 1">
+            <mat-icon>chevron_left</mat-icon>
+          </button>
+          <button
+            class="page-btn number"
+            type="button"
+            *ngFor="let page of visiblePages"
+            [class.active]="page === currentPage"
+            (click)="onPageChange(page)"
+          >
+            {{ page }}
+          </button>
+          <button class="page-btn" type="button" (click)="onPageChange(currentPage + 1)" [disabled]="currentPage === totalPages">
+            <mat-icon>chevron_right</mat-icon>
+          </button>
+        </div>
       </div>
 
       <div class="empty-state" *ngIf="filteredDrivers.length === 0">
@@ -142,5 +176,43 @@
     <h2>Mission introuvable</h2>
     <p>La recherche de livreurs nécessite une mission valide.</p>
     <button class="contact-btn" type="button" (click)="goBack()">Retour</button>
+  </div>
+
+  <div class="detail-modal-backdrop" *ngIf="detailModalOpen && selectedDriver" (click)="closeDriverDetail()">
+    <section class="detail-modal" (click)="$event.stopPropagation()">
+      <div class="detail-modal-header">
+        <div>
+          <p class="modal-kicker">Détail du livreur</p>
+          <h2>{{ selectedDriver.prenom }} {{ selectedDriver.nom }}</h2>
+        </div>
+        <button type="button" class="modal-close-btn" (click)="closeDriverDetail()" aria-label="Fermer">
+          <mat-icon>close</mat-icon>
+        </button>
+      </div>
+
+      <div class="detail-modal-body">
+        <div class="detail-profile">
+          <img [src]="selectedDriver.avatar || 'assets/default-avatar.svg'" [alt]="selectedDriver.prenom + ' ' + selectedDriver.nom" />
+          <div>
+            <p class="detail-subtitle">{{ getDriverVehicleLabel(selectedDriver) }}</p>
+            <p class="detail-summary">{{ getDriverSubtitle(selectedDriver) }}</p>
+          </div>
+        </div>
+
+        <div class="detail-grid">
+          <div class="detail-card" *ngFor="let detail of getDriverDetails(selectedDriver)">
+            <span>{{ detail.label }}</span>
+            <strong>{{ detail.value }}</strong>
+          </div>
+        </div>
+      </div>
+
+      <div class="detail-modal-footer">
+        <button type="button" class="btn-secondary" (click)="closeDriverDetail()">Fermer</button>
+        <button *ngIf="selectedDriver.disponible" type="button" class="btn-primary" (click)="contactDriver(selectedDriver.id)">
+          Contacter
+        </button>
+      </div>
+    </section>
   </div>
 </div>

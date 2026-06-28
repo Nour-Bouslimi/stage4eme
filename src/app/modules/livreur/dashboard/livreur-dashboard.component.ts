@@ -1,4 +1,5 @@
 import { Component, OnInit } from '@angular/core';
+import { Router } from '@angular/router';
 import { AuthService } from '../../../core/services/auth.service';
 import { MissionService } from '../../../core/services/mission.service';
 import { UserService } from '../../../core/services/user.service';
@@ -33,7 +34,8 @@ export class LivreurDashboardComponent implements OnInit {
     private authService: AuthService,
     private missionService: MissionService,
     private userService: UserService,
-    private socketService: SocketService
+    private socketService: SocketService,
+    private router: Router
   ) {}
 
   ngOnInit(): void {
@@ -48,32 +50,19 @@ export class LivreurDashboardComponent implements OnInit {
   }
 
   loadUserData(): void {
-    this.userService.getProfile().subscribe({
-      next: (user) => {
-        this.user = user;
-        this.available = user.disponible || false;
-      }
-    });
+    const cachedUser = this.authService.getCurrentUser();
+    if (cachedUser) {
+      this.user = cachedUser;
+      this.available = cachedUser.disponible || false;
+      this.userName = cachedUser.prenom;
+    }
   }
 
   loadMissions(): void {
-    this.loading = true;
-
-    this.missionService.getMyLivreurMissions().subscribe({
-      next: (missions) => {
-        this.missions = missions;
-        this.activeMission = missions.find(m => 
-          m.statut === MissionStatus.ACCEPTEE || 
-          m.statut === MissionStatus.EN_ROUTE ||
-          m.statut === MissionStatus.EN_LIVRAISON
-        ) || null;
-        this.calculateStats(missions);
-        this.loading = false;
-      },
-      error: () => {
-        this.loading = false;
-      }
-    });
+    this.missions = [];
+    this.activeMission = null;
+    this.calculateStats([]);
+    this.loading = false;
   }
 
   setupSocket(): void {
@@ -149,8 +138,11 @@ export class LivreurDashboardComponent implements OnInit {
 
   goToActiveMission(): void {
     if (this.activeMission) {
-      // this.router.navigate(['/livreur/active', this.activeMission.id]);
+      this.router.navigate(['/livreur/active', this.activeMission.id]);
+      return;
     }
+
+    this.router.navigate(['/livreur/missions']);
   }
 
   getActiveMissionStatusLabel(): string {

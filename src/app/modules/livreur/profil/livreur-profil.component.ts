@@ -1,4 +1,5 @@
 import { Component, OnInit } from '@angular/core';
+import { HttpErrorResponse } from '@angular/common/http';
 import { FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { AuthService } from '../../../core/services/auth.service';
 import { UserService } from '../../../core/services/user.service';
@@ -83,7 +84,7 @@ export class LivreurProfilComponent implements OnInit {
       motDePasse: ['', [Validators.minLength(6)]],
       availabilityStart: ['07:00', [Validators.required]],
       availabilityEnd: ['20:00', [Validators.required]],
-      vehiculeType: [VehicleType.VOITURE],
+      vehiculeType: [{ value: VehicleType.VOITURE, disabled: true }],
       vehiculeImmatriculation: ['', Validators.required],
       vehiculePoidsMax: [1000, [Validators.required, Validators.min(1), Validators.max(5000)]],
       vehiculeVolumeMax: [5, [Validators.required, Validators.min(0.1)]],
@@ -94,9 +95,22 @@ export class LivreurProfilComponent implements OnInit {
   loadProfile(): void {
     this.loading = true;
 
+    const cachedUser = this.authService.getCurrentUser();
+    if (cachedUser) {
+      this.user = cachedUser;
+      this.avatarPreview = cachedUser.avatar || cachedUser.photo || 'assets/default-avatar.svg';
+      this.cinPreview = cachedUser.photoCin || cachedUser.photo || 'assets/default-avatar.svg';
+      this.vehiclePreview = cachedUser.vehicule?.photo || 'assets/default-vehicle.svg';
+      this.populateForm(cachedUser);
+      this.loadAvailability(cachedUser);
+      this.editingAvailability = false;
+      this.loading = false;
+    }
+
     this.userService.getProfile().subscribe({
       next: (user) => {
         this.user = user;
+        this.authService.setCurrentUser(user);
         this.avatarPreview = user.avatar || user.photo || 'assets/default-avatar.svg';
         this.cinPreview = user.photoCin || user.photo || 'assets/default-avatar.svg';
         this.vehiclePreview = user.vehicule?.photo || 'assets/default-vehicle.svg';
@@ -121,11 +135,11 @@ export class LivreurProfilComponent implements OnInit {
       motDePasse: '',
       availabilityStart: '07:00',
       availabilityEnd: '20:00',
-      vehiculeType: user.vehicule?.type,
-      vehiculeImmatriculation: user.vehicule?.immatriculation,
-      vehiculePoidsMax: user.vehicule?.poidsMax,
-      vehiculeVolumeMax: user.vehicule?.volumeMax,
-      vehiculeRayonService: user.vehicule?.rayonService
+      vehiculeType: user.vehicule?.type ?? user.typeVehicule ?? VehicleType.VOITURE,
+      vehiculeImmatriculation: user.vehicule?.immatriculation ?? user.immatriculationVehicule,
+      vehiculePoidsMax: user.vehicule?.poidsMax ?? user.poidsMaxKg,
+      vehiculeVolumeMax: user.vehicule?.volumeMax ?? user.volumeMaxM3,
+      vehiculeRayonService: user.vehicule?.rayonService ?? user.rayonServiceKm
     });
   }
 
@@ -179,6 +193,14 @@ export class LivreurProfilComponent implements OnInit {
 
   toggleEdit(): void {
     this.editing = !this.editing;
+    const vehicleTypeControl = this.profileForm.get('vehiculeType');
+
+    if (this.editing) {
+      vehicleTypeControl?.enable({ emitEvent: false });
+    } else {
+      vehicleTypeControl?.disable({ emitEvent: false });
+    }
+
     if (!this.editing && this.user) {
       this.populateForm(this.user);
       this.avatarPreview = this.user.avatar || this.user.photo || 'assets/default-avatar.svg';
@@ -255,6 +277,26 @@ export class LivreurProfilComponent implements OnInit {
     return `${activeDays} jours actifs · ${start} - ${end}`;
   }
 
+  getDisplayName(user: User | null = this.user): string {
+    if (!user) {
+      return 'Livreur';
+    }
+
+    const firstName = user.prenom?.trim();
+    const lastName = user.nom?.trim();
+
+    if (firstName || lastName) {
+      return `${firstName || ''} ${lastName || ''}`.trim();
+    }
+
+    const emailLocalPart = user.email?.split('@')[0]?.trim();
+    if (emailLocalPart) {
+      return emailLocalPart.charAt(0).toUpperCase() + emailLocalPart.slice(1);
+    }
+
+    return 'Livreur';
+  }
+
   saveProfile(): void {
     if (this.profileForm.invalid) {
       this.profileForm.markAllAsTouched();
@@ -313,9 +355,27 @@ export class LivreurProfilComponent implements OnInit {
           this.showPassword = false;
           this.toastService.success('Profil mis à jour avec succès');
         },
-        error: () => {
+        error: (error: HttpErrorResponse) => {
+          if (error.status === 401 || error.status === 403) {
+            const cachedUser = this.mergeProfileLocally();
+            this.user = cachedUser;
+            this.authService.setCurrentUser(cachedUser);
+            this.avatarPreview = cachedUser.avatar || cachedUser.photo || this.avatarPreview;
+            this.cinPreview = cachedUser.photoCin || this.cinPreview;
+            this.vehiclePreview = cachedUser.vehicule?.photo || this.vehiclePreview;
+            this.saving = false;
+            this.editing = false;
+            this.avatarFile = null;
+            this.cinFile = null;
+            this.vehicleFile = null;
+            this.profileForm.get('motDePasse')?.reset('');
+            this.showPassword = false;
+            this.toastService.warning('Profil mis a jour localement, mais le serveur a refuse la sauvegarde');
+            return;
+          }
+
           this.saving = false;
-          this.toastService.error('Erreur lors de la mise à jour du profil');
+          this.toastService.error('Erreur lors de la mise Ã  jour du profil');
         }
       });
     };
@@ -373,6 +433,40 @@ export class LivreurProfilComponent implements OnInit {
     formData.append(key, normalized);
   }
 
+  private mergeProfileLocally(): User {
+    const currentUser = this.user || this.authService.getCurrentUser();
+    const typeVehicule = this.profileForm.get('vehiculeType')?.value ?? currentUser?.typeVehicule ?? currentUser?.vehicule?.type;
+    const immatriculationVehicule = this.profileForm.get('vehiculeImmatriculation')?.value || currentUser?.immatriculationVehicule || currentUser?.vehicule?.immatriculation || '';
+    const poidsMaxKg = Number(this.profileForm.get('vehiculePoidsMax')?.value || currentUser?.poidsMaxKg || currentUser?.vehicule?.poidsMax || 0);
+    const volumeMaxM3 = Number(this.profileForm.get('vehiculeVolumeMax')?.value || currentUser?.volumeMaxM3 || currentUser?.vehicule?.volumeMax || 0);
+    const rayonServiceKm = Number(this.profileForm.get('vehiculeRayonService')?.value || currentUser?.rayonServiceKm || currentUser?.vehicule?.rayonService || 0);
+
+    return {
+      ...(currentUser as User),
+      prenom: String(this.profileForm.get('prenom')?.value || currentUser?.prenom || ''),
+      nom: String(this.profileForm.get('nom')?.value || currentUser?.nom || ''),
+      email: String(this.profileForm.get('email')?.value || currentUser?.email || ''),
+      telephone: String(this.profileForm.get('telephone')?.value || currentUser?.telephone || ''),
+      cin: String(this.profileForm.get('cin')?.value || currentUser?.cin || ''),
+      typeVehicule,
+      immatriculationVehicule,
+      poidsMaxKg,
+      volumeMaxM3,
+      rayonServiceKm,
+      avatar: this.avatarPreview !== 'assets/default-avatar.svg' ? this.avatarPreview : currentUser?.avatar,
+      photo: this.avatarPreview !== 'assets/default-avatar.svg' ? this.avatarPreview : currentUser?.photo,
+      photoCin: this.cinPreview !== 'assets/default-avatar.svg' ? this.cinPreview : currentUser?.photoCin,
+      photoVehicule: this.vehiclePreview !== 'assets/default-vehicle.svg' ? this.vehiclePreview : currentUser?.photoVehicule,
+      vehicule: {
+        type: typeVehicule,
+        immatriculation: immatriculationVehicule,
+        photo: this.vehiclePreview !== 'assets/default-vehicle.svg' ? this.vehiclePreview : currentUser?.vehicule?.photo,
+        poidsMax: poidsMaxKg,
+        volumeMax: volumeMaxM3,
+        rayonService: rayonServiceKm
+      }
+    };
+  }
   private async prepareImageForUpload(file: File, maxSize = 1400, quality = 0.82): Promise<File> {
     if (!file.type.startsWith('image/')) {
       return file;
@@ -450,31 +544,31 @@ export class LivreurProfilComponent implements OnInit {
   }
 
   getVehicleName(): string {
-    const vehicleType = this.user?.vehicule?.type;
+    const vehicleType = this.user?.vehicule?.type ?? this.user?.typeVehicule;
     return vehicleType ? this.getVehicleLabel(vehicleType) : 'Mon véhicule';
   }
 
   getVehicleMatriculation(): string {
-    return this.user?.vehicule?.immatriculation || this.profileForm.get('vehiculeImmatriculation')?.value || '—';
+    return this.user?.vehicule?.immatriculation || this.user?.immatriculationVehicule || this.profileForm.get('vehiculeImmatriculation')?.value || '—';
   }
 
   getVehiclePoidLabel(): string {
-    const weight = this.user?.vehicule?.poidsMax ?? this.profileForm.get('vehiculePoidsMax')?.value;
+    const weight = this.user?.vehicule?.poidsMax ?? this.user?.poidsMaxKg ?? this.profileForm.get('vehiculePoidsMax')?.value;
     return `${weight || 0} kg`;
   }
 
   getVehicleVolumeLabel(): string {
-    const volume = this.user?.vehicule?.volumeMax ?? this.profileForm.get('vehiculeVolumeMax')?.value;
+    const volume = this.user?.vehicule?.volumeMax ?? this.user?.volumeMaxM3 ?? this.profileForm.get('vehiculeVolumeMax')?.value;
     return `${volume || 0} m³`;
   }
 
   getVehicleRadiusLabel(): string {
-    const radius = this.user?.vehicule?.rayonService ?? this.profileForm.get('vehiculeRayonService')?.value;
+    const radius = this.user?.vehicule?.rayonService ?? this.user?.rayonServiceKm ?? this.profileForm.get('vehiculeRayonService')?.value;
     return `${radius || 0} km`;
   }
 
   getCinLabel(): string {
-    return this.user?.cin || 'Non renseigné';
+    return this.user?.cin || this.user?.photoCin || 'Non renseigne';
   }
 
   getInsuranceLabel(): string {
@@ -484,15 +578,15 @@ export class LivreurProfilComponent implements OnInit {
   getDocumentStatus(documentType: 'cin' | 'vehicle-photo' | 'license' | 'insurance'): { label: string; className: string } {
     switch (documentType) {
       case 'cin':
-        return this.user?.cin
-          ? { label: 'Validée', className: 'ok' }
+        return this.user?.cin || this.user?.photoCin
+          ? { label: 'Validee', className: 'ok' }
           : { label: 'Manquante', className: 'warn' };
       case 'vehicle-photo':
-        return this.user?.vehicule?.photo || this.vehiclePreview !== 'assets/default-vehicle.svg'
+        return this.user?.vehicule?.photo || this.user?.photoVehicule || this.vehiclePreview !== 'assets/default-vehicle.svg'
           ? { label: 'Validée', className: 'ok' }
           : { label: 'Manquante', className: 'warn' };
       case 'license':
-        return this.user?.vehicule?.type
+        return this.user?.vehicule?.type || this.user?.typeVehicule
           ? { label: 'Validé', className: 'ok' }
           : { label: 'Manquant', className: 'warn' };
       case 'insurance':

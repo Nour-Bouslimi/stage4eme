@@ -18,7 +18,7 @@ export class SidebarComponent implements OnInit {
 
   @Output() toggleSidebar = new EventEmitter<boolean>();
 
-  menuItems: Array<{ icon: string; label: string; route?: string; action?: 'tracking' | 'driver-search' }> = [];
+  menuItems: Array<{ icon: string; label: string; route?: string; action?: 'tracking' | 'driver-search' | 'active-mission' }> = [];
 
   constructor(
     private authService: AuthService,
@@ -52,7 +52,7 @@ export class SidebarComponent implements OnInit {
       this.menuItems = [
         { icon: 'dashboard', label: 'Tableau de bord', route: '/livreur/dashboard' },
         { icon: 'list', label: 'Missions', route: '/livreur/missions' },
-        { icon: 'local_shipping', label: 'Mission active', route: '/livreur/active' },
+        { icon: 'local_shipping', label: 'Mission active', action: 'active-mission' },
         { icon: 'chat', label: 'Messagerie', route: '/livreur/chat' },
         { icon: 'person', label: 'Mon profil', route: '/livreur/profil' }
       ];
@@ -72,7 +72,7 @@ export class SidebarComponent implements OnInit {
     this.toggleSidebar.emit(this.collapsed);
   }
 
-  onMenuItemClick(item: { route?: string; action?: 'tracking' | 'driver-search' }): void {
+  onMenuItemClick(item: { route?: string; action?: 'tracking' | 'driver-search' | 'active-mission' }): void {
     if (item.route) {
       this.navigate(item.route);
       return;
@@ -85,10 +85,15 @@ export class SidebarComponent implements OnInit {
 
     if (item.action === 'driver-search') {
       this.navigateToLatestMission('/client/create-mission', '/client/driver-search');
+      return;
+    }
+
+    if (item.action === 'active-mission') {
+      this.navigateToActiveMission();
     }
   }
 
-  isMenuItemActive(item: { route?: string; action?: 'tracking' | 'driver-search' }): boolean {
+  isMenuItemActive(item: { route?: string; action?: 'tracking' | 'driver-search' | 'active-mission' }): boolean {
     if (item.route) {
       return this.router.url === item.route;
     }
@@ -99,6 +104,10 @@ export class SidebarComponent implements OnInit {
 
     if (item.action === 'driver-search') {
       return this.router.url.startsWith('/client/driver-search');
+    }
+
+    if (item.action === 'active-mission') {
+      return this.router.url.startsWith('/livreur/active');
     }
 
     return false;
@@ -140,6 +149,22 @@ export class SidebarComponent implements OnInit {
       },
       error: () => {
         this.router.navigate([fallbackRoute]);
+      }
+    });
+  }
+
+  private navigateToActiveMission(): void {
+    this.missionService.getMyActiveLivreurMission().subscribe({
+      next: (mission) => {
+        if (mission?.id) {
+          this.router.navigate(['/livreur/active', mission.id]);
+          return;
+        }
+
+        this.router.navigate(['/livreur/missions']);
+      },
+      error: () => {
+        this.router.navigate(['/livreur/missions']);
       }
     });
   }
