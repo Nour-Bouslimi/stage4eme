@@ -20,6 +20,14 @@ export class ChatService {
     return this.http.post<Message>(`${this.apiUrl}/chat`, data);
   }
 
+  updateMessage(messageId: string, contenu: string): Observable<Message> {
+    return this.http.patch<Message>(`${this.apiUrl}/chat/${messageId}`, { contenu });
+  }
+
+  deleteMessage(messageId: string): Observable<void> {
+    return this.http.delete<void>(`${this.apiUrl}/chat/${messageId}`);
+  }
+
   markAsRead(messageId: string): Observable<Message> {
     return this.http.patch<Message>(`${this.apiUrl}/chat/${messageId}/read`, {});
   }

@@ -56,23 +56,32 @@
         Tout marquer comme lu
       </button>
     </div>
-    <div class="notification-list">
-      <div class="notification-item">
-        <mat-icon class="notification-icon">local_shipping</mat-icon>
+    <div class="notification-list" *ngIf="notifications.length; else emptyNotifications">
+      <div
+        class="notification-item"
+        *ngFor="let notification of notifications"
+        [class.unread]="!notification.lu"
+        (click)="openNotification(notification)"
+      >
+        <mat-icon class="notification-icon">{{ getNotificationIcon(notification.type) }}</mat-icon>
         <div class="notification-content">
-          <p class="notification-title">Nouvelle mission disponible</p>
-          <p class="notification-text">Une nouvelle mission correspond à votre profil</p>
-          <span class="notification-time">Il y a 5 minutes</span>
-        </div>
-      </div>
-      <div class="notification-item unread">
-        <mat-icon class="notification-icon">chat</mat-icon>
-        <div class="notification-content">
-          <p class="notification-title">Nouveau message</p>
-          <p class="notification-text">Vous avez reçu un nouveau message</p>
-          <span class="notification-time">Il y a 10 minutes</span>
+          <p class="notification-title">{{ notification.titre }}</p>
+          <p class="notification-text">{{ notification.message }}</p>
+          <span class="notification-time">{{ notification.createdAt | date:'short' }}</span>
         </div>
       </div>
     </div>
+
+    <ng-template #emptyNotifications>
+      <div class="notification-list">
+        <div class="notification-item">
+          <mat-icon class="notification-icon">notifications_none</mat-icon>
+          <div class="notification-content">
+            <p class="notification-title">Aucune notification</p>
+            <p class="notification-text">Les mises à jour importantes apparaîtront ici.</p>
+          </div>
+        </div>
+      </div>
+    </ng-template>
   </div>
 </header>

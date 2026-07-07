@@ -144,7 +144,7 @@ export function normalizeUser(user: Partial<User> = {}): User {
     missionsAcceptees: user.missionsAcceptees ?? [],
     notesDonnees: user.notesDonnees ?? [],
     messages: user.messages ?? [],
-    notifications: user.notifications ?? [],
+    notifications: [],
     avatar: user.avatar ?? user.photo ?? '',
     disponible,
     note: user.note ?? noteMoyenne,

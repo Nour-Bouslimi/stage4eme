@@ -6,6 +6,10 @@ export interface Message {
   contenu: string;
   lu: boolean;
   dateEnvoi: Date;
+  clientMessageId?: string;
+  pending?: boolean;
+  failed?: boolean;
+  updatedAt?: Date;
 }
 
 export interface SendMessageRequest {

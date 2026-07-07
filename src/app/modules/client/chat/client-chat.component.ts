@@ -1,11 +1,13 @@
 import { Component, ElementRef, OnDestroy, OnInit, ViewChild } from '@angular/core';
-import { ActivatedRoute } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
+import { MatDialog } from '@angular/material/dialog';
 import { ChatService } from '../../../core/services/chat.service';
 import { MissionService } from '../../../core/services/mission.service';
 import { SocketService } from '../../../core/services/socket.service';
-import { Message } from '../../../core/models/message.model';
+import { Message, SendMessageRequest } from '../../../core/models/message.model';
 import { Mission } from '../../../core/models/mission.model';
 import { User } from '../../../core/models/user.model';
+import { ConfirmDialogComponent } from '../../../shared/components/confirm-dialog/confirm-dialog.component';
 
 interface ConversationSummary {
   missionId: string;
@@ -30,15 +32,23 @@ export class ClientChatComponent implements OnInit, OnDestroy {
   messages: Message[] = [];
   newMessage = '';
   isTyping = false;
+  typingUserName = '';
   loading = true;
   conversations: ConversationSummary[] = [];
   selectedConversation: ConversationSummary | null = null;
   socketReady = false;
+  editingMessageId: string | null = null;
+  editedContent = '';
+
+  private typingEmitTimer: ReturnType<typeof setTimeout> | null = null;
+  private typingResetTimer: ReturnType<typeof setTimeout> | null = null;
 
   @ViewChild('messagesContainer') messagesContainer!: ElementRef;
 
   constructor(
     private route: ActivatedRoute,
+    private router: Router,
+    private dialog: MatDialog,
     private chatService: ChatService,
     private socketService: SocketService,
     private missionService: MissionService
@@ -48,10 +58,18 @@ export class ClientChatComponent implements OnInit, OnDestroy {
     this.missionId = this.route.snapshot.paramMap.get('missionId') || '';
     this.driverId = this.route.snapshot.queryParamMap.get('driverId') || '';
     this.setupSocket();
-    this.loadConversations();
+
+    if (this.missionId) {
+      this.loadMissionDirectly();
+    } else {
+      this.loadConversations();
+    }
   }
 
   ngOnDestroy(): void {
+    this.emitTyping(false);
+    this.clearTypingTimers();
+
     if (this.missionId) {
       this.socketService.leaveRoom(this.missionId);
     }
@@ -66,9 +84,35 @@ export class ClientChatComponent implements OnInit, OnDestroy {
 
     this.chatService.getMessages(this.missionId).subscribe({
       next: (messages) => {
-        this.messages = messages;
+        this.messages = (messages || []).map((message) => this.normalizeMessage(message));
         this.loading = false;
         this.scrollToBottom();
+        this.markMessagesAsRead(this.messages);
+      },
+      error: () => {
+        this.loading = false;
+      }
+    });
+  }
+
+  loadMissionDirectly(): void {
+    if (!this.missionId) {
+      this.loading = false;
+      return;
+    }
+
+    this.loading = true;
+    this.clearTypingState();
+    this.clearTypingTimers();
+    this.socketService.joinRoom(this.missionId);
+
+    this.missionService.getMissionById(this.missionId).subscribe({
+      next: (mission) => {
+        this.mission = mission;
+        if (!this.driverId && mission.livreur?.id) {
+          this.driverId = mission.livreur.id;
+        }
+        this.loadMessages();
       },
       error: () => {
         this.loading = false;
@@ -106,6 +150,9 @@ export class ClientChatComponent implements OnInit, OnDestroy {
     if (!conversation?.missionId) {
       return;
     }
+
+    this.clearTypingState();
+    this.clearTypingTimers();
 
     if (this.missionId && this.missionId !== conversation.missionId) {
       this.socketService.leaveRoom(this.missionId);
@@ -145,30 +192,223 @@ export class ClientChatComponent implements OnInit, OnDestroy {
     this.socketService.connect();
     this.socketReady = true;
 
-    this.socketService.onNewMessage().subscribe((message: Message) => {
-      if (this.missionId && message.missionId && message.missionId !== this.missionId) {
+    this.socketService.onNewMessage().subscribe((payload: any) => {
+      const message = this.normalizeSocketMessage(payload);
+      if (this.shouldIgnoreMessage(message)) {
         return;
       }
 
-      this.messages.push(message);
+      this.upsertMessage(message);
       this.scrollToBottom();
     });
 
-    this.socketService.onTyping().subscribe((data: any) => {
-      this.isTyping = data.isTyping;
-      setTimeout(() => {
-        this.isTyping = false;
-      }, 3000);
+    this.socketService.onMessageRead().subscribe((payload: any) => {
+      const message = this.normalizeSocketMessage(payload);
+      if (this.shouldIgnoreMessage(message)) {
+        return;
+      }
+
+      this.upsertMessage(message);
+    });
+
+    this.socketService.onMessageUpdated().subscribe((payload: any) => {
+      const message = this.normalizeSocketMessage(payload);
+      if (this.shouldIgnoreMessage(message)) {
+        return;
+      }
+
+      this.upsertMessage(message);
+    });
+
+    this.socketService.onMessageDeleted().subscribe((payload: any) => {
+      const messageId = this.resolveMessageId(payload);
+      if (!messageId) {
+        return;
+      }
+
+      this.messages = this.messages.filter((message) => message.id !== messageId && message.clientMessageId !== messageId);
+
+      if (this.editingMessageId === messageId) {
+        this.cancelEditing();
+      }
+    });
+
+    this.socketService.onTyping().subscribe((payload: any) => {
+      const currentUserId = this.getCurrentUserId();
+      const senderId = String(payload?.userId ?? payload?.senderId ?? '');
+
+      if (senderId && currentUserId && senderId === currentUserId) {
+        return;
+      }
+
+      if (!payload?.isTyping) {
+        this.clearTypingState();
+        return;
+      }
+
+      this.isTyping = true;
+      this.typingUserName = payload?.userName || this.getTypingDisplayName();
+
+      if (this.typingResetTimer) {
+        clearTimeout(this.typingResetTimer);
+      }
+
+      this.typingResetTimer = setTimeout(() => {
+        this.clearTypingState();
+      }, 2000);
     });
   }
 
   sendMessage(): void {
-    if (!this.newMessage.trim() || !this.missionId) {
+    const content = this.newMessage.trim();
+    if (!content || !this.missionId || !this.driverId) {
       return;
     }
 
-    this.socketService.sendMessage(this.missionId, this.newMessage, this.driverId);
+    const currentUserId = this.getCurrentUserId();
+    const clientMessageId = this.createClientMessageId();
+    const optimisticMessage: Message = {
+      id: clientMessageId,
+      clientMessageId,
+      missionId: this.missionId,
+      expediteurId: currentUserId,
+      destinataireId: this.driverId,
+      contenu: content,
+      lu: false,
+      dateEnvoi: new Date(),
+      pending: false
+    };
+
+    this.messages = [...this.messages, optimisticMessage];
     this.newMessage = '';
+    this.emitTyping(false);
+    this.scrollToBottom();
+
+    if (this.socketService.isConnected()) {
+      this.socketService.sendMessage(this.missionId, content, this.driverId, clientMessageId);
+      return;
+    }
+
+    const payload: SendMessageRequest = {
+      missionId: this.missionId,
+      destinataireId: this.driverId,
+      contenu: content
+    };
+
+    this.chatService.sendMessage(payload).subscribe({
+      next: (message) => {
+        this.upsertMessage({
+          ...this.normalizeMessage(message),
+          clientMessageId,
+          pending: false
+        });
+      },
+      error: () => {
+        this.messages = this.messages.map((message) =>
+          message.clientMessageId === clientMessageId ? { ...message, pending: false, failed: true } : message
+        );
+        this.newMessage = content;
+      }
+    });
+  }
+
+  startEditing(message: Message): void {
+    if (!this.isMyMessage(message)) {
+      return;
+    }
+
+    this.editingMessageId = message.id;
+    this.editedContent = message.contenu;
+  }
+
+  cancelEditing(): void {
+    this.editingMessageId = null;
+    this.editedContent = '';
+  }
+
+  saveEdit(): void {
+    if (!this.editingMessageId) {
+      return;
+    }
+
+    const updatedContent = this.editedContent.trim();
+    if (!updatedContent) {
+      return;
+    }
+
+    const targetIndex = this.messages.findIndex((message) => message.id === this.editingMessageId);
+    if (targetIndex === -1) {
+      this.cancelEditing();
+      return;
+    }
+
+    const originalMessage = this.messages[targetIndex];
+    const updatedMessage: Message = {
+      ...originalMessage,
+      contenu: updatedContent,
+      pending: false,
+      updatedAt: new Date()
+    };
+
+    this.messages[targetIndex] = updatedMessage;
+    this.cancelEditing();
+
+    if (this.socketService.isConnected()) {
+      this.socketService.editMessage(originalMessage.id, updatedContent, this.missionId, originalMessage.clientMessageId);
+      return;
+    }
+
+    this.chatService.updateMessage(originalMessage.id, updatedContent).subscribe({
+      next: (message) => {
+        this.upsertMessage({
+          ...this.normalizeMessage(message),
+          pending: false
+        });
+      },
+      error: () => {
+        this.messages[targetIndex] = originalMessage;
+      }
+    });
+  }
+
+  deleteMessage(message: Message): void {
+    const messageIndex = this.messages.findIndex((item) => item.id === message.id);
+    if (messageIndex === -1 || !this.isMyMessage(message)) {
+      return;
+    }
+
+    const dialogRef = this.dialog.open(ConfirmDialogComponent, {
+      data: {
+        title: 'Confirmer la suppression',
+        message: 'Voulez-vous vraiment supprimer ce message ?',
+        confirmText: 'Supprimer',
+        cancelText: 'Annuler'
+      }
+    });
+
+    dialogRef.afterClosed().subscribe((confirmed) => {
+      if (!confirmed) {
+        return;
+      }
+
+      const removedMessage = this.messages[messageIndex];
+      this.messages = this.messages.filter((item) => item.id !== message.id);
+
+      if (this.editingMessageId === message.id) {
+        this.cancelEditing();
+      }
+
+      if (this.socketService.isConnected()) {
+        this.socketService.deleteMessage(message.id, this.missionId, message.clientMessageId);
+        return;
+      }
+
+      this.chatService.deleteMessage(message.id).subscribe({
+        error: () => {
+          this.messages = [...this.messages.slice(0, messageIndex), removedMessage, ...this.messages.slice(messageIndex)];
+        }
+      });
+    });
   }
 
   onTyping(): void {
@@ -176,7 +416,22 @@ export class ClientChatComponent implements OnInit, OnDestroy {
       return;
     }
 
-    this.socketService.sendTyping(this.missionId, true);
+    const content = this.newMessage.trim();
+    if (!content) {
+      this.clearTypingTimers();
+      this.emitTyping(false);
+      return;
+    }
+
+    if (this.typingEmitTimer) {
+      clearTimeout(this.typingEmitTimer);
+      this.typingEmitTimer = null;
+    }
+
+    this.typingEmitTimer = setTimeout(() => {
+      this.emitTyping(true);
+      this.typingEmitTimer = null;
+    }, 250);
   }
 
   scrollToBottom(): void {
@@ -187,7 +442,7 @@ export class ClientChatComponent implements OnInit, OnDestroy {
     });
   }
 
-  formatTime(date: Date): string {
+  formatTime(date: Date | string): string {
     return new Date(date).toLocaleTimeString('fr-FR', {
       hour: '2-digit',
       minute: '2-digit'
@@ -195,8 +450,12 @@ export class ClientChatComponent implements OnInit, OnDestroy {
   }
 
   isMyMessage(message: Message): boolean {
-    const userId = localStorage.getItem('userId');
-    return message.expediteurId === userId;
+    const userId = this.getCurrentUserId();
+    if (!userId) {
+      return false;
+    }
+
+    return String(message.expediteurId) === String(userId);
   }
 
   hasActiveConversation(): boolean {
@@ -221,6 +480,181 @@ export class ClientChatComponent implements OnInit, OnDestroy {
 
   getUnreadCount(conversation: ConversationSummary): number {
     return conversation.unreadCount || 0;
+  }
+
+  trackByMessageId(_: number, message: Message): string {
+    return message.clientMessageId || message.id;
+  }
+
+  getTypingText(): string {
+    return `${this.typingUserName || this.getTypingDisplayName()} est en train d'ecrire...`;
+  }
+
+  private emitTyping(isTyping: boolean): void {
+    if (!this.missionId) {
+      return;
+    }
+
+    if (!isTyping && this.typingEmitTimer) {
+      clearTimeout(this.typingEmitTimer);
+      this.typingEmitTimer = null;
+    }
+
+    const userId = this.getCurrentUserId();
+    const userName = this.getCurrentUserName();
+    this.socketService.sendTyping(this.missionId, isTyping, userId, userName);
+
+    if (!isTyping) {
+      this.clearTypingState();
+    }
+  }
+
+  private clearTypingState(): void {
+    this.isTyping = false;
+    this.typingUserName = '';
+
+    if (this.typingResetTimer) {
+      clearTimeout(this.typingResetTimer);
+      this.typingResetTimer = null;
+    }
+  }
+
+  private clearTypingTimers(): void {
+    if (this.typingEmitTimer) {
+      clearTimeout(this.typingEmitTimer);
+      this.typingEmitTimer = null;
+    }
+
+    if (this.typingResetTimer) {
+      clearTimeout(this.typingResetTimer);
+      this.typingResetTimer = null;
+    }
+  }
+
+  private shouldIgnoreMessage(message: Message): boolean {
+    return !!(this.missionId && message.missionId && message.missionId !== this.missionId);
+  }
+
+  private upsertMessage(message: Message): void {
+    const normalized = this.normalizeMessage(message);
+    const index = this.findMessageIndex(normalized);
+
+    if (index === -1) {
+      this.messages = [...this.messages, normalized];
+      return;
+    }
+
+    this.messages[index] = {
+      ...this.messages[index],
+      ...normalized,
+      pending: false,
+      failed: false
+    };
+  }
+
+  private findMessageIndex(message: Message): number {
+    return this.messages.findIndex((item) => {
+      if (item.id === message.id) {
+        return true;
+      }
+
+      return !!message.clientMessageId && item.clientMessageId === message.clientMessageId;
+    });
+  }
+
+  private normalizeMessage(message: any): Message {
+    const payload = message?.message ?? message?.data ?? message ?? {};
+    const dateValue = payload.dateEnvoi || payload.createdAt || payload.updatedAt || new Date();
+
+    return {
+      id: String(payload.id || payload._id || payload.messageId || payload.clientMessageId || this.createClientMessageId()),
+      missionId: String(payload.missionId || this.missionId || ''),
+      expediteurId: String(payload.expediteurId || payload.senderId || payload.userId || this.getCurrentUserId()),
+      destinataireId: String(payload.destinataireId || payload.recipientId || this.driverId || ''),
+      contenu: String(payload.contenu || payload.content || ''),
+      lu: !!payload.lu,
+      dateEnvoi: this.parseDate(dateValue),
+      clientMessageId: payload.clientMessageId,
+      pending: !!payload.pending,
+      failed: !!payload.failed,
+      updatedAt: payload.updatedAt ? this.parseDate(payload.updatedAt) : undefined
+    };
+  }
+
+  private normalizeSocketMessage(payload: any): Message {
+    const normalized = this.normalizeMessage(payload);
+    if (!normalized.clientMessageId && payload?.clientMessageId) {
+      normalized.clientMessageId = String(payload.clientMessageId);
+    }
+
+    return normalized;
+  }
+
+  private resolveMessageId(payload: any): string {
+    if (!payload) {
+      return '';
+    }
+
+    if (typeof payload === 'string') {
+      return payload;
+    }
+
+    return String(payload.messageId || payload.id || payload._id || payload.clientMessageId || '');
+  }
+
+  private parseDate(value: Date | string | number): Date {
+    if (value instanceof Date) {
+      return value;
+    }
+
+    const date = new Date(value);
+    return Number.isNaN(date.getTime()) ? new Date() : date;
+  }
+
+  private createClientMessageId(): string {
+    if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+      return crypto.randomUUID();
+    }
+
+    return `tmp-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+  }
+
+  private getCurrentUserId(): string {
+    return localStorage.getItem('userId') || '';
+  }
+
+  private getCurrentUserName(): string {
+    return `${localStorage.getItem('prenom') || ''} ${localStorage.getItem('nom') || ''}`.trim();
+  }
+
+  private getTypingDisplayName(): string {
+    if (this.selectedConversation?.driver) {
+      const driver = this.selectedConversation.driver;
+      return `${driver.prenom || ''} ${driver.nom || ''}`.trim() || driver.email || 'Livreur';
+    }
+
+    if (this.mission?.livreur) {
+      const driver = this.mission.livreur;
+      return `${driver.prenom || ''} ${driver.nom || ''}`.trim() || driver.email || 'Livreur';
+    }
+
+    return 'Votre interlocuteur';
+  }
+
+  private markMessagesAsRead(messages: Message[]): void {
+    const currentUserId = this.getCurrentUserId();
+    messages.forEach((message) => {
+      if (!message.lu && message.expediteurId !== currentUserId) {
+        this.chatService.markAsRead(message.id).subscribe({
+          next: (updatedMessage) => {
+            this.upsertMessage(this.normalizeMessage(updatedMessage));
+          },
+          error: () => {
+            // Ignore errors when marking messages read
+          }
+        });
+      }
+    });
   }
 
   private normalizeConversation(conversation: any): ConversationSummary {
@@ -254,5 +688,56 @@ export class ClientChatComponent implements OnInit, OnDestroy {
       hour: '2-digit',
       minute: '2-digit'
     }).format(date);
+  }
+
+  getDriverAvatar(): string {
+    if (this.selectedConversation?.driver?.avatar) {
+      return this.selectedConversation.driver.avatar;
+    }
+
+    if (this.mission?.livreur?.avatar) {
+      return this.mission.livreur.avatar;
+    }
+
+    return 'assets/default-avatar.svg';
+  }
+
+  getDriverName(): string {
+    if (this.selectedConversation?.driver) {
+      const driver = this.selectedConversation.driver;
+      const name = `${driver.prenom || ''} ${driver.nom || ''}`.trim();
+      return name || driver.email || 'Livreur';
+    }
+
+    if (this.mission?.livreur) {
+      const driver = this.mission.livreur;
+      const name = `${driver.prenom || ''} ${driver.nom || ''}`.trim();
+      return name || driver.email || 'Livreur';
+    }
+
+    return this.missionId ? 'Livreur' : 'Messagerie';
+  }
+
+  goBack(): void {
+    if (this.missionId) {
+      this.router.navigate(['/client/tracking', this.missionId]);
+    } else {
+      this.router.navigate(['/client/dashboard']);
+    }
+  }
+
+  getAddressLabel(value: string | null | undefined): string {
+    if (!value) {
+      return '-';
+    }
+
+    try {
+      const parsed = JSON.parse(value) as { rue?: string; ville?: string; codePostal?: string; pays?: string };
+      const parts = [parsed.rue, parsed.ville, parsed.codePostal, parsed.pays]
+        .filter((part) => !!part && String(part).trim().length > 0);
+      return parts.length > 0 ? parts.join(', ') : value;
+    } catch {
+      return value;
+    }
   }
 }

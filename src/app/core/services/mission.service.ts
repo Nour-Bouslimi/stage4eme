@@ -1,9 +1,10 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
-import { catchError, map } from 'rxjs/operators';
+import { catchError, map, tap } from 'rxjs/operators';
 import { of } from 'rxjs';
 import { environment } from '../../../environments/environment';
+import { NotificationType } from '../models/notification.model';
 import {
   Mission,
   CreateMissionRequest,
@@ -12,6 +13,8 @@ import {
   normalizeMission,
   toMissionApiRequest
 } from '../models/mission.model';
+import { AuthService } from './auth.service';
+import { NotificationService } from './notification.service';
 
 @Injectable({
   providedIn: 'root'
@@ -19,11 +22,24 @@ import {
 export class MissionService {
   private apiUrl = environment.apiUrl;
 
-  constructor(private http: HttpClient) {}
+  constructor(
+    private http: HttpClient,
+    private notificationService: NotificationService,
+    private authService: AuthService
+  ) {}
 
   creerMission(data: CreateMissionRequest): Observable<Mission> {
     return this.http.post<Mission>(`${this.apiUrl}/missions`, toMissionApiRequest(data)).pipe(
-      map((mission) => normalizeMission(mission))
+      map((mission) => normalizeMission(mission)),
+      tap((mission) => {
+        this.notifyMissionEvent(
+          mission,
+          NotificationType.NOUVELLE_MISSION,
+          'Nouvelle mission créée',
+          'Votre mission a bien été enregistrée et est maintenant en attente d’un livreur.',
+          ['self', 'admin']
+        );
+      })
     );
   }
 
@@ -94,7 +110,16 @@ export class MissionService {
 
   accepterMission(id: string): Observable<Mission> {
     return this.http.patch<Mission>(`${this.apiUrl}/missions/${id}/accept`, {}).pipe(
-      map((mission) => normalizeMission(mission))
+      map((mission) => normalizeMission(mission)),
+      tap((mission) => {
+        this.notifyMissionEvent(
+          mission,
+          NotificationType.MISSION_ACCEPTEE,
+          'Mission acceptée',
+          'Votre mission a été acceptée et le client en a été informé.',
+          ['client', 'admin']
+        );
+      })
     );
   }
 
@@ -123,7 +148,14 @@ export class MissionService {
       statut,
       raisonAnnulation
     }).pipe(
-      map((mission) => normalizeMission(mission))
+      map((mission) => normalizeMission(mission)),
+      tap((mission) => {
+        const config = this.getStatusNotificationConfig(statut);
+        if (config) {
+          const recipients = this.buildStatusRecipients(statut);
+          this.notifyMissionEvent(mission, config.type, config.title, config.message, recipients);
+        }
+      })
     );
   }
 
@@ -141,6 +173,107 @@ export class MissionService {
 
   annulerAcceptation(id: string): Observable<Mission> {
     return this.remettreMissionEnCours(id);
+  }
+
+  private notifyMissionEvent(
+    mission: Mission,
+    type: NotificationType,
+    title: string,
+    message: string,
+    recipients: Array<'self' | 'client' | 'livreur' | 'admin'>
+  ): void {
+    const targets = new Set<string>();
+    const currentUserId = this.authService.getUserId();
+
+    if (recipients.includes('self') && currentUserId) {
+      targets.add(currentUserId);
+    }
+
+    if (recipients.includes('client')) {
+      const clientId = mission.clientId ?? mission.client?.id;
+      if (clientId) {
+        targets.add(clientId);
+      }
+    }
+
+    if (recipients.includes('livreur')) {
+      const livreurId = mission.livreurId ?? mission.livreur?.id;
+      if (livreurId) {
+        targets.add(livreurId);
+      }
+    }
+
+    if (recipients.includes('admin')) {
+      targets.add('role:ADMIN');
+    }
+
+    targets.forEach((targetId) => {
+      this.notificationService.addNotification({
+        userId: targetId,
+        type,
+        titre: title,
+        message,
+        missionId: mission.id
+      });
+    });
+  }
+
+  private buildStatusRecipients(statut: MissionStatus): Array<'client' | 'livreur' | 'admin'> {
+    switch (statut) {
+      case MissionStatus.ACCEPTEE:
+      case MissionStatus.EN_ROUTE:
+      case MissionStatus.ARRIVEE:
+      case MissionStatus.EN_LIVRAISON:
+      case MissionStatus.TERMINEE:
+        return ['client', 'admin'];
+      case MissionStatus.ANNULEE:
+        return ['client', 'livreur', 'admin'];
+      default:
+        return ['admin'];
+    }
+  }
+
+  private getStatusNotificationConfig(statut: MissionStatus): { type: NotificationType; title: string; message: string } | null {
+    switch (statut) {
+      case MissionStatus.ACCEPTEE:
+        return {
+          type: NotificationType.MISSION_ACCEPTEE,
+          title: 'Mission acceptée',
+          message: 'La mission a été acceptée par un livreur et est maintenant en cours de traitement.'
+        };
+      case MissionStatus.EN_ROUTE:
+        return {
+          type: NotificationType.STATUT_CHANGE,
+          title: 'Mission en route',
+          message: 'Le livreur a commencé le trajet vers le point de livraison.'
+        };
+      case MissionStatus.ARRIVEE:
+        return {
+          type: NotificationType.LIVREUR_ARRIVE,
+          title: 'Livreur arrivé',
+          message: 'Le livreur est arrivé à destination. La remise du colis peut commencer.'
+        };
+      case MissionStatus.EN_LIVRAISON:
+        return {
+          type: NotificationType.STATUT_CHANGE,
+          title: 'Livraison en cours',
+          message: 'Le livreur a débuté la livraison.'
+        };
+      case MissionStatus.TERMINEE:
+        return {
+          type: NotificationType.MISSION_TERMINEE,
+          title: 'Mission terminée',
+          message: 'La mission est maintenant terminée. N’hésitez pas à laisser votre avis.'
+        };
+      case MissionStatus.ANNULEE:
+        return {
+          type: NotificationType.MISSION_ANNULEE,
+          title: 'Mission annulée',
+          message: 'La mission a été annulée. Une nouvelle proposition pourra être faite si besoin.'
+        };
+      default:
+        return null;
+    }
   }
 
   private mapVehicleToApi(value: string): string {

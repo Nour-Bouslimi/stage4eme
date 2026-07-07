@@ -1,6 +1,6 @@
 <div class="chat-page">
-  <div class="chat-layout">
-    <div class="chat-sidebar">
+  <div class="chat-layout" [class.direct-mode]="!!missionId">
+    <div class="chat-sidebar" *ngIf="!missionId">
       <div class="sidebar-header">
         <h2 class="sidebar-title">Conversations</h2>
       </div>
@@ -37,46 +37,99 @@
 
     <div class="chat-main">
       <div class="chat-header">
+        <button class="back-btn" *ngIf="missionId" type="button" (click)="goBack()">
+          <mat-icon>arrow_back</mat-icon>
+        </button>
         <div class="header-info">
           <div class="header-avatar">
-            <img [src]="selectedConversation?.driver?.avatar || 'assets/default-avatar.svg'" alt="Driver" />
+            <img [src]="getDriverAvatar()" alt="Driver" />
           </div>
           <div class="header-details">
-            <h3 class="header-name">{{ mission ? getConversationTitle(selectedConversation || { missionId: '', title: 'Messagerie', preview: '', time: '', unreadCount: 0 }) : 'Messagerie' }}</h3>
-            <span class="header-status" *ngIf="missionId && isTyping">En train d'écrire...</span>
-            <span class="header-status" *ngIf="missionId && !isTyping">En ligne</span>
-            <span class="header-status" *ngIf="!missionId">Sélectionnez une conversation</span>
+            <h3 class="header-name">{{ getDriverName() }}</h3>
+            <span class="header-status" *ngIf="loading">Chargement...</span>
+            <span class="header-status" *ngIf="!loading && missionId">En ligne</span>
+            <span class="header-status" *ngIf="!loading && !missionId">S&eacute;lectionnez une conversation</span>
           </div>
         </div>
       </div>
 
       <div class="chat-messages" #messagesContainer>
-        <ng-container *ngIf="messages.length > 0; else emptyMessages">
-          <div class="message" *ngFor="let message of messages" [class.my-message]="isMyMessage(message)">
-            <div class="message-avatar" *ngIf="!isMyMessage(message)">
-              <img src="assets/default-avatar.svg" alt="Driver" />
+        <div class="loading-state" *ngIf="loading">
+          <mat-spinner diameter="30"></mat-spinner>
+          <p>Chargement de la conversation...</p>
+        </div>
+
+        <ng-container *ngIf="!loading">
+          <ng-container *ngIf="messages.length > 0; else emptyMessages">
+            <div
+              class="message"
+              *ngFor="let message of messages; trackBy: trackByMessageId"
+              [class.my-message]="isMyMessage(message)"
+              [class.pending]="message.pending"
+            >
+              <div class="message-avatar" *ngIf="!isMyMessage(message)">
+                <img [src]="getDriverAvatar()" alt="Driver" />
+              </div>
+              <div class="message-content">
+                <div class="message-text" *ngIf="editingMessageId !== message.id">
+                  <p>{{ message.contenu }}</p>
+                </div>
+                <div class="message-edit" *ngIf="editingMessageId === message.id">
+                  <input
+                    type="text"
+                    [(ngModel)]="editedContent"
+                    (keyup.enter)="saveEdit()"
+                    (keyup.escape)="cancelEditing()"
+                    class="edit-input"
+                    autofocus
+                  />
+                  <div class="edit-actions">
+                    <button type="button" class="edit-action-btn save" (click)="saveEdit()">
+                      <mat-icon>check</mat-icon>
+                    </button>
+                    <button type="button" class="edit-action-btn cancel" (click)="cancelEditing()">
+                      <mat-icon>close</mat-icon>
+                    </button>
+                  </div>
+                </div>
+                <div class="message-meta">
+                  <span class="message-time">{{ formatTime(message.dateEnvoi) }}</span>
+                  <span class="message-status" *ngIf="message.pending">
+                    <mat-icon>schedule</mat-icon>
+                  </span>
+                  <span class="message-status" *ngIf="isMyMessage(message) && message.lu">
+                    <mat-icon>done_all</mat-icon>
+                  </span>
+                  <div class="message-actions" *ngIf="isMyMessage(message) && editingMessageId !== message.id">
+                    <button type="button" class="message-action-btn" (click)="startEditing(message)" title="Modifier">
+                      <mat-icon>edit</mat-icon>
+                    </button>
+                    <button type="button" class="message-action-btn delete" (click)="deleteMessage(message)" title="Supprimer">
+                      <mat-icon>delete</mat-icon>
+                    </button>
+                  </div>
+                </div>
+              </div>
             </div>
-            <div class="message-content">
-              <p class="message-text">{{ message.contenu }}</p>
-              <span class="message-time">{{ formatTime(message.dateEnvoi) }}</span>
+          </ng-container>
+
+          <ng-template #emptyMessages>
+            <div class="empty-messages">
+              <mat-icon>chat_bubble_outline</mat-icon>
+              <p *ngIf="missionId">Aucun message. Commencez la conversation !</p>
+              <p *ngIf="!missionId">S&eacute;lectionnez une conversation pour afficher les messages</p>
+            </div>
+          </ng-template>
+
+          <div class="typing-indicator" *ngIf="isTyping">
+            <span class="typing-label">{{ getTypingText() }}</span>
+            <div class="typing-dots">
+              <span></span>
+              <span></span>
+              <span></span>
             </div>
           </div>
         </ng-container>
-
-        <ng-template #emptyMessages>
-          <div class="empty-messages">
-            <mat-icon>chat_bubble_outline</mat-icon>
-            <p>Sélectionnez une conversation pour afficher les messages</p>
-          </div>
-        </ng-template>
-
-        <div class="typing-indicator" *ngIf="isTyping">
-          <div class="typing-dots">
-            <span></span>
-            <span></span>
-            <span></span>
-          </div>
-        </div>
       </div>
 
       <div class="chat-input">
@@ -88,32 +141,32 @@
           [(ngModel)]="newMessage"
           (keyup.enter)="sendMessage()"
           (input)="onTyping()"
-          placeholder="Écrivez votre message..."
+          placeholder="Ecrivez votre message..."
           class="message-input"
-          [disabled]="!missionId"
+          [disabled]="!missionId || loading"
         />
-        <button class="send-btn" type="button" (click)="sendMessage()" [disabled]="!newMessage.trim() || !missionId">
+        <button class="send-btn" type="button" (click)="sendMessage()" [disabled]="!newMessage.trim() || !missionId || loading">
           <mat-icon>send</mat-icon>
         </button>
       </div>
     </div>
 
-    <div class="chat-details">
+    <div class="chat-details" *ngIf="missionId">
       <div class="details-header">
-        <h3 class="details-title">Détails de la mission</h3>
+        <h3 class="details-title">D&eacute;tails de la mission</h3>
       </div>
       <div class="details-content" *ngIf="mission; else emptyDetails">
         <div class="detail-item">
-          <span class="detail-label">Catégorie</span>
+          <span class="detail-label">Cat&eacute;gorie</span>
           <span class="detail-value">{{ mission.categorie }}</span>
         </div>
         <div class="detail-item">
-          <span class="detail-label">Départ</span>
-          <span class="detail-value">{{ mission.depart.ville }}</span>
+          <span class="detail-label">D&eacute;part</span>
+          <span class="detail-value">{{ getAddressLabel(mission.adresseRamassage) }}</span>
         </div>
         <div class="detail-item">
           <span class="detail-label">Destination</span>
-          <span class="detail-value">{{ mission.destination.ville }}</span>
+          <span class="detail-value">{{ getAddressLabel(mission.adresseLivraison) }}</span>
         </div>
         <div class="detail-item">
           <span class="detail-label">Date</span>
@@ -122,8 +175,8 @@
       </div>
       <ng-template #emptyDetails>
         <div class="details-content empty">
-          <p>Aucune mission sélectionnée</p>
-          <p>Choisissez une conversation pour voir ses détails.</p>
+          <p *ngIf="loading">Chargement des d&eacute;tails...</p>
+          <p *ngIf="!loading">D&eacute;tails de la mission non disponibles</p>
         </div>
       </ng-template>
     </div>

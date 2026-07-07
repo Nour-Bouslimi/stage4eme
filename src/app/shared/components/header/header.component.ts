@@ -2,6 +2,8 @@ import { Component, OnDestroy, OnInit, Output, EventEmitter } from '@angular/cor
 import { NavigationEnd, Router } from '@angular/router';
 import { AuthService } from '../../../core/services/auth.service';
 import { NotificationService } from '../../../core/services/notification.service';
+import { ToastService } from '../../components/toast/toast.service';
+import { Notification, NotificationType } from '../../../core/models/notification.model';
 import { UserRole } from '../../../core/models/user.model';
 import { filter, Subscription } from 'rxjs';
 
@@ -14,6 +16,7 @@ export class HeaderComponent implements OnInit, OnDestroy {
   userName = '';
   userAvatar = '';
   unreadCount = 0;
+  notifications: Notification[] = [];
   showNotifications = false;
   showUserMenu = false;
   darkMode = false;
@@ -25,7 +28,8 @@ export class HeaderComponent implements OnInit, OnDestroy {
   constructor(
     private authService: AuthService,
     private notificationService: NotificationService,
-    private router: Router
+    private router: Router,
+    private toastService: ToastService
   ) {
     this.routerEventsSubscription = this.router.events
       .pipe(filter((event): event is NavigationEnd => event instanceof NavigationEnd))
@@ -43,9 +47,15 @@ export class HeaderComponent implements OnInit, OnDestroy {
 
     this.currentPageTitle = this.getTitleForUrl(this.router.url);
 
-    this.notificationService.unreadCount$.subscribe(count => {
+    this.notificationService.unreadCount$.subscribe((count) => {
       this.unreadCount = count;
     });
+
+    this.notificationService.notifications$.subscribe((notifications) => {
+      this.notifications = notifications;
+    });
+
+    this.notificationService.loadNotificationsFromBackend();
   }
 
   ngOnDestroy(): void {
@@ -89,7 +99,54 @@ export class HeaderComponent implements OnInit, OnDestroy {
   }
 
   markAllAsRead(): void {
-    this.notificationService.markAllAsRead().subscribe();
+    this.notificationService.markAllAsRead().subscribe({
+      next: () => {
+        this.toastService.success('Toutes les notifications ont été marquées comme lues.');
+      },
+      error: () => {
+        this.toastService.error('Impossible de marquer toutes les notifications comme lues.');
+      }
+    });
+  }
+
+  openNotification(notification: Notification): void {
+    if (!notification.lu) {
+      this.notificationService.markAsRead(notification.id).subscribe();
+    }
+
+    if (notification.missionId) {
+      const role = this.authService.getRole();
+      if (role === UserRole.CLIENT) {
+        this.router.navigate(['/client/tracking', notification.missionId]);
+      } else if (role === UserRole.LIVREUR) {
+        this.router.navigate(['/livreur/active', notification.missionId]);
+      } else if (role === UserRole.ADMIN) {
+        this.router.navigate(['/admin/missions']);
+      }
+    }
+
+    this.showNotifications = false;
+  }
+
+  getNotificationIcon(type: NotificationType): string {
+    switch (type) {
+      case NotificationType.NOUVELLE_MISSION:
+        return 'local_shipping';
+      case NotificationType.MISSION_ACCEPTEE:
+        return 'assignment_turned_in';
+      case NotificationType.MISSION_ANNULEE:
+        return 'cancel';
+      case NotificationType.STATUT_CHANGE:
+        return 'sync_alt';
+      case NotificationType.NOUVEAU_MESSAGE:
+        return 'chat';
+      case NotificationType.LIVREUR_ARRIVE:
+        return 'person_pin_circle';
+      case NotificationType.MISSION_TERMINEE:
+        return 'done_all';
+      default:
+        return 'notifications';
+    }
   }
 
   private getTitleForUrl(url: string): string {

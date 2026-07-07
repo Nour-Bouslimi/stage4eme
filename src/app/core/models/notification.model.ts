@@ -16,5 +16,6 @@ export interface Notification {
   message: string;
   missionId?: string;
   lu: boolean;
+  luLe?: Date | null;
   createdAt: Date;
 }

@@ -1,12 +1,14 @@
 import { TestBed } from '@angular/core/testing';
 import { RouterModule } from '@angular/router';
+import { SharedModule } from './shared/shared.module';
 import { AppComponent } from './app.component';
 
 describe('AppComponent', () => {
   beforeEach(async () => {
     await TestBed.configureTestingModule({
       imports: [
-        RouterModule.forRoot([])
+        RouterModule.forRoot([]),
+        SharedModule
       ],
       declarations: [
         AppComponent
@@ -26,10 +28,10 @@ describe('AppComponent', () => {
     expect(app.title).toEqual('frontendstage');
   });
 
-  it('should render title', () => {
+  it('should render toast component', () => {
     const fixture = TestBed.createComponent(AppComponent);
     fixture.detectChanges();
     const compiled = fixture.nativeElement as HTMLElement;
-    expect(compiled.querySelector('h1')?.textContent).toContain('Hello, frontendstage');
+    expect(compiled.querySelector('app-toast')).toBeTruthy();
   });
 });

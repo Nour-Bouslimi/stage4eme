@@ -25,6 +25,10 @@ export class SocketService {
     }
   }
 
+  isConnected(): boolean {
+    return !!this.socket?.connected;
+  }
+
   disconnect(): void {
     if (this.socket) {
       this.socket.disconnect();
@@ -44,19 +48,41 @@ export class SocketService {
     }
   }
 
-  sendMessage(missionId: string, content: string, destinataireId: string): void {
+  sendMessage(missionId: string, content: string, destinataireId: string, clientMessageId?: string): void {
     if (this.socket) {
       this.socket.emit('sendMessage', {
         missionId,
         contenu: content,
-        destinataireId
+        destinataireId,
+        clientMessageId
       });
     }
   }
 
-  sendTyping(missionId: string, isTyping: boolean): void {
+  editMessage(messageId: string, contenu: string, missionId?: string, clientMessageId?: string): void {
     if (this.socket) {
-      this.socket.emit('typing', { missionId, isTyping });
+      this.socket.emit('editMessage', {
+        messageId,
+        contenu,
+        missionId,
+        clientMessageId
+      });
+    }
+  }
+
+  deleteMessage(messageId: string, missionId?: string, clientMessageId?: string): void {
+    if (this.socket) {
+      this.socket.emit('deleteMessage', {
+        messageId,
+        missionId,
+        clientMessageId
+      });
+    }
+  }
+
+  sendTyping(missionId: string, isTyping: boolean, userId?: string, userName?: string): void {
+    if (this.socket) {
+      this.socket.emit('typing', { missionId, isTyping, userId, userName });
     }
   }
 
@@ -96,6 +122,20 @@ export class SocketService {
   onMessageRead(): Observable<any> {
     if (this.socket) {
       return fromEvent(this.socket, 'messageRead');
+    }
+    return new Observable();
+  }
+
+  onMessageUpdated(): Observable<any> {
+    if (this.socket) {
+      return fromEvent(this.socket, 'messageUpdated');
+    }
+    return new Observable();
+  }
+
+  onMessageDeleted(): Observable<any> {
+    if (this.socket) {
+      return fromEvent(this.socket, 'messageDeleted');
     }
     return new Observable();
   }
