@@ -15,19 +15,26 @@ export class NotificationsService {
   }
 
   async findForUser(userId: string) {
-    const notifications = await this.notifRepo.find({
-      where: { utilisateur: { id: userId } },
-      relations: { utilisateur: true, mission: true } as any,
-      order: { envoyeeLe: 'DESC' },
-    });
+    const notifications = await this.notifRepo
+      .createQueryBuilder('n')
+      .leftJoinAndSelect('n.mission', 'mission')
+      .leftJoinAndSelect('n.utilisateur', 'utilisateur')
+      .where('utilisateur.id = :userId', { userId })
+      .orderBy('n.envoyeeLe', 'DESC')
+      .getMany();
+
     return notifications.map((notification) => toNotification(notification));
   }
 
   async markAsRead(id: string, userId: string) {
-    const notification = await this.notifRepo.findOne({
-      where: { id, utilisateur: { id: userId } },
-      relations: { utilisateur: true, mission: true } as any,
-    });
+    const notification = await this.notifRepo
+      .createQueryBuilder('n')
+      .leftJoinAndSelect('n.utilisateur', 'utilisateur')
+      .leftJoinAndSelect('n.mission', 'mission')
+      .where('n.id = :id', { id })
+      .andWhere('utilisateur.id = :userId', { userId })
+      .getOne();
+
     if (!notification) throw new NotFoundException('Notification introuvable');
     notification.estLue = true;
     notification.lueLe = new Date();

@@ -1,7 +1,8 @@
-import { Body, Controller, Get, Param, Patch, Post, Req, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Post, Req, UseGuards } from '@nestjs/common';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { ChatService } from './chat.service';
 import { SendMessageDto } from './dto/send-message.dto';
+import { UpdateMessageDto } from './dto/update-message.dto';
 import { ChatGateway } from './chat.gateway';
 
 @Controller('chat')
@@ -37,5 +38,21 @@ export class ChatController {
     const message = await this.chatService.markAsRead(messageId, req.user.id);
     this.chatGateway.broadcastMessageRead(message);
     return message;
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Patch(':messageId')
+  async updateMessage(@Req() req: any, @Param('messageId') messageId: string, @Body() dto: UpdateMessageDto) {
+    const message = await this.chatService.updateMessage(messageId, req.user.id, dto as any);
+    this.chatGateway.broadcastMessageUpdated(message);
+    return message;
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Delete(':messageId')
+  async deleteMessage(@Req() req: any, @Param('messageId') messageId: string, @Body() body?: { clientMessageId?: string }) {
+    const result = await this.chatService.deleteMessage(messageId, req.user.id, body?.clientMessageId);
+    this.chatGateway.broadcastMessageDeleted(result);
+    return result;
   }
 }

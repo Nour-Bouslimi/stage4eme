@@ -37,7 +37,7 @@ export class ChatGateway implements OnGatewayConnection {
 
   @SubscribeMessage('sendMessage')
   async handleSendMessage(@MessageBody() data: any, @ConnectedSocket() client: Socket) {
-    const senderId = data.senderId ?? client.handshake.query.userId;
+    const senderId = data.senderId ?? data.userId ?? client.handshake.query.userId;
     const saved = await this.chatService.sendMessage(String(senderId), data);
     this.broadcastNewMessage(saved);
     return saved;
@@ -45,8 +45,31 @@ export class ChatGateway implements OnGatewayConnection {
 
   @SubscribeMessage('typing')
   handleTyping(@MessageBody() data: any, @ConnectedSocket() client: Socket) {
-    client.to(`mission:${data.missionId}`).emit('typing', data);
+    const payload = {
+      missionId: data.missionId,
+      isTyping: !!data.isTyping,
+      userId: data.userId ?? client.handshake.query.userId ?? null,
+      userName: data.userName ?? null,
+    };
+    client.to(`mission:${data.missionId}`).emit('typing', payload);
     return { ok: true };
+  }
+
+  @SubscribeMessage('editMessage')
+  @SubscribeMessage('updateMessage')
+  async handleUpdateMessage(@MessageBody() data: any, @ConnectedSocket() client: Socket) {
+    const userId = data.userId ?? client.handshake.query.userId;
+    const updated = await this.chatService.updateMessage(String(data.messageId), String(userId), data);
+    this.broadcastMessageUpdated(updated);
+    return updated;
+  }
+
+  @SubscribeMessage('deleteMessage')
+  async handleDeleteMessage(@MessageBody() data: any, @ConnectedSocket() client: Socket) {
+    const userId = data.userId ?? client.handshake.query.userId;
+    const deleted = await this.chatService.deleteMessage(String(data.messageId), String(userId), data.clientMessageId);
+    this.broadcastMessageDeleted(deleted);
+    return deleted;
   }
 
   broadcastNewMessage(payload: any) {
@@ -56,9 +79,6 @@ export class ChatGateway implements OnGatewayConnection {
       this.server.to(`mission:${missionId}`).emit('newMessage', payload);
       this.server.to(`mission:${missionId}`).emit('message', payload);
     }
-    if (payload.destinataireId) {
-      this.server.to(`user:${payload.destinataireId}`).emit('newMessage', payload);
-    }
   }
 
   broadcastMessageRead(payload: any) {
@@ -66,6 +86,22 @@ export class ChatGateway implements OnGatewayConnection {
     const missionId = payload.missionId ?? payload.mission?.id;
     if (missionId) {
       this.server.to(`mission:${missionId}`).emit('messageRead', payload);
+    }
+  }
+
+  broadcastMessageUpdated(payload: any) {
+    if (!this.server) return;
+    const missionId = payload.missionId ?? payload.mission?.id;
+    if (missionId) {
+      this.server.to(`mission:${missionId}`).emit('messageUpdated', payload);
+    }
+  }
+
+  broadcastMessageDeleted(payload: any) {
+    if (!this.server) return;
+    const missionId = payload.missionId ?? payload.mission?.id;
+    if (missionId) {
+      this.server.to(`mission:${missionId}`).emit('messageDeleted', payload);
     }
   }
 }

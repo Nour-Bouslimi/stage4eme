@@ -110,7 +110,6 @@ export const toPublicUser = (user: Utilisateur | Partial<Utilisateur> | null | u
       : [],
     notesDonnees: Array.isArray((user as Utilisateur).notesDonnees) ? (user as Utilisateur).notesDonnees : [],
     messages: Array.isArray((user as Utilisateur).messages) ? (user as Utilisateur).messages : [],
-    notifications: Array.isArray((user as Utilisateur).notifications) ? (user as Utilisateur).notifications : [],
     disponible: available,
     note: toNumber(user.noteMoyenne) ?? 0,
     nombreAvis: toNumber(user.totalNotes) ?? 0,

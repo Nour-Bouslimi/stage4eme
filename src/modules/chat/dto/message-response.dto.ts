@@ -1,6 +1,12 @@
 export class MessageResponseDto {
   id: string;
+  missionId?: string;
+  expediteurId?: string;
+  destinataireId?: string;
   contenu?: string;
   urlMedia?: string;
-  envoyeLe?: Date;
+  dateEnvoi?: string;
+  lu?: boolean;
+  type?: string;
+  clientMessageId?: string;
 }

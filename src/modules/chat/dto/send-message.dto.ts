@@ -20,4 +20,8 @@ export class SendMessageDto {
 
   @IsOptional()
   destinataireId?: string;
+
+  @IsOptional()
+  @IsString()
+  clientMessageId?: string;
 }

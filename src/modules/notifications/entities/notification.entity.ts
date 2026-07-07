@@ -29,7 +29,7 @@ export class Notification {
   @Column({ type: 'timestamptz', nullable: true })
   lueLe: Date;
 
-  @ManyToOne(() => Utilisateur, (u) => u.notifications, { onDelete: 'CASCADE', eager: true })
+  @ManyToOne(() => Utilisateur, (u) => u.notifications, { onDelete: 'CASCADE' })
   utilisateur: Utilisateur;
 
   @ManyToOne(() => Mission, (m) => m.notifications, { nullable: true })

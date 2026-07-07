@@ -36,7 +36,10 @@ export class ChatService {
     return messages.map((message) => toMessage(message));
   }
 
-  async sendMessage(senderId: string, payload: Partial<Message> & { missionId: string; destinataireId?: string }) {
+  async sendMessage(
+    senderId: string,
+    payload: Partial<Message> & { missionId: string; destinataireId?: string; clientMessageId?: string },
+  ) {
     const mission = await this.missionsService.findEntityById(payload.missionId);
     if (!mission) throw new NotFoundException('Mission introuvable');
 
@@ -72,7 +75,10 @@ export class ChatService {
       donnees: { missionId: mission.id, messageId: message.id },
     } as any);
 
-    return toMessage(message);
+    return {
+      ...toMessage(message),
+      clientMessageId: payload.clientMessageId ?? null,
+    };
   }
 
   async markAsRead(messageId: string, userId: string) {
@@ -88,6 +94,52 @@ export class ChatService {
     message.luLe = new Date();
     const saved = (await this.msgRepo.save(message as Message)) as Message;
     return toMessage(saved);
+  }
+
+  async updateMessage(messageId: string, userId: string, payload: Partial<Message> & { clientMessageId?: string }) {
+    const message = await this.msgRepo.findOne({
+      where: { id: messageId },
+      relations: { auteur: true, mission: true } as any,
+    });
+
+    if (!message) throw new NotFoundException('Message introuvable');
+    if (message.auteur?.id !== userId) {
+      throw new BadRequestException('Accès refusé');
+    }
+
+    if (payload.contenu !== undefined) {
+      message.contenu = payload.contenu;
+    }
+    if (payload.urlMedia !== undefined) {
+      message.urlMedia = payload.urlMedia;
+    }
+
+    const saved = (await this.msgRepo.save(message as Message)) as Message;
+    return {
+      ...toMessage(saved),
+      clientMessageId: payload.clientMessageId ?? null,
+    };
+  }
+
+  async deleteMessage(messageId: string, userId: string, clientMessageId?: string) {
+    const message = await this.msgRepo.findOne({
+      where: { id: messageId },
+      relations: { auteur: true, mission: true } as any,
+    });
+
+    if (!message) throw new NotFoundException('Message introuvable');
+    if (message.auteur?.id !== userId) {
+      throw new BadRequestException('Accès refusé');
+    }
+
+    await this.msgRepo.remove(message as Message);
+    return {
+      deleted: true,
+      id: messageId,
+      messageId,
+      missionId: message.mission?.id ?? null,
+      clientMessageId: clientMessageId ?? null,
+    };
   }
 
   async getConversations(userId: string) {
