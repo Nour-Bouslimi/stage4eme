@@ -9,12 +9,12 @@ export class NotificationsController {
   @UseGuards(JwtAuthGuard)
   @Get()
   async myNotifications(@Req() req: any) {
-    return this.notificationsService.findForUser(req.user.id);
+    return this.notificationsService.findForUser(req.user.id, req.user.role);
   }
 
   @UseGuards(JwtAuthGuard)
   @Patch(':id/read')
   async markRead(@Req() req: any, @Param('id') id: string) {
-    return this.notificationsService.markAsRead(id, req.user.id);
+    return this.notificationsService.markAsRead(id, req.user.id, req.user.role);
   }
 }

@@ -2,6 +2,12 @@ import { Injectable, InternalServerErrorException } from '@nestjs/common';
 import { v2 as cloudinary } from 'cloudinary';
 import * as streamifier from 'streamifier';
 
+type UploadBufferOptions = {
+  folder?: string;
+  publicId?: string;
+  resourceType?: 'image' | 'video' | 'raw' | 'auto';
+};
+
 @Injectable()
 export class CloudinaryService {
   constructor() {
@@ -12,12 +18,17 @@ export class CloudinaryService {
     });
   }
 
-  async uploadBuffer(buffer: Buffer, filename?: string) {
+  async uploadBuffer(buffer: Buffer, options: UploadBufferOptions = {}) {
     return new Promise<any>((resolve, reject) => {
       const uploadStream = cloudinary.uploader.upload_stream(
-        { folder: 'stage4eme' },
+        {
+          folder: options.folder ?? 'stage4eme',
+          public_id: options.publicId,
+          resource_type: options.resourceType ?? 'auto',
+        },
         (error, result) => {
-          if (error) return reject(new InternalServerErrorException(error.message));
+          if (error)
+            return reject(new InternalServerErrorException(error.message));
           resolve(result);
         },
       );

@@ -46,7 +46,11 @@ class VehicleInputDto {
 class AvailabilityInputDto {
   @IsOptional()
   @IsString()
-  day?: string;
+  fromDay?: string;
+
+  @IsOptional()
+  @IsString()
+  toDay?: string;
 
   @IsOptional()
   @IsBoolean()

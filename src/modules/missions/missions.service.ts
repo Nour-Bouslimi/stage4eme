@@ -1,11 +1,12 @@
 import { BadRequestException, ConflictException, Inject, Injectable, NotFoundException, forwardRef } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { In, Repository } from 'typeorm';
+import { RoleUtilisateur } from '../../common/enums/role-utilisateur.enum';
 import { StatutDisponibilite } from '../../common/enums/statut-disponibilite.enum';
 import { StatutMission } from '../../common/enums/statut-mission.enum';
 import { TypeNotification } from '../../common/enums/type-notification.enum';
 import { TypeVehicule } from '../../common/enums/type-vehicule.enum';
-import { toMission, toPublicUser } from '../../common/utils/api-mappers';
+import { NotificationViewer, toMission, toPublicUser } from '../../common/utils/api-mappers';
 import { GeolocationService } from '../geolocation/geolocation.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { NotificationsGateway } from '../notifications/notifications.gateway';
@@ -87,28 +88,25 @@ export class MissionsService {
       volumeEstime: payload.volumeEstime,
     });
 
-    await Promise.all(
-      candidates.map((candidate) =>
-        this.notificationsService.create({
-          utilisateur: candidate as any,
-          titre: 'Nouvelle mission',
-          corps: 'Une nouvelle mission correspond à votre profil',
-          type: TypeNotification.NOUVELLE_MISSION,
-          mission: saved,
-          donnees: { missionId: saved.id },
-        } as any),
-      ),
-    );
+    const notifications = await this.notificationsService.create({
+      cibleRole: RoleUtilisateur.LIVREUR,
+      titre: 'Nouvelle mission',
+      corps: 'Une nouvelle mission correspond à votre profil',
+      type: TypeNotification.NOUVELLE_MISSION,
+      mission: saved,
+      donnees: { missionId: saved.id },
+    } as any);
 
-    for (const candidate of candidates) {
-      this.notificationsGateway.broadcastNotification(candidate.id, {
+    for (const notification of notifications) {
+      if (!notification.userId) continue;
+      this.notificationsGateway.broadcastNotification(notification.userId, {
         id: saved.id,
         type: 'NOUVELLE_MISSION',
         missionId: saved.id,
       });
     }
 
-    return toMission(saved);
+    return toMission(saved, { userId: client.id, role: client.role });
   }
 
   private async buildQuote(dto: {
@@ -364,7 +362,7 @@ export class MissionsService {
     return hour;
   }
 
-  async findById(id: string) {
+  async findById(id: string, viewer?: NotificationViewer) {
     const mission = await this.missionRepo.findOne({
       where: { id },
       relations: {
@@ -376,7 +374,7 @@ export class MissionsService {
       } as any,
     });
     if (!mission) throw new NotFoundException('Mission non trouvée');
-    return toMission(mission);
+    return toMission(mission, viewer);
   }
 
   async findEntityById(id: string) {
@@ -394,7 +392,7 @@ export class MissionsService {
     return mission;
   }
 
-  async findByClientId(clientId: string) {
+  async findByClientId(clientId: string, viewer?: NotificationViewer) {
     const missions = await this.missionRepo.find({
       where: {
         client: { id: clientId },
@@ -410,10 +408,10 @@ export class MissionsService {
         createdAt: 'DESC',
       },
     });
-    return missions.map((mission) => toMission(mission));
+    return missions.map((mission) => toMission(mission, viewer));
   }
 
-  async findByLivreurId(livreurId: string, options?: { activeOnly?: boolean }) {
+  async findByLivreurId(livreurId: string, options?: { activeOnly?: boolean; viewer?: NotificationViewer }) {
     const where: Record<string, unknown> = {
       livreur: { id: livreurId },
     };
@@ -441,10 +439,10 @@ export class MissionsService {
       },
     });
 
-    return missions.map((mission) => toMission(mission));
+    return missions.map((mission) => toMission(mission, options?.viewer));
   }
 
-  async findMissions(options?: { statut?: string }) {
+  async findMissions(options?: { statut?: string; viewer?: NotificationViewer }) {
     const where: Record<string, unknown> = {};
 
     if (typeof options?.statut === 'string' && options.statut.trim()) {
@@ -465,7 +463,7 @@ export class MissionsService {
       },
     });
 
-    return missions.map((mission) => toMission(mission));
+    return missions.map((mission) => toMission(mission, options?.viewer));
   }
 
   /* async acceptMission(missionId: string, livreurId: string) {
@@ -489,20 +487,23 @@ export class MissionsService {
     livreur.statutDisponibilite = StatutDisponibilite.OCCUPE;
     await this.usersService.save(livreur);
 
-    await this.notificationsService.create({
-      utilisateur: mission.client as any,
+    const acceptedNotifications = await this.notificationsService.create({
+      cibleUserId: mission.client?.id,
       titre: 'Mission acceptée',
       corps: 'Votre mission a été acceptée',
       type: TypeNotification.MISSION_ACCEPTEE,
       mission: saved,
       donnees: { missionId: saved.id, livreurId: livreur.id },
     } as any);
-    this.notificationsGateway.broadcastNotification(mission.client?.id, {
-      type: 'MISSION_ACCEPTEE',
-      missionId: saved.id,
-    });
+    for (const notification of acceptedNotifications) {
+      if (!notification.userId) continue;
+      this.notificationsGateway.broadcastNotification(notification.userId, {
+        type: 'MISSION_ACCEPTEE',
+        missionId: saved.id,
+      });
+    }
 
-    return toMission(saved);
+    return toMission(saved, { userId: mission.client?.id, role: mission.client?.role });
   } */
 
   async acceptMission(missionId: string, livreurId: string) {
@@ -553,7 +554,7 @@ export class MissionsService {
     return toMission(saved);
   }
 
-  async updateStatus(missionId: string, statut: string, reason?: string) {
+  async updateStatus(missionId: string, statut: string, reason?: string, viewer?: NotificationViewer) {
     const mission = await this.findEntityById(missionId);
     const normalizedStatut = this.normalizeStatus(statut);
     mission.statut = normalizedStatut;
@@ -598,8 +599,8 @@ export class MissionsService {
             : normalizedStatut === StatutMission.TERMINEE || normalizedStatut === StatutMission.LIVREE
               ? TypeNotification.MISSION_TERMINEE
               : TypeNotification.STATUT_CHANGE;
-      await this.notificationsService.create({
-        utilisateur: mission.client as any,
+      const statusNotifications = await this.notificationsService.create({
+        cibleUserId: mission.client.id,
         titre:
           notificationType === TypeNotification.MISSION_ANNULEE
             ? 'Mission annulée'
@@ -613,14 +614,17 @@ export class MissionsService {
         mission: saved,
         donnees: { missionId: saved.id, statut: normalizedStatut },
       } as any);
-      this.notificationsGateway.broadcastNotification(mission.client.id, {
-        type: notificationType,
-        missionId: saved.id,
-        statut: normalizedStatut,
-      });
+      for (const notification of statusNotifications) {
+        if (!notification.userId) continue;
+        this.notificationsGateway.broadcastNotification(notification.userId, {
+          type: notificationType,
+          missionId: saved.id,
+          statut: normalizedStatut,
+        });
+      }
     }
 
-    return toMission(saved);
+    return toMission(saved, viewer);
   }
 
   async findCompatibleLivreurs(missionId: string) {
@@ -658,3 +662,5 @@ export class MissionsService {
     return normalized;
   }
 }
+
+

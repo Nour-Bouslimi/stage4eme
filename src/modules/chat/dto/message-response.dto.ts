@@ -5,6 +5,10 @@ export class MessageResponseDto {
   destinataireId?: string;
   contenu?: string;
   urlMedia?: string;
+  mediaUrl?: string;
+  imageUrl?: string;
+  hasMedia?: boolean;
+  isImage?: boolean;
   dateEnvoi?: string;
   lu?: boolean;
   type?: string;

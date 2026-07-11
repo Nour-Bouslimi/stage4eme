@@ -1,6 +1,12 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
-import { Controller, Post, UseInterceptors, UploadedFile, BadRequestException } from '@nestjs/common';
+import {
+  Controller,
+  Post,
+  UseInterceptors,
+  UploadedFile,
+  BadRequestException,
+} from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import * as multer from 'multer';
 import { CloudinaryService } from './cloudinary.service';
@@ -11,12 +17,22 @@ export class CloudinaryController {
 
   @Post('test-upload')
   @UseInterceptors(FileInterceptor('file', { storage: multer.memoryStorage() }))
-  async testUpload(@UploadedFile() file: any) {
-    if (!file) throw new BadRequestException('No file provided');
-    const result = await this.cloudinaryService.uploadBuffer(file.buffer, file.originalname);
+  async testUpload(@UploadedFile() file: Express.Multer.File) {
+    if (!file?.buffer) throw new BadRequestException('No file provided');
+
+    const safeName = (file.originalname ?? 'upload').replace(/\s+/g, '-');
+    const result = await this.cloudinaryService.uploadBuffer(Buffer.from(file.buffer), {
+      folder: 'stage4eme/tests',
+      publicId: `test-${Date.now()}-${safeName}`,
+    });
+
     return {
       ok: true,
-      url: result.secure_url,
+      uploadedToCloudinary: Boolean(result?.secure_url),
+      cloudinaryUrl: result?.secure_url ?? null,
+      readyToSaveInDatabase: Boolean(result?.secure_url),
+      message:
+        'Le fichier a été envoyé à Cloudinary. Vous pouvez maintenant sauvegarder cette URL dans votre base de données.',
       raw: result,
     };
   }

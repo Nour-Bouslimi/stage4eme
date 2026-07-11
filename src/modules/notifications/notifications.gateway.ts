@@ -24,6 +24,7 @@ export class NotificationsGateway {
       MISSION_TERMINEE: 'mission_terminee',
       NOUVEAU_MESSAGE: 'nouveau_message',
       LIVREUR_ARRIVE: 'livreur_arrive',
+      NOUVELLE_EVALUATION: 'nouvelle_evaluation',
     };
     const eventName = payload?.type ? eventMap[payload.type] : undefined;
     if (eventName) {

@@ -1,4 +1,4 @@
-import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, CreateDateColumn } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, CreateDateColumn, JoinColumn } from 'typeorm';
 import { Utilisateur } from './user.entity';
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-call
@@ -8,7 +8,10 @@ export class DisponibiliteLivreur {
   id: string;
 
   @Column({ nullable: true })
-  day: string;
+  fromDay: string;
+
+  @Column({ nullable: true })
+  toDay: string;
 
   @Column({ default: true })
   active: boolean;
@@ -19,24 +22,13 @@ export class DisponibiliteLivreur {
   @Column({ nullable: true })
   endTime: string;
 
-  @Column({ type: 'timestamptz', nullable: true })
-  heureDebut: Date;
-
-  @Column({ type: 'timestamptz', nullable: true })
-  heureFin: Date;
-
-  @Column({ default: false })
-  estRecurrent: boolean;
-
-  @Column({ nullable: true })
-  regleRecurrence: string;
-
-  @Column({ nullable: true })
-  raison: string;
-
   @CreateDateColumn()
   createdAt: Date;
 
-  @ManyToOne(() => Utilisateur, (u) => u.disponibilites, { onDelete: 'CASCADE' })
+  @Column('uuid', { name: 'livreurId', nullable: true })
+  livreurId: string;
+
+  @ManyToOne(() => Utilisateur, (u) => u.disponibilites, { onDelete: 'CASCADE', nullable: true })
+  @JoinColumn({ name: 'livreurId' })
   livreur: Utilisateur;
 }

@@ -1,7 +1,23 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable prettier/prettier */
-import { Body, Controller, Delete, Get, Param, Patch, Post, Req, UploadedFile, UploadedFiles, UseGuards, UseInterceptors } from '@nestjs/common';
-import { FileFieldsInterceptor, FileInterceptor } from '@nestjs/platform-express';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Param,
+  Patch,
+  Post,
+  Req,
+  UploadedFile,
+  UploadedFiles,
+  UseGuards,
+  UseInterceptors,
+} from '@nestjs/common';
+import {
+  FileFieldsInterceptor,
+  FileInterceptor,
+} from '@nestjs/platform-express';
 import * as multer from 'multer';
 import { CloudinaryService } from '../cloudinary/cloudinary.service';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
@@ -16,12 +32,18 @@ import { toPublicUser } from '../../common/utils/api-mappers';
 
 @Controller('users')
 export class UsersController {
-  constructor(private usersService: UsersService, private cloudinaryService: CloudinaryService) {}
+  constructor(
+    private usersService: UsersService,
+    private cloudinaryService: CloudinaryService,
+  ) {}
 
   private async uploadFirstFile(files?: Express.Multer.File[]) {
     const file = files?.[0];
     if (!file) return undefined;
-    const result = await this.cloudinaryService.uploadBuffer(file.buffer, file.originalname);
+    const result = await this.cloudinaryService.uploadBuffer(file.buffer, {
+      folder: 'stage4eme',
+      publicId: file.originalname,
+    });
     return result.secure_url;
   }
 
@@ -43,11 +65,16 @@ export class UsersController {
     ),
   )
   async createLivreur(
-    @UploadedFiles() files: { photoCin?: Express.Multer.File[]; photoVehicule?: Express.Multer.File[] },
+    @UploadedFiles()
+    files: {
+      photoCin?: Express.Multer.File[];
+      photoVehicule?: Express.Multer.File[];
+    },
     @Body() dto: CreateLivreurDto,
   ) {
     dto.photoCin = (await this.uploadFirstFile(files.photoCin)) ?? dto.photoCin;
-    dto.photoVehicule = (await this.uploadFirstFile(files.photoVehicule)) ?? dto.photoVehicule;
+    dto.photoVehicule =
+      (await this.uploadFirstFile(files.photoVehicule)) ?? dto.photoVehicule;
 
     const result = await this.usersService.createLivreur(dto);
     return {
@@ -79,10 +106,18 @@ export class UsersController {
   async updateProfile(
     @Req() req: any,
     @Body() dto: UpdateUserDto,
-    @UploadedFiles() files: { photoCin?: Express.Multer.File[]; photoVehicule?: Express.Multer.File[]; photo?: Express.Multer.File[]; avatar?: Express.Multer.File[] },
+    @UploadedFiles()
+    files: {
+      photoCin?: Express.Multer.File[];
+      photoVehicule?: Express.Multer.File[];
+      photo?: Express.Multer.File[];
+      avatar?: Express.Multer.File[];
+    },
   ) {
-    dto.photoCin = (await this.uploadFirstFile(files?.photoCin)) ?? dto.photoCin;
-    dto.photoVehicule = (await this.uploadFirstFile(files?.photoVehicule)) ?? dto.photoVehicule;
+    dto.photoCin =
+      (await this.uploadFirstFile(files?.photoCin)) ?? dto.photoCin;
+    dto.photoVehicule =
+      (await this.uploadFirstFile(files?.photoVehicule)) ?? dto.photoVehicule;
     dto.photo = (await this.uploadFirstFile(files?.photo)) ?? dto.photo;
     dto.photo = (await this.uploadFirstFile(files?.avatar)) ?? dto.photo;
 
@@ -93,7 +128,12 @@ export class UsersController {
   @UseGuards(JwtAuthGuard)
   @Patch('location')
   async updateLocation(@Req() req: any, @Body() dto: UpdateLocationDto) {
-    const user = await this.usersService.updateLocation(req.user.id, dto.latitude, dto.longitude, dto.estEnLigne);
+    const user = await this.usersService.updateLocation(
+      req.user.id,
+      dto.latitude,
+      dto.longitude,
+      dto.estEnLigne,
+    );
     return toPublicUser(user);
   }
 
@@ -116,7 +156,10 @@ export class UsersController {
   @UseInterceptors(FileInterceptor('file', { storage: multer.memoryStorage() }))
   async uploadAvatar(@Req() req: any, @UploadedFile() file: any) {
     if (!file) return { error: 'No file provided' };
-    const result = await this.cloudinaryService.uploadBuffer(file.buffer, file.originalname);
+    const result = await this.cloudinaryService.uploadBuffer(file.buffer, {
+      folder: 'stage4eme/avatars',
+      publicId: file.originalname,
+    });
     await this.usersService.updatePhoto(req.user.id, result.secure_url);
     return { url: result.secure_url };
   }

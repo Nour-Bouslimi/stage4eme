@@ -26,6 +26,9 @@ export class Message {
   @Column({ nullable: true })
   urlMedia: string;
 
+  @Column({ nullable: true })
+  clientMessageId: string;
+
   @Column({ type: 'timestamp', default: () => 'NOW()' })
   envoyeLe: Date;
 

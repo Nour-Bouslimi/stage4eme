@@ -16,7 +16,11 @@ import { TypeVehicule } from '../../../common/enums/type-vehicule.enum';
 class AvailabilityInputDto {
   @IsOptional()
   @IsString()
-  day?: string;
+  fromDay?: string;
+
+  @IsOptional()
+  @IsString()
+  toDay?: string;
 
   @IsOptional()
   @IsBoolean()

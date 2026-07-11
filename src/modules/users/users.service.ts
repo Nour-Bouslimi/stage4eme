@@ -12,14 +12,14 @@ import { CreateLivreurDto } from './dto/create-livreur.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { DisponibiliteLivreur } from './entities/disponibilite-livreur.entity';
 import { Utilisateur } from './entities/user.entity';
+import { isUserAvailableNow } from '../../common/utils/api-mappers';
 
 type AvailabilityInput = {
-  day?: string;
+  fromDay?: string;
+  toDay?: string;
   active?: boolean;
   startTime?: string;
   endTime?: string;
-  heureDebut?: string;
-  heureFin?: string;
 };
 
 @Injectable()
@@ -49,7 +49,8 @@ export class UsersService {
 
   private normalizeAvailability(input: AvailabilityInput) {
     return {
-      day: input.day ?? undefined,
+      fromDay: input.fromDay ?? undefined,
+      toDay: input.toDay ?? undefined,
       active: typeof input.active === 'boolean' ? input.active : true,
       startTime: input.startTime ?? undefined,
       endTime: input.endTime ?? undefined,
@@ -197,28 +198,27 @@ export class UsersService {
       role: RoleUtilisateur.LIVREUR,
       estActif: true,
       statutDisponibilite: StatutDisponibilite.DISPONIBLE,
+      estEnLigne: true,
     };
 
-    const [count, users] = await Promise.all([
-      this.usersRepository.count({
-        where,
-      }),
-      this.usersRepository.find({
-        where,
-        order: { updatedAt: 'DESC' },
-        relations: { disponibilites: true } as any,
-      }),
-    ]);
+    const users = await this.usersRepository.find({
+      where,
+      order: { updatedAt: 'DESC' },
+      relations: { disponibilites: true } as any,
+    });
+
+    const availableUsers = users.filter(isUserAvailableNow);
 
     this.logger.log(
-      `[GET /users/livreurs-disponibles] matched=${count} returned=${users.length} criteria=${JSON.stringify({
+      `[GET /users/livreurs-disponibles] matched=${availableUsers.length} returned=${availableUsers.length} criteria=${JSON.stringify({
         role: where.role,
         estActif: where.estActif,
         statutDisponibilite: where.statutDisponibilite,
+        estEnLigne: where.estEnLigne,
       })}`,
     );
 
-    return users;
+    return availableUsers;
   }
 
   async findLivreurById(id: string) {
@@ -265,15 +265,30 @@ export class UsersService {
       } as DeepPartial<Utilisateur>);
 
       const savedUser = await usersRepo.save(user);
+      this.logger.log(`createLivreur: savedUser.id=${savedUser.id}`);
 
       if (dto.disponibilites?.length) {
-        const slots = dto.disponibilites.map(
-          (slot): DeepPartial<DisponibiliteLivreur> => ({
-            ...this.normalizeAvailability(slot),
-            livreur: { id: savedUser.id } as DeepPartial<Utilisateur>,
-          }),
-        );
-        await disponibiliteRepo.save(slots);
+        for (const slot of dto.disponibilites) {
+          const normalized = this.normalizeAvailability(slot);
+          const inserted = await manager.query(
+            `
+              INSERT INTO disponibilites_livreur
+                ("fromDay", "toDay", active, "startTime", "endTime", "livreurId")
+              VALUES
+                ($1, $2, $3, $4, $5, $6)
+              RETURNING *
+            `,
+            [
+              normalized.fromDay ?? null,
+              normalized.toDay ?? null,
+              normalized.active ?? true,
+              normalized.startTime ?? null,
+              normalized.endTime ?? null,
+              savedUser.id,
+            ],
+          );
+          this.logger.log(`createLivreur inserted dispo=${JSON.stringify(inserted?.[0] ?? inserted)}`);
+        }
       }
 
       return usersRepo.findOne({
@@ -317,6 +332,7 @@ export class UsersService {
   async updateProfile(id: string, dto: UpdateUserDto) {
     const user = await this.findById(id);
     if (!user) throw new NotFoundException('Utilisateur non trouve');
+    const disponibilites = dto.disponibilites as AvailabilityInput[] | undefined;
 
     if (typeof dto.motDePasse === 'string' && dto.motDePasse.trim()) {
       user.motDePasseHash = await bcrypt.hash(dto.motDePasse, 10);
@@ -348,31 +364,58 @@ export class UsersService {
     if (typeof dto.derniereActivite === 'string') user.derniereActivite = new Date(dto.derniereActivite);
     if (typeof dto.derniereMiseAJourPosition === 'string') user.derniereMiseAJourPosition = new Date(dto.derniereMiseAJourPosition);
 
-    if (dto.disponibilites) {
-      await this.setDisponibilites(id, dto.disponibilites as AvailabilityInput[]);
+    const userToSave = { ...user } as DeepPartial<Utilisateur>;
+    delete (userToSave as any).disponibilites;
+
+    const savedUser = await this.usersRepository.save(userToSave);
+
+    if (disponibilites) {
+      await this.setDisponibilites(savedUser.id, disponibilites);
     }
 
-    return this.usersRepository.save(user);
+    return this.findById(savedUser.id);
   }
 
   async setDisponibilites(userId: string, disponibilites: AvailabilityInput[]) {
-    const user = await this.findById(userId);
-    if (!user) throw new NotFoundException('Utilisateur non trouve');
+    this.logger.log(`setDisponibilites CALLED: userId=${userId}`);
 
-    await this.disponibiliteRepository
-      .createQueryBuilder()
-      .delete()
-      .where('livreurId = :userId', { userId })
-      .execute();
-    const slots = disponibilites.map((slot) =>
-      this.disponibiliteRepository.create({
-        ...(this.normalizeAvailability(slot) as any),
-        livreur: { id: userId } as any,
-      } as any),
+    await this.disponibiliteRepository.manager.query(
+      `
+        DELETE FROM disponibilites_livreur
+        WHERE "livreurId" = $1
+      `,
+      [userId],
     );
-    return this.disponibiliteRepository.save(slots as unknown as DisponibiliteLivreur[]);
-  }
 
+    const saved: any[] = [];
+    for (const slot of disponibilites) {
+      const normalized = this.normalizeAvailability(slot);
+      const result = await this.disponibiliteRepository.manager.query(
+        `
+          INSERT INTO disponibilites_livreur
+            ("fromDay", "toDay", active, "startTime", "endTime", "livreurId")
+          VALUES
+            ($1, $2, $3, $4, $5, $6)
+          RETURNING *
+        `,
+        [
+          normalized.fromDay ?? null,
+          normalized.toDay ?? null,
+          normalized.active ?? true,
+          normalized.startTime ?? null,
+          normalized.endTime ?? null,
+          userId,
+        ],
+      );
+      saved.push(result?.[0] ?? result);
+    }
+
+    this.logger.log(`Saved: ${JSON.stringify(saved)}`);
+    if (saved.some((row) => !row?.livreurId)) {
+      this.logger.error(`setDisponibilites returned rows with null livreurId for userId=${userId}`);
+    }
+    return saved;
+  }
   async deactivateUser(id: string) {
     const user = await this.findById(id);
     if (!user) throw new NotFoundException('Utilisateur non trouve');

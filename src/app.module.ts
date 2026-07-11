@@ -8,6 +8,7 @@ import { NotificationsModule } from './modules/notifications/notifications.modul
 import { RatingsModule } from './modules/ratings/ratings.module';
 import { GeolocationModule } from './modules/geolocation/geolocation.module';
 import { ConfigModule } from '@nestjs/config';
+import { CloudinaryModule } from './modules/cloudinary/cloudinary.module';
 
 @Module({
   imports: [
@@ -22,6 +23,7 @@ import { ConfigModule } from '@nestjs/config';
       entities: [__dirname + '/**/*.entity{.ts,.js}'],
       synchronize: true,
     }),
+    CloudinaryModule,
     AuthModule,
     UsersModule,
     MissionsModule,

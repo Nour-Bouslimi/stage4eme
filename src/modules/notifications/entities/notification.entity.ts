@@ -1,5 +1,6 @@
 import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, ManyToOne } from 'typeorm';
 import { TypeNotification } from '../../../common/enums/type-notification.enum';
+import { RoleUtilisateur } from '../../../common/enums/role-utilisateur.enum';
 import { Utilisateur } from '../../users/entities/user.entity';
 import { Mission } from '../../missions/entities/mission.entity';
 
@@ -22,6 +23,15 @@ export class Notification {
 
   @Column({ type: 'jsonb', nullable: true })
   donnees: any;
+
+  @Column({ type: 'varchar', nullable: true })
+  cibleType: 'ROLE' | 'USER' | null;
+
+  @Column({ type: 'enum', enum: RoleUtilisateur, nullable: true })
+  cibleRole: RoleUtilisateur | null;
+
+  @Column({ type: 'uuid', nullable: true })
+  cibleUtilisateurId: string | null;
 
   @Column({ type: 'timestamptz', default: () => 'NOW()' })
   envoyeeLe: Date;

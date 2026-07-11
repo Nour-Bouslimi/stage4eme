@@ -4,6 +4,7 @@ import { Repository } from 'typeorm';
 import { Utilisateur } from '../users/entities/user.entity';
 import { InjectRepository } from '@nestjs/typeorm';
 import { TypeVehicule } from '../../common/enums/type-vehicule.enum';
+import { isUserAvailableNow } from '../../common/utils/api-mappers';
 
 @Injectable()
 export class MatchingService {
@@ -32,7 +33,7 @@ export class MatchingService {
   }) {
     const all = await this.usersRepo.find({ where: { estEnLigne: true } });
     const candidates = all.filter((u) => {
-      if (u.statutDisponibilite !== 'DISPONIBLE') return false;
+      if (!isUserAvailableNow(u)) return false;
       if (options.typeVehiculeRequis && u.typeVehicule && u.typeVehicule !== options.typeVehiculeRequis) return false;
       if (options.poidsEstime && u.poidsMaxKg && Number(u.poidsMaxKg) < options.poidsEstime) return false;
       if (options.volumeEstime && u.volumeMaxM3 && Number(u.volumeMaxM3) < options.volumeEstime) return false;
