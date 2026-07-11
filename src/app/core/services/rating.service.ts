@@ -28,6 +28,21 @@ export interface RatingResponse {
   client?: unknown;
 }
 
+export interface RatingSummaryResponse {
+  average?: number;
+  noteMoyenne?: number;
+  note?: number;
+  totalCount?: number;
+  count?: number;
+  totalNotes?: number;
+  reviews?: RatingResponse[];
+  ratings?: RatingResponse[];
+}
+
+export interface RatingCountResponse {
+  count: number;
+}
+
 @Injectable({
   providedIn: 'root'
 })
@@ -46,5 +61,13 @@ export class RatingService {
 
   deleteRating(ratingId: string): Observable<void> {
     return this.http.delete<void>(`${this.apiUrl}/ratings/${ratingId}`);
+  }
+
+  getRatingSummary(livreurId: string): Observable<RatingSummaryResponse> {
+    return this.http.get<RatingSummaryResponse>(`${this.apiUrl}/ratings/${livreurId}/summary`);
+  }
+
+  getTotalRatingsCount(livreurId: string): Observable<RatingCountResponse> {
+    return this.http.get<RatingCountResponse>(`${this.apiUrl}/ratings/${livreurId}/count`);
   }
 }

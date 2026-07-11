@@ -17,6 +17,7 @@ import { LivreurMissionsComponent } from './missions/livreur-missions.component'
 import { ActiveMissionComponent } from './active-mission/active-mission.component';
 import { LivreurChatComponent } from './chat/livreur-chat.component';
 import { LivreurProfilComponent } from './profil/livreur-profil.component';
+import { RatingsComponent } from './ratings/ratings.component';
 
 const routes: Routes = [
   {
@@ -26,8 +27,10 @@ const routes: Routes = [
       { path: 'dashboard', component: LivreurDashboardComponent },
       { path: 'missions', component: LivreurMissionsComponent },
       { path: 'active/:missionId', component: ActiveMissionComponent },
+      { path: 'chat', component: LivreurChatComponent },
       { path: 'chat/:missionId', component: LivreurChatComponent },
       { path: 'profil', component: LivreurProfilComponent },
+      { path: 'ratings', component: RatingsComponent },
       { path: '', redirectTo: 'dashboard', pathMatch: 'full' }
     ]
   }
@@ -40,7 +43,8 @@ const routes: Routes = [
     LivreurMissionsComponent,
     ActiveMissionComponent,
     LivreurChatComponent,
-    LivreurProfilComponent
+    LivreurProfilComponent,
+    RatingsComponent
   ],
   imports: [
     CommonModule,

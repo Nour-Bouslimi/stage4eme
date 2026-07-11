@@ -46,9 +46,11 @@ export class UserService {
   }
 
   updateProfile(data: Partial<User> | FormData): Observable<User> {
-    return this.http.patch<User>(`${this.apiUrl}/users/me`, data).pipe(
-      map(user => normalizeUser(user))
-    );
+    return this.patchMe(data);
+  }
+
+  updateAvailability(data: Partial<User>): Observable<User> {
+    return this.patchMe(data);
   }
 
   updateDisponibilite(disponible: boolean): Observable<User> {
@@ -178,6 +180,12 @@ export class UserService {
 
     return Object.fromEntries(
       Object.entries(body).filter(([, value]) => value !== undefined && value !== null && value !== '')
+    );
+  }
+
+  private patchMe(data: Partial<User> | FormData): Observable<User> {
+    return this.http.patch<User>(`${this.apiUrl}/users/me`, data).pipe(
+      map(user => normalizeUser(user))
     );
   }
 

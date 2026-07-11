@@ -165,6 +165,8 @@
 .chat-main {
   display: flex;
   flex-direction: column;
+  flex: 1;
+  min-height: 0;
   background: var(--background);
 }
 
@@ -230,11 +232,31 @@
 
 .chat-messages {
   flex: 1;
+  min-height: 0;
   overflow-y: auto;
   padding: 24px;
   display: flex;
   flex-direction: column;
   gap: 16px;
+}
+
+.chat-messages::-webkit-scrollbar {
+  width: 10px;
+}
+
+.chat-messages::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.05);
+  border-radius: 999px;
+}
+
+.chat-messages::-webkit-scrollbar-thumb {
+  background: rgba(255, 107, 44, 0.4);
+  border-radius: 999px;
+}
+
+.chat-messages {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 107, 44, 0.4) rgba(0, 0, 0, 0.05);
 }
 
 .message {
@@ -271,6 +293,21 @@
 
 .message.pending .message-text {
   opacity: 0.75;
+}
+
+.message-media {
+  max-width: 280px;
+  border-radius: 14px;
+  overflow: hidden;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  background: #fff;
+}
+
+.message-media img {
+  display: block;
+  width: 100%;
+  height: auto;
+  object-fit: cover;
 }
 
 .message-text {
@@ -405,6 +442,17 @@
   background: var(--secondary);
   color: white;
   border-bottom-right-radius: 4px;
+}
+
+.message.my-message.read .message-text {
+  background: rgba(255, 107, 44, 0.14);
+  color: var(--text-1);
+  border: 1px solid rgba(255, 107, 44, 0.25);
+}
+
+.message.my-message.read .message-time,
+.message.my-message.read .message-status {
+  color: var(--secondary);
 }
 
 .message-time {

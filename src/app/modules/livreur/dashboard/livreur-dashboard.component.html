@@ -12,6 +12,14 @@
     </div>
   </div>
 
+  <!-- Notes Section (simple) -->
+  <div class="rating-badge" *ngIf="averageRating > 0 || totalRatings > 0">
+    <div class="stars-small">
+      <span *ngFor="let star of getRatingStars()" class="star-small" [class.filled]="isRatingFilled(star)" [class.half]="isRatingHalf(star)">★</span>
+    </div>
+    <span class="rating-text">{{ averageRating.toFixed(1) }} ({{ totalRatings }} avis)</span>
+  </div>
+
   <div class="stats-grid">
     <div class="stat-card">
       <div class="stat-icon today">
@@ -66,7 +74,7 @@
 
       <div class="active-mission-card">
         <div class="mission-header">
-          <span class="status-badge active">{{ getActiveMissionStatusLabel() }}</span>
+          <span class="status-badge active">{{ getStatusLabel(activeMission.statut) }}</span>
         </div>
 
         <div class="mission-route">
@@ -107,7 +115,7 @@
     <div class="recent-missions-section">
       <div class="section-header">
         <h2 class="section-title">Missions récentes</h2>
-        <a class="view-all-link">Voir tout</a>
+        <a class="view-all-link" (click)="navigateToMissions()">Voir tout</a>
       </div>
 
       <div class="missions-list">
@@ -127,6 +135,33 @@
         <div class="empty-state" *ngIf="missions.length === 0">
           <mat-icon class="empty-icon">inbox</mat-icon>
           <p>Aucune mission récente</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="recent-ratings-section">
+      <div class="section-header">
+        <h2 class="section-title">Avis récents</h2>
+        <a class="view-all-link" (click)="navigateToAllRatings()">Voir tout</a>
+      </div>
+
+      <div class="ratings-list">
+        <div class="rating-item" *ngFor="let rating of recentRatings">
+          <div class="rating-stars">
+            <span *ngFor="let star of getRatingStarsForReview(rating.etoiles)" class="star" [class.filled]="isReviewRatingFilled(rating.etoiles, star)" [class.half]="isReviewRatingHalf(rating.etoiles, star)">★</span>
+          </div>
+          <div class="rating-content">
+            <p class="rating-comment">{{ rating.commentaire || 'Pas de commentaire' }}</p>
+            <p class="rating-tags" *ngIf="rating.tags && rating.tags.length > 0">
+              <span *ngFor="let tag of rating.tags" class="tag">{{ tag }}</span>
+            </p>
+          </div>
+          <p class="rating-score">{{ rating.etoiles }}/5</p>
+        </div>
+
+        <div class="empty-state" *ngIf="recentRatings.length === 0">
+          <mat-icon class="empty-icon">rate_review</mat-icon>
+          <p>Aucun avis pour le moment</p>
         </div>
       </div>
     </div>

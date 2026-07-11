@@ -1,0 +1,74 @@
+<div class="ratings-container">
+  <div class="ratings-header">
+    <button class="back-btn" (click)="goBack()">
+      <mat-icon>arrow_back</mat-icon>
+      Retour
+    </button>
+    <h1 class="ratings-title">Tous les avis</h1>
+  </div>
+
+  <div class="ratings-content" *ngIf="!loading">
+    <!-- Stats Section -->
+    <div class="ratings-stats">
+      <div class="stats-summary">
+        <div class="summary-item">
+          <div class="average-rating">
+            <div class="rating-value">{{ averageRating.toFixed(1) }}</div>
+            <div class="rating-stars">
+              <span *ngFor="let star of getRatingStars()" class="star" [class.filled]="isRatingFilled(star)" [class.half]="isRatingHalf(star)">★</span>
+            </div>
+          </div>
+          <p class="total-reviews">{{ totalRatings }} avis</p>
+        </div>
+      </div>
+
+      <!-- Distribution -->
+      <div class="distribution">
+        <div class="distribution-item" *ngFor="let starCount of [5, 4, 3, 2, 1]">
+          <span class="distribution-stars">
+            <span *ngFor="let star of [1, 2, 3, 4, 5]" class="star-small" [class.filled]="star <= starCount">★</span>
+          </span>
+          <div class="distribution-bar">
+            <div class="distribution-progress" [style.width.%]="getDistributionPercentage(starCount)"></div>
+          </div>
+          <span class="distribution-count">{{ getDistributionCount(starCount) }}</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Reviews List -->
+    <div class="reviews-list">
+      <div class="reviews-header">
+        <h2>Avis détaillés</h2>
+        <p class="reviews-count">{{ totalRatings }} avis au total</p>
+      </div>
+
+      <div class="review-item" *ngFor="let rating of ratings">
+        <div class="review-header">
+          <div class="review-stars">
+            <span *ngFor="let star of getRatingStarsForReview(rating.etoiles)" class="star" [class.filled]="isReviewRatingFilled(rating.etoiles, star)" [class.half]="isReviewRatingHalf(rating.etoiles, star)">★</span>
+          </div>
+          <span class="review-score">{{ rating.etoiles }}/5</span>
+        </div>
+
+        <div class="review-content">
+          <p class="review-comment">{{ rating.commentaire || 'Pas de commentaire' }}</p>
+          <div class="review-tags" *ngIf="rating.tags && rating.tags.length > 0">
+            <span *ngFor="let tag of rating.tags" class="tag">{{ tag }}</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="empty-state" *ngIf="ratings.length === 0">
+        <mat-icon class="empty-icon">rate_review</mat-icon>
+        <p>Aucun avis pour le moment</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Loading State -->
+  <div class="loading-state" *ngIf="loading">
+    <mat-icon class="loading-spinner">sync</mat-icon>
+    <p>Chargement des avis...</p>
+  </div>
+</div>

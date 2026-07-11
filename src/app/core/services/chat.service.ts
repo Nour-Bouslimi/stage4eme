@@ -20,6 +20,10 @@ export class ChatService {
     return this.http.post<Message>(`${this.apiUrl}/chat`, data);
   }
 
+  uploadImage(formData: FormData): Observable<Message> {
+    return this.http.post<Message>(`${this.apiUrl}/chat/upload-image`, formData);
+  }
+
   updateMessage(messageId: string, contenu: string): Observable<Message> {
     return this.http.patch<Message>(`${this.apiUrl}/chat/${messageId}`, { contenu });
   }

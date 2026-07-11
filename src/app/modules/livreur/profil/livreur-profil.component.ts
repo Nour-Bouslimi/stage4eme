@@ -1,9 +1,11 @@
 import { Component, OnInit } from '@angular/core';
 import { HttpErrorResponse } from '@angular/common/http';
 import { FormBuilder, FormGroup, Validators } from '@angular/forms';
+import { Router } from '@angular/router';
 import { AuthService } from '../../../core/services/auth.service';
 import { UserService } from '../../../core/services/user.service';
-import { User, VehicleType } from '../../../core/models/user.model';
+import { RatingService, RatingResponse, RatingSummaryResponse } from '../../../core/services/rating.service';
+import { normalizeUser, User, VehicleType } from '../../../core/models/user.model';
 import { ToastService } from '../../../shared/components/toast/toast.service';
 
 interface AvailabilityDay {
@@ -17,6 +19,8 @@ interface AvailabilityItem {
   active: boolean;
   startTime?: string;
   endTime?: string;
+  fromDay?: string;
+  toDay?: string;
 }
 
 @Component({
@@ -36,6 +40,10 @@ export class LivreurProfilComponent implements OnInit {
   cinPreview = 'assets/default-avatar.svg';
   vehiclePreview = 'assets/default-vehicle.svg';
   availabilityPreview = '';
+  recentRatings: RatingResponse[] = [];
+  totalRatings = 0;
+  averageRating = 0;
+  loadingRatings = false;
 
   private avatarFile: File | null = null;
   private cinFile: File | null = null;
@@ -66,7 +74,9 @@ export class LivreurProfilComponent implements OnInit {
     private fb: FormBuilder,
     private userService: UserService,
     private authService: AuthService,
-    private toastService: ToastService
+    private toastService: ToastService,
+    private ratingService: RatingService,
+    private router: Router
   ) {}
 
   ngOnInit(): void {
@@ -105,6 +115,7 @@ export class LivreurProfilComponent implements OnInit {
       this.loadAvailability(cachedUser);
       this.editingAvailability = false;
       this.loading = false;
+      this.loadRatings();
     }
 
     this.userService.getProfile().subscribe({
@@ -118,9 +129,39 @@ export class LivreurProfilComponent implements OnInit {
         this.loadAvailability(user);
         this.editingAvailability = false;
         this.loading = false;
+        this.loadRatings();
       },
       error: () => {
         this.loading = false;
+      }
+    });
+  }
+
+  private loadRatings(): void {
+    if (!this.user?.id) {
+      return;
+    }
+
+    this.loadingRatings = true;
+    this.ratingService.getRatingSummary(this.user.id).subscribe({
+      next: (summary: RatingSummaryResponse) => {
+        this.recentRatings = summary.reviews ?? summary.ratings ?? [];
+        this.averageRating = summary.average ?? summary.noteMoyenne ?? summary.note ?? (this.user?.noteMoyenne ?? this.user?.note ?? 0);
+        this.loadingRatings = false;
+      },
+      error: () => {
+        this.recentRatings = [];
+        this.averageRating = this.user?.noteMoyenne ?? this.user?.note ?? 0;
+        this.loadingRatings = false;
+      }
+    });
+
+    this.ratingService.getTotalRatingsCount(this.user.id).subscribe({
+      next: (countResponse) => {
+        this.totalRatings = countResponse.count;
+      },
+      error: () => {
+        this.totalRatings = this.user?.totalNotes || this.user?.nombreAvis || 0;
       }
     });
   }
@@ -145,19 +186,39 @@ export class LivreurProfilComponent implements OnInit {
 
   loadAvailability(user: User): void {
     const availability = this.normalizeAvailability(user.disponibilites);
+    this.availabilityDays.forEach((day) => {
+      day.active = false;
+    });
+
     if (availability.length > 0) {
-      this.availabilityDays.forEach((day) => {
-        const match = availability.find((item) => item.day.toLowerCase() === day.label.toLowerCase());
-        if (match) {
-          day.active = match.active;
+      availability.forEach((item) => {
+        const startKey = this.getAvailabilityDayKey(item.fromDay || item.day);
+        const endKey = this.getAvailabilityDayKey(item.toDay || item.day);
+        const startIndex = this.getAvailabilityDayIndex(startKey);
+        const endIndex = this.getAvailabilityDayIndex(endKey);
+
+        if (startIndex !== -1 && endIndex !== -1) {
+          const from = Math.min(startIndex, endIndex);
+          const to = Math.max(startIndex, endIndex);
+
+          for (let index = from; index <= to; index += 1) {
+            this.availabilityDays[index].active = item.active;
+          }
+          return;
         }
+
+        this.availabilityDays.forEach((day) => {
+          if (this.getAvailabilityDayKey(item.day) === this.getAvailabilityDayKey(day.label)) {
+            day.active = item.active;
+          }
+        });
       });
 
       const schedule = availability.find((item) => item.startTime || item.endTime);
       if (schedule) {
         this.profileForm.patchValue({
-          availabilityStart: schedule.startTime || '07:00',
-          availabilityEnd: schedule.endTime || '20:00'
+          availabilityStart: this.normalizeAvailabilityTime(schedule.startTime, '07:00'),
+          availabilityEnd: this.normalizeAvailabilityTime(schedule.endTime, '20:00')
         });
       }
     }
@@ -179,16 +240,162 @@ export class LivreurProfilComponent implements OnInit {
         if (item && typeof item === 'object') {
           const record = item as Record<string, unknown>;
           return {
-            day: String(record['day'] ?? record['label'] ?? record['jour'] ?? ''),
-            active: Boolean(record['active'] ?? record['enabled'] ?? record['value'] ?? false),
-            startTime: typeof record['startTime'] === 'string' ? record['startTime'] : undefined,
-            endTime: typeof record['endTime'] === 'string' ? record['endTime'] : undefined
+            day: String(record['day'] ?? record['label'] ?? record['jour'] ?? record['fromDay'] ?? record['from_day'] ?? ''),
+            fromDay: typeof record['fromDay'] === 'string'
+              ? record['fromDay']
+              : typeof record['from_day'] === 'string'
+                ? record['from_day']
+                : undefined,
+            toDay: typeof record['toDay'] === 'string'
+              ? record['toDay']
+              : typeof record['to_day'] === 'string'
+                ? record['to_day']
+                : undefined,
+            active: Boolean(record['active'] ?? record['actif'] ?? record['enabled'] ?? record['value'] ?? false),
+            startTime: typeof record['startTime'] === 'string'
+              ? record['startTime']
+              : typeof record['start_time'] === 'string'
+                ? record['start_time']
+                : undefined,
+            endTime: typeof record['endTime'] === 'string'
+              ? record['endTime']
+              : typeof record['end_time'] === 'string'
+                ? record['end_time']
+                : undefined
           } as AvailabilityItem;
         }
 
         return { day: '', active: false };
       })
       .filter((item) => item.day);
+  }
+
+  private getAvailabilityDayKey(value: string): string {
+    const normalized = value.trim().toLowerCase();
+    if (!normalized) {
+      return '';
+    }
+
+    const mapping: Record<string, string> = {
+      lundi: 'lun',
+      mardi: 'mar',
+      mercredi: 'mer',
+      jeudi: 'jeu',
+      vendredi: 'ven',
+      samedi: 'sam',
+      dimanche: 'dim',
+      monday: 'lun',
+      tuesday: 'mar',
+      wednesday: 'mer',
+      thursday: 'jeu',
+      friday: 'ven',
+      saturday: 'sam',
+      sunday: 'dim'
+    };
+
+    if (mapping[normalized]) {
+      return mapping[normalized];
+    }
+
+    const cleaned = normalized.replace(/[^a-z]/g, '');
+    return cleaned.slice(0, 3);
+  }
+
+  private getAvailabilityDayIndex(value: string): number {
+    if (!value) {
+      return -1;
+    }
+
+    return this.availabilityDays.findIndex((day) => this.getAvailabilityDayKey(day.label) === value);
+  }
+
+  private buildAvailabilityRanges(start: string, end: string): Array<Record<string, unknown>> {
+    const activeIndexes = this.availabilityDays
+      .map((day, index) => (day.active ? index : -1))
+      .filter((index) => index !== -1);
+
+    if (activeIndexes.length === 0) {
+      return [];
+    }
+
+    const ranges: Array<Record<string, unknown>> = [];
+    let rangeStart = activeIndexes[0];
+    let previous = activeIndexes[0];
+
+    for (let index = 1; index < activeIndexes.length; index += 1) {
+      const current = activeIndexes[index];
+
+      if (current !== previous + 1) {
+        ranges.push(this.createAvailabilityRange(rangeStart, previous, start, end));
+        rangeStart = current;
+      }
+
+      previous = current;
+    }
+
+    ranges.push(this.createAvailabilityRange(rangeStart, previous, start, end));
+    return ranges;
+  }
+
+  private createAvailabilityRange(startIndex: number, endIndex: number, start: string, end: string): Record<string, unknown> {
+    const fromDay = this.availabilityDays[startIndex]?.label ?? '';
+    const toDay = this.availabilityDays[endIndex]?.label ?? fromDay;
+
+    return {
+      day: fromDay,
+      fromDay,
+      toDay,
+      jour: fromDay,
+      active: true,
+      actif: true,
+      startTime: start,
+      endTime: end,
+      start_time: start,
+      end_time: end
+    };
+  }
+
+  private normalizeAvailabilityTime(value: unknown, fallback: string): string {
+    if (typeof value !== 'string') {
+      return fallback;
+    }
+
+    const trimmed = value.trim();
+    if (!trimmed) {
+      return fallback;
+    }
+
+    const ampmMatch = trimmed.match(/^(\d{1,2}):(\d{2})(?::\d{2})?\s*([AaPp][Mm])$/);
+    if (ampmMatch) {
+      let hours = Number(ampmMatch[1]);
+      const minutes = Number(ampmMatch[2]);
+      const period = ampmMatch[3].toUpperCase();
+
+      if (Number.isNaN(hours) || Number.isNaN(minutes) || minutes < 0 || minutes > 59) {
+        return fallback;
+      }
+
+      hours = hours % 12;
+      if (period === 'PM') {
+        hours += 12;
+      }
+
+      return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
+    }
+
+    const timeMatch = trimmed.match(/^(\d{1,2}):(\d{2})(?::\d{2})?$/);
+    if (timeMatch) {
+      const hours = Number(timeMatch[1]);
+      const minutes = Number(timeMatch[2]);
+
+      if (Number.isNaN(hours) || Number.isNaN(minutes) || hours < 0 || hours > 23 || minutes < 0 || minutes > 59) {
+        return fallback;
+      }
+
+      return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
+    }
+
+    return fallback;
   }
 
   toggleEdit(): void {
@@ -241,25 +448,57 @@ export class LivreurProfilComponent implements OnInit {
 
     this.saving = true;
 
+    const rawStart = this.profileForm.get('availabilityStart')?.value;
+    const rawEnd = this.profileForm.get('availabilityEnd')?.value;
+    const start = this.normalizeAvailabilityTime(rawStart, '07:00');
+    const end = this.normalizeAvailabilityTime(rawEnd, '20:00');
+    const selectedRanges = this.buildAvailabilityRanges(start, end);
+
     const payload: Partial<User> = {
-      disponibilites: this.availabilityDays.map((day) => ({
-        day: day.label,
-        active: day.active,
-        startTime: this.profileForm.get('availabilityStart')?.value || '07:00',
-        endTime: this.profileForm.get('availabilityEnd')?.value || '20:00'
-      })),
+      disponibilites: selectedRanges,
       disponible: this.availabilityDays.some((day) => day.active)
     };
 
-    this.userService.updateProfile(payload).subscribe({
+    // Debug logs to verify what is actually sent to the backend.
+    console.log('[LivreurProfil] saveAvailability raw values', {
+      rawStart,
+      rawEnd,
+      normalizedStart: start,
+      normalizedEnd: end
+    });
+    console.log('[LivreurProfil] saveAvailability selected days', this.availabilityDays.map((day) => ({
+      key: day.key,
+      label: day.label,
+      active: day.active
+    })));
+    console.log('[LivreurProfil] saveAvailability payload', payload);
+
+    if (start === '07:00' && rawStart && String(rawStart).trim() !== '07:00') {
+      console.warn('[LivreurProfil] availabilityStart fell back to default time', rawStart);
+    }
+
+    if (end === '20:00' && rawEnd && String(rawEnd).trim() !== '20:00') {
+      console.warn('[LivreurProfil] availabilityEnd fell back to default time', rawEnd);
+    }
+
+    this.userService.updateAvailability(payload).subscribe({
       next: (user) => {
-        this.user = user;
-        this.loadAvailability(user);
+        console.log('[LivreurProfil] saveAvailability response', user);
+        const updatedUser = normalizeUser({
+          ...this.user,
+          ...user,
+          disponibilites: payload.disponibilites
+        });
+
+        this.user = updatedUser;
+        this.authService.setCurrentUser(updatedUser);
+        this.loadAvailability(updatedUser);
         this.saving = false;
         this.editingAvailability = false;
         this.toastService.success('Disponibilite mise a jour avec succes');
       },
-      error: () => {
+      error: (error) => {
+        console.error('[LivreurProfil] saveAvailability error', error);
         this.saving = false;
         this.toastService.error('Erreur lors de la mise a jour de la disponibilite');
       }
@@ -527,6 +766,34 @@ export class LivreurProfilComponent implements OnInit {
       width: Math.max(1, Math.round(width * ratio)),
       height: Math.max(1, Math.round(height * ratio))
     };
+  }
+
+  navigateToAllRatings(): void {
+    this.router.navigate(['/livreur/ratings']);
+  }
+
+  getRatingStars(): number[] {
+    return Array.from({ length: 5 }, (_, index) => index + 1);
+  }
+
+  isRatingFilled(star: number): boolean {
+    return star <= Math.floor(this.averageRating);
+  }
+
+  isRatingHalf(star: number): boolean {
+    return star === Math.ceil(this.averageRating) && this.averageRating % 1 !== 0;
+  }
+
+  getReviewStars(rating: number): number[] {
+    return Array.from({ length: 5 }, (_, index) => index + 1);
+  }
+
+  isReviewRatingFilled(rating: number, star: number): boolean {
+    return star <= Math.floor(rating);
+  }
+
+  isReviewRatingHalf(rating: number, star: number): boolean {
+    return star === Math.ceil(rating) && rating % 1 !== 0;
   }
 
   getVehicleLabel(type: VehicleType): string {

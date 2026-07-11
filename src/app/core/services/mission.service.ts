@@ -13,6 +13,7 @@ import {
   normalizeMission,
   toMissionApiRequest
 } from '../models/mission.model';
+import { UserRole } from '../models/user.model';
 import { AuthService } from './auth.service';
 import { NotificationService } from './notification.service';
 
@@ -30,7 +31,7 @@ export class MissionService {
 
   creerMission(data: CreateMissionRequest): Observable<Mission> {
     return this.http.post<Mission>(`${this.apiUrl}/missions`, toMissionApiRequest(data)).pipe(
-      map((mission) => normalizeMission(mission)),
+      map((mission) => this.withVisibleNotifications(normalizeMission(mission))),
       tap((mission) => {
         this.notifyMissionEvent(
           mission,
@@ -45,7 +46,7 @@ export class MissionService {
 
   getMissions(): Observable<Mission[]> {
     return this.http.get<Mission[]>(`${this.apiUrl}/missions/client/me`).pipe(
-      map((missions) => missions.map((mission) => normalizeMission(mission)))
+      map((missions) => missions.map((mission) => this.withVisibleNotifications(normalizeMission(mission))))
     );
   }
 
@@ -53,13 +54,13 @@ export class MissionService {
     const url = statut ? `${this.apiUrl}/missions?statut=${encodeURIComponent(statut)}` : `${this.apiUrl}/missions`;
 
     return this.http.get<Mission[]>(url).pipe(
-      map((missions) => missions.map((mission) => normalizeMission(mission)))
+      map((missions) => missions.map((mission) => this.withVisibleNotifications(normalizeMission(mission))))
     );
   }
 
   getMyLivreurMissions(): Observable<Mission[]> {
     return this.http.get<Mission[]>(`${this.apiUrl}/missions/livreur/me`).pipe(
-      map((missions) => missions.map((mission) => normalizeMission(mission))),
+      map((missions) => missions.map((mission) => this.withVisibleNotifications(normalizeMission(mission)))),
       catchError((error) => {
         console.warn('Unable to load missions for current livreur, falling back to empty list', error);
         return of([]);
@@ -75,10 +76,10 @@ export class MissionService {
         }
 
         if (Array.isArray(response)) {
-          return response.length > 0 ? normalizeMission(response[0]) : null;
+          return response.length > 0 ? this.withVisibleNotifications(normalizeMission(response[0])) : null;
         }
 
-        return normalizeMission(response);
+        return this.withVisibleNotifications(normalizeMission(response));
       }),
       catchError((error) => {
         console.warn('Unable to load active mission for current livreur, falling back to null', error);
@@ -89,7 +90,7 @@ export class MissionService {
 
   getMissionById(id: string): Observable<Mission> {
     return this.http.get<Mission>(`${this.apiUrl}/missions/${id}`).pipe(
-      map((mission) => normalizeMission(mission))
+      map((mission) => this.withVisibleNotifications(normalizeMission(mission)))
     );
   }
 
@@ -110,7 +111,7 @@ export class MissionService {
 
   accepterMission(id: string): Observable<Mission> {
     return this.http.patch<Mission>(`${this.apiUrl}/missions/${id}/accept`, {}).pipe(
-      map((mission) => normalizeMission(mission)),
+      map((mission) => this.withVisibleNotifications(normalizeMission(mission))),
       tap((mission) => {
         this.notifyMissionEvent(
           mission,
@@ -135,7 +136,7 @@ export class MissionService {
     }
 
     return this.http.patch<Mission>(`${this.apiUrl}/missions/${id}`, payload).pipe(
-      map((mission) => normalizeMission(mission))
+      map((mission) => this.withVisibleNotifications(normalizeMission(mission)))
     );
   }
 
@@ -148,7 +149,7 @@ export class MissionService {
       statut,
       raisonAnnulation
     }).pipe(
-      map((mission) => normalizeMission(mission)),
+      map((mission) => this.withVisibleNotifications(normalizeMission(mission))),
       tap((mission) => {
         const config = this.getStatusNotificationConfig(statut);
         if (config) {
@@ -208,8 +209,12 @@ export class MissionService {
     }
 
     targets.forEach((targetId) => {
+      const targetType = targetId.startsWith('role:') ? 'ROLE' : 'USER';
       this.notificationService.addNotification({
-        userId: targetId,
+        cibleType: targetType as 'USER' | 'ROLE',
+        cibleRole: targetType === 'ROLE' ? UserRole.ADMIN : undefined,
+        cibleUserId: targetType === 'USER' ? targetId : undefined,
+        userId: targetType === 'USER' ? targetId : undefined,
         type,
         titre: title,
         message,
@@ -289,5 +294,12 @@ export class MissionService {
     };
 
     return mapping[value] ?? value;
+  }
+
+  private withVisibleNotifications(mission: Mission): Mission {
+    return {
+      ...mission,
+      notifications: this.notificationService.filterVisibleNotifications(mission.notifications)
+    };
   }
 }

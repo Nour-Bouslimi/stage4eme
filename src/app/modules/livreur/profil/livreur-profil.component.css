@@ -432,6 +432,7 @@
 .vehicle-summary-card,
 .documents-card,
 .planning-card,
+.ratings-preview-card,
 .mini-stat {
   background: var(--surface);
   border-radius: 20px;
@@ -505,11 +506,13 @@
 
 .vehicle-summary-card,
 .documents-card,
-.planning-card {
+.planning-card,
+.ratings-preview-card {
   padding: 18px 18px 14px;
   border-radius: 24px;
 }
 
+.ratings-preview-card{display:flex;flex-direction:column;gap:12px}.text-link-btn{border:none;background:transparent;color:var(--secondary);font-weight:700;cursor:pointer;padding:0}.ratings-summary-main{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.summary-rating-value{font-size:24px;font-weight:800;color:var(--text-1)}.summary-rating-stars,.rating-item-stars{display:flex;gap:2px}.summary-rating-count{color:var(--text-2);font-size:14px}.star{color:#cbd5e1;font-size:16px}.star.filled,.star.half{color:#f59e0b}.ratings-list{display:flex;flex-direction:column;gap:10px}.rating-item{background:#f8fafc;border:1px solid #e2e8f0;border-radius:14px;padding:12px}.rating-item-stars{margin-bottom:6px}.rating-comment{margin:0;color:var(--text-2);font-size:14px;line-height:1.5}.empty-ratings,.loading-ratings{color:var(--text-2);font-size:14px}
 .section-top {
   display: flex;
   align-items: center;

@@ -1,5 +1,7 @@
 .livreur-dashboard {
-  padding: 0;
+  padding: 2rem 1rem;
+  max-width: 1200px;
+  margin: 0 auto;
 }
 
 .dashboard-header {
@@ -183,7 +185,8 @@
 }
 
 .active-mission-section,
-.recent-missions-section {
+.recent-missions-section,
+.recent-ratings-section {
   background: var(--surface);
   border-radius: 12px;
   padding: 24px;
@@ -356,6 +359,84 @@
 .empty-state p {
   font-size: 14px;
   color: var(--text-2);
+  margin: 0;
+}
+
+.ratings-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.rating-item {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  background: var(--background);
+  border-radius: 8px;
+  transition: background 0.2s;
+}
+
+.rating-item:hover {
+  background: rgba(0, 0, 0, 0.04);
+}
+
+.rating-stars {
+  display: flex;
+  gap: 4px;
+}
+
+.star {
+  font-size: 16px;
+  color: var(--text-2);
+  transition: color 0.2s;
+}
+
+.star.filled {
+  color: #F59E0B;
+}
+
+.star.half {
+  background: linear-gradient(90deg, #F59E0B 50%, var(--text-2) 50%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.rating-content {
+  flex: 1;
+}
+
+.rating-comment {
+  font-size: 13px;
+  color: var(--text-1);
+  margin: 0 0 4px 0;
+  line-height: 1.4;
+}
+
+.rating-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin: 0;
+  font-size: 0;
+}
+
+.tag {
+  display: inline-block;
+  padding: 2px 8px;
+  background: rgba(59, 130, 246, 0.1);
+  color: #3B82F6;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.rating-score {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--primary);
   margin: 0;
 }
 

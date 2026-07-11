@@ -3,6 +3,7 @@ import { Router } from '@angular/router';
 import { AuthService } from '../../../core/services/auth.service';
 import { MissionService } from '../../../core/services/mission.service';
 import { UserService } from '../../../core/services/user.service';
+import { RatingService, RatingResponse, RatingSummaryResponse } from '../../../core/services/rating.service';
 import { SocketService } from '../../../core/services/socket.service';
 import { Mission, MissionStatus } from '../../../core/models/mission.model';
 import { User } from '../../../core/models/user.model';
@@ -18,12 +19,19 @@ export class LivreurDashboardComponent implements OnInit {
   available = true;
   missions: Mission[] = [];
   activeMission: Mission | null = null;
+
   stats = {
     today: 0,
     completed: 0,
     total: 0,
     revenue: 0
   };
+
+  // Notes du livreur
+  averageRating = 0;
+  totalRatings = 0;
+  recentRatings: RatingResponse[] = [];
+
   loading = true;
   showMissionModal = false;
   newMission: Mission | null = null;
@@ -34,6 +42,7 @@ export class LivreurDashboardComponent implements OnInit {
     private authService: AuthService,
     private missionService: MissionService,
     private userService: UserService,
+    private ratingService: RatingService,
     private socketService: SocketService,
     private router: Router
   ) {}
@@ -42,10 +51,12 @@ export class LivreurDashboardComponent implements OnInit {
     const currentUser = this.authService.getCurrentUser();
     if (currentUser) {
       this.userName = currentUser.prenom;
+      this.updateUserInfo(currentUser);
     }
 
     this.loadUserData();
     this.loadMissions();
+    this.loadRatings();
     this.setupSocket();
   }
 
@@ -55,13 +66,29 @@ export class LivreurDashboardComponent implements OnInit {
       this.user = cachedUser;
       this.available = cachedUser.disponible || false;
       this.userName = cachedUser.prenom;
+      this.updateUserInfo(cachedUser);
+      this.loadRatings();
     }
+
+    this.userService.getProfile().subscribe({
+      next: (user) => {
+        this.user = user;
+        this.authService.setCurrentUser(user);
+        this.available = user.disponible || false;
+        this.userName = user.prenom;
+        this.updateUserInfo(user);
+        this.loadRatings();
+      },
+      error: () => {
+        this.loading = false;
+      }
+    });
   }
 
-  loadMissions(): void {
-    this.missions = [];
-    this.activeMission = null;
-    this.calculateStats([]);
+  private updateUserInfo(user: User): void {
+    // Update rating info
+    this.averageRating = user.noteMoyenne || user.note || 0;
+    this.totalRatings = user.totalNotes || user.nombreAvis || 0;
     this.loading = false;
   }
 
@@ -124,16 +151,34 @@ export class LivreurDashboardComponent implements OnInit {
 
   calculateStats(missions: Mission[]): void {
     const today = new Date().toDateString();
-    this.stats.today = missions.filter(m => 
+    this.stats.today = missions.filter(m =>
       new Date(m.createdAt).toDateString() === today
     ).length;
-    this.stats.completed = missions.filter(m => 
+    this.stats.completed = missions.filter(m =>
       m.statut === MissionStatus.TERMINEE
     ).length;
     this.stats.total = missions.length;
     this.stats.revenue = missions
       .filter(m => m.statut === MissionStatus.TERMINEE)
       .reduce((sum, m) => sum + (m.prix || 0), 0);
+  }
+
+  private loadMissions(): void {
+    this.missionService.getMyLivreurMissions().subscribe({
+      next: (missions: Mission[]) => {
+        this.missions = missions;
+        this.calculateStats(missions);
+
+        // Find active mission
+        this.activeMission = missions.find(
+          m => m.statut === MissionStatus.ACCEPTEE || m.statut === MissionStatus.EN_ROUTE || m.statut === MissionStatus.EN_LIVRAISON
+        ) || null;
+      },
+      error: (err) => {
+        console.error('Error loading missions:', err);
+        this.activeMission = null;
+      }
+    });
   }
 
   goToActiveMission(): void {
@@ -145,8 +190,38 @@ export class LivreurDashboardComponent implements OnInit {
     this.router.navigate(['/livreur/missions']);
   }
 
-  getActiveMissionStatusLabel(): string {
-    return this.getStatusLabel(this.activeMission?.statut ?? MissionStatus.EN_ATTENTE);
+  navigateToMissions(): void {
+    this.router.navigate(['/livreur/missions']);
+  }
+
+  navigateToAllRatings(): void {
+    this.router.navigate(['/livreur/ratings']);
+  }
+
+  private loadRatings(): void {
+    if (!this.user?.id) {
+      return;
+    }
+
+    this.ratingService.getRatingSummary(this.user.id).subscribe({
+      next: (summary: RatingSummaryResponse) => {
+        this.recentRatings = summary.reviews ?? summary.ratings ?? [];
+        this.averageRating = summary.average ?? summary.noteMoyenne ?? summary.note ?? this.averageRating;
+      },
+      error: (err) => {
+        console.error('Error loading rating summary:', err);
+        this.recentRatings = [];
+      }
+    });
+
+    this.ratingService.getTotalRatingsCount(this.user.id).subscribe({
+      next: (countResponse) => {
+        this.totalRatings = countResponse.count;
+      },
+      error: () => {
+        this.totalRatings = this.user?.totalNotes || this.user?.nombreAvis || 0;
+      }
+    });
   }
 
   getStatusLabel(status: MissionStatus | undefined): string {
@@ -163,5 +238,29 @@ export class LivreurDashboardComponent implements OnInit {
       default:
         return status;
     }
+  }
+
+  getRatingStars(): number[] {
+    return Array.from({ length: 5 }, (_, i) => i + 1);
+  }
+
+  isRatingFilled(star: number): boolean {
+    return star <= Math.floor(this.averageRating);
+  }
+
+  isRatingHalf(star: number): boolean {
+    return star === Math.ceil(this.averageRating) && this.averageRating % 1 !== 0;
+  }
+
+  getRatingStarsForReview(rating: number): number[] {
+    return Array.from({ length: 5 }, (_, i) => i + 1);
+  }
+
+  isReviewRatingFilled(rating: number, star: number): boolean {
+    return star <= Math.floor(rating);
+  }
+
+  isReviewRatingHalf(rating: number, star: number): boolean {
+    return star === Math.ceil(rating) && rating % 1 !== 0;
   }
 }

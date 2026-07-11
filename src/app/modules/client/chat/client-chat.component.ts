@@ -31,6 +31,7 @@ export class ClientChatComponent implements OnInit, OnDestroy {
   mission: Mission | null = null;
   messages: Message[] = [];
   newMessage = '';
+  pendingAttachment: { dataUrl: string; name: string; type: string } | null = null;
   isTyping = false;
   typingUserName = '';
   loading = true;
@@ -44,6 +45,7 @@ export class ClientChatComponent implements OnInit, OnDestroy {
   private typingResetTimer: ReturnType<typeof setTimeout> | null = null;
 
   @ViewChild('messagesContainer') messagesContainer!: ElementRef;
+  @ViewChild('imageInput') imageInput!: ElementRef<HTMLInputElement>;
 
   constructor(
     private route: ActivatedRoute,
@@ -95,6 +97,77 @@ export class ClientChatComponent implements OnInit, OnDestroy {
     });
   }
 
+  triggerImagePicker(): void {
+    if (this.loading || !this.missionId) {
+      return;
+    }
+
+    this.imageInput?.nativeElement.click();
+  }
+
+  onImageSelected(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+    input.value = '';
+
+    if (!file || !file.type.startsWith('image/')) {
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      const dataUrl = String(reader.result || '');
+      if (!dataUrl) {
+        return;
+      }
+
+      const clientMessageId = this.createClientMessageId();
+      const currentUserId = this.getCurrentUserId();
+      const recipientId = this.getRecipientDriverId();
+
+      const optimisticMessage: Message = {
+        id: clientMessageId,
+        clientMessageId,
+        missionId: this.missionId,
+        expediteurId: currentUserId,
+        destinataireId: recipientId,
+        contenu: '',
+        imageUrl: dataUrl,
+        attachmentName: file.name,
+        attachmentType: file.type,
+        lu: false,
+        dateEnvoi: new Date(),
+        pending: true
+      };
+
+      this.messages = [...this.messages, optimisticMessage];
+      this.scrollToBottom();
+
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('missionId', this.missionId);
+      formData.append('destinataireId', recipientId);
+      formData.append('contenu', '');
+      formData.append('clientMessageId', clientMessageId);
+
+      this.chatService.uploadImage(formData).subscribe({
+        next: (message) => {
+          this.upsertMessage({
+            ...this.normalizeMessage(message),
+            clientMessageId,
+            pending: false
+          });
+        },
+        error: () => {
+          this.messages = this.messages.map((m) =>
+            m.clientMessageId === clientMessageId ? { ...m, pending: false, failed: true } : m
+          );
+        }
+      });
+    };
+    reader.readAsDataURL(file);
+  }
+
   loadMissionDirectly(): void {
     if (!this.missionId) {
       this.loading = false;
@@ -109,8 +182,8 @@ export class ClientChatComponent implements OnInit, OnDestroy {
     this.missionService.getMissionById(this.missionId).subscribe({
       next: (mission) => {
         this.mission = mission;
-        if (!this.driverId && mission.livreur?.id) {
-          this.driverId = mission.livreur.id;
+        if (!this.driverId) {
+          this.driverId = mission.livreur?.id || mission.livreurId || '';
         }
         this.loadMessages();
       },
@@ -160,7 +233,7 @@ export class ClientChatComponent implements OnInit, OnDestroy {
 
     this.selectedConversation = conversation;
     this.missionId = conversation.missionId;
-    this.driverId = conversation.driverId || this.driverId;
+    this.driverId = conversation.driverId || conversation.mission?.livreurId || conversation.driver?.id || this.driverId;
     this.mission = conversation.mission ?? null;
     this.loading = true;
 
@@ -259,41 +332,66 @@ export class ClientChatComponent implements OnInit, OnDestroy {
     });
   }
 
-  sendMessage(): void {
-    const content = this.newMessage.trim();
-    if (!content || !this.missionId || !this.driverId) {
+  sendMessage(contentOverride = '', attachment: { dataUrl: string; name: string; type: string } | null = this.pendingAttachment): void {
+    const content = (contentOverride || this.newMessage).trim();
+    const recipientId = this.getRecipientDriverId();
+    const imageUrl = attachment?.dataUrl || '';
+    const clientMessageId = this.createClientMessageId();
+
+    // Diagnostic logs to help trace why send may be skipped
+    console.debug('[chat] sendMessage called', { content, imageUrl, missionId: this.missionId, recipientId });
+
+    if (!this.missionId) {
+      console.warn('[chat] sendMessage aborted: missing missionId');
+      return;
+    }
+
+    if (!recipientId) {
+      console.warn('[chat] sendMessage aborted: missing recipientId');
+      return;
+    }
+
+    if (!content && !imageUrl) {
+      console.warn('[chat] sendMessage aborted: empty content and no image');
       return;
     }
 
     const currentUserId = this.getCurrentUserId();
-    const clientMessageId = this.createClientMessageId();
     const optimisticMessage: Message = {
       id: clientMessageId,
       clientMessageId,
       missionId: this.missionId,
       expediteurId: currentUserId,
-      destinataireId: this.driverId,
+      destinataireId: recipientId,
       contenu: content,
+      imageUrl,
+      attachmentName: attachment?.name,
+      attachmentType: attachment?.type,
       lu: false,
       dateEnvoi: new Date(),
-      pending: false
+      pending: true
     };
 
     this.messages = [...this.messages, optimisticMessage];
     this.newMessage = '';
+    this.pendingAttachment = null;
     this.emitTyping(false);
     this.scrollToBottom();
 
-    if (this.socketService.isConnected()) {
-      this.socketService.sendMessage(this.missionId, content, this.driverId, clientMessageId);
-      return;
-    }
-
     const payload: SendMessageRequest = {
       missionId: this.missionId,
-      destinataireId: this.driverId,
-      contenu: content
+      destinataireId: recipientId,
+      contenu: content,
+      clientMessageId,
+      imageUrl,
+      attachmentName: attachment?.name,
+      attachmentType: attachment?.type
     };
+
+    // Emit via socket for realtime, but always call HTTP endpoint to persist the message
+    if (this.socketService.isConnected() && !imageUrl) {
+      this.socketService.sendMessage(this.missionId, content, recipientId, clientMessageId);
+    }
 
     this.chatService.sendMessage(payload).subscribe({
       next: (message) => {
@@ -308,6 +406,7 @@ export class ClientChatComponent implements OnInit, OnDestroy {
           message.clientMessageId === clientMessageId ? { ...message, pending: false, failed: true } : message
         );
         this.newMessage = content;
+        this.pendingAttachment = attachment;
       }
     });
   }
@@ -352,12 +451,12 @@ export class ClientChatComponent implements OnInit, OnDestroy {
 
     this.messages[targetIndex] = updatedMessage;
     this.cancelEditing();
-
+    // Emit via socket for realtime update if available
     if (this.socketService.isConnected()) {
       this.socketService.editMessage(originalMessage.id, updatedContent, this.missionId, originalMessage.clientMessageId);
-      return;
     }
 
+    // Always call HTTP API to persist the edit. If it fails, revert the optimistic update.
     this.chatService.updateMessage(originalMessage.id, updatedContent).subscribe({
       next: (message) => {
         this.upsertMessage({
@@ -400,7 +499,6 @@ export class ClientChatComponent implements OnInit, OnDestroy {
 
       if (this.socketService.isConnected()) {
         this.socketService.deleteMessage(message.id, this.missionId, message.clientMessageId);
-        return;
       }
 
       this.chatService.deleteMessage(message.id).subscribe({
@@ -443,10 +541,31 @@ export class ClientChatComponent implements OnInit, OnDestroy {
   }
 
   formatTime(date: Date | string): string {
-    return new Date(date).toLocaleTimeString('fr-FR', {
+    const parsedDate = new Date(date);
+    if (Number.isNaN(parsedDate.getTime())) {
+      return '';
+    }
+
+    const now = new Date();
+    const isToday =
+      parsedDate.getFullYear() === now.getFullYear() &&
+      parsedDate.getMonth() === now.getMonth() &&
+      parsedDate.getDate() === now.getDate();
+
+    if (isToday) {
+      return new Intl.DateTimeFormat('fr-FR', {
+        hour: '2-digit',
+        minute: '2-digit'
+      }).format(parsedDate);
+    }
+
+    return new Intl.DateTimeFormat('fr-FR', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
       hour: '2-digit',
       minute: '2-digit'
-    });
+    }).format(parsedDate);
   }
 
   isMyMessage(message: Message): boolean {
@@ -484,6 +603,10 @@ export class ClientChatComponent implements OnInit, OnDestroy {
 
   trackByMessageId(_: number, message: Message): string {
     return message.clientMessageId || message.id;
+  }
+
+  canSendMessage(): boolean {
+    return (!!this.newMessage.trim() || !!this.pendingAttachment) && !!this.missionId && !this.loading && !!this.getRecipientDriverId();
   }
 
   getTypingText(): string {
@@ -565,19 +688,24 @@ export class ClientChatComponent implements OnInit, OnDestroy {
   private normalizeMessage(message: any): Message {
     const payload = message?.message ?? message?.data ?? message ?? {};
     const dateValue = payload.dateEnvoi || payload.createdAt || payload.updatedAt || new Date();
+    const contentValue = String(payload.contenu || payload.content || '');
+    const imageUrl = payload.imageUrl || payload.mediaUrl || payload.attachmentUrl || payload.pieceJointe || (contentValue.startsWith('data:image/') ? contentValue : '');
 
     return {
       id: String(payload.id || payload._id || payload.messageId || payload.clientMessageId || this.createClientMessageId()),
       missionId: String(payload.missionId || this.missionId || ''),
       expediteurId: String(payload.expediteurId || payload.senderId || payload.userId || this.getCurrentUserId()),
       destinataireId: String(payload.destinataireId || payload.recipientId || this.driverId || ''),
-      contenu: String(payload.contenu || payload.content || ''),
+      contenu: contentValue.startsWith('data:image/') ? '' : contentValue,
       lu: !!payload.lu,
       dateEnvoi: this.parseDate(dateValue),
       clientMessageId: payload.clientMessageId,
       pending: !!payload.pending,
       failed: !!payload.failed,
-      updatedAt: payload.updatedAt ? this.parseDate(payload.updatedAt) : undefined
+      updatedAt: payload.updatedAt ? this.parseDate(payload.updatedAt) : undefined,
+      imageUrl: imageUrl ? String(imageUrl) : undefined,
+      attachmentName: payload.attachmentName || payload.fileName || undefined,
+      attachmentType: payload.attachmentType || payload.mimeType || undefined
     };
   }
 
@@ -690,6 +818,17 @@ export class ClientChatComponent implements OnInit, OnDestroy {
     }).format(date);
   }
 
+  private getRecipientDriverId(): string {
+    return (
+      this.driverId ||
+      this.mission?.livreurId ||
+      this.mission?.livreur?.id ||
+      this.selectedConversation?.driverId ||
+      this.selectedConversation?.driver?.id ||
+      ''
+    );
+  }
+
   getDriverAvatar(): string {
     if (this.selectedConversation?.driver?.avatar) {
       return this.selectedConversation.driver.avatar;
@@ -716,6 +855,19 @@ export class ClientChatComponent implements OnInit, OnDestroy {
     }
 
     return this.missionId ? 'Livreur' : 'Messagerie';
+  }
+
+  getMyAvatar(): string {
+    try {
+      const raw = localStorage.getItem('currentUser');
+      if (!raw) {
+        return 'assets/default-avatar.svg';
+      }
+      const user = JSON.parse(raw || '{}');
+      return user?.avatar || user?.photo || 'assets/default-avatar.svg';
+    } catch {
+      return 'assets/default-avatar.svg';
+    }
   }
 
   goBack(): void {

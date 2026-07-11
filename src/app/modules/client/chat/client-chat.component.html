@@ -66,13 +66,17 @@
               *ngFor="let message of messages; trackBy: trackByMessageId"
               [class.my-message]="isMyMessage(message)"
               [class.pending]="message.pending"
+              [class.read]="isMyMessage(message) && message.lu"
             >
-              <div class="message-avatar" *ngIf="!isMyMessage(message)">
-                <img [src]="getDriverAvatar()" alt="Driver" />
+              <div class="message-avatar">
+                <img [src]="isMyMessage(message) ? getMyAvatar() : getDriverAvatar()" alt="Avatar" />
               </div>
               <div class="message-content">
+                <div class="message-media" *ngIf="message.imageUrl">
+                  <img [src]="message.imageUrl" [alt]="message.attachmentName || 'Image envoyée'" />
+                </div>
                 <div class="message-text" *ngIf="editingMessageId !== message.id">
-                  <p>{{ message.contenu }}</p>
+                  <p *ngIf="message.contenu">{{ message.contenu }}</p>
                 </div>
                 <div class="message-edit" *ngIf="editingMessageId === message.id">
                   <input
@@ -133,9 +137,10 @@
       </div>
 
       <div class="chat-input">
-        <button class="attach-btn" type="button">
+        <button class="attach-btn" type="button" (click)="triggerImagePicker()">
           <mat-icon>attach_file</mat-icon>
         </button>
+        <input #imageInput type="file" accept="image/*" (change)="onImageSelected($event)" hidden />
         <input
           type="text"
           [(ngModel)]="newMessage"
@@ -145,7 +150,7 @@
           class="message-input"
           [disabled]="!missionId || loading"
         />
-        <button class="send-btn" type="button" (click)="sendMessage()" [disabled]="!newMessage.trim() || !missionId || loading">
+        <button class="send-btn" type="button" (click)="sendMessage()" [disabled]="!canSendMessage()">
           <mat-icon>send</mat-icon>
         </button>
       </div>

@@ -298,7 +298,43 @@
         </div>
       </div>
 
-      <div class="planning-card" id="availability-section">
+      <div class="ratings-preview-card">
+        <div class="section-top">
+          <h3>Avis récents</h3>
+          <button type="button" class="text-link-btn" (click)="navigateToAllRatings()">
+            Voir tout
+          </button>
+        </div>
+
+        <div class="ratings-summary">
+          <div class="ratings-summary-main">
+            <div class="summary-rating-value">{{ averageRating.toFixed(1) }}</div>
+            <div class="summary-rating-stars">
+              <span *ngFor="let star of getRatingStars()" class="star" [class.filled]="isRatingFilled(star)" [class.half]="isRatingHalf(star)">★</span>
+            </div>
+            <div class="summary-rating-count">{{ totalRatings }} avis</div>
+          </div>
+        </div>
+
+        <div class="ratings-list" *ngIf="!loadingRatings && recentRatings.length > 0">
+          <div class="rating-item" *ngFor="let rating of recentRatings">
+            <div class="rating-item-stars">
+              <span *ngFor="let star of getReviewStars(rating.etoiles)" class="star" [class.filled]="isReviewRatingFilled(rating.etoiles, star)" [class.half]="isReviewRatingHalf(rating.etoiles, star)">★</span>
+            </div>
+            <p class="rating-comment">{{ rating.commentaire || 'Aucun commentaire' }}</p>
+          </div>
+        </div>
+
+        <div class="empty-ratings" *ngIf="!loadingRatings && recentRatings.length === 0">
+          <p>Aucun avis pour le moment.</p>
+        </div>
+
+        <div class="loading-ratings" *ngIf="loadingRatings">
+          <p>Chargement des avis...</p>
+        </div>
+      </div>
+
+      <div class="planning-card" id="availability-section" [formGroup]="profileForm">
         <div class="section-top">
           <h3>Planning de disponibilité</h3>
           <button

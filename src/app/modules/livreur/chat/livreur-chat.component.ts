@@ -31,6 +31,7 @@ export class LivreurChatComponent implements OnInit, OnDestroy {
   mission: Mission | null = null;
   messages: Message[] = [];
   newMessage = '';
+  pendingAttachment: { dataUrl: string; name: string; type: string } | null = null;
   isTyping = false;
   typingUserName = '';
   loading = true;
@@ -44,6 +45,7 @@ export class LivreurChatComponent implements OnInit, OnDestroy {
   private typingResetTimer: ReturnType<typeof setTimeout> | null = null;
 
   @ViewChild('messagesContainer') messagesContainer!: ElementRef;
+  @ViewChild('imageInput') imageInput!: ElementRef<HTMLInputElement>;
 
   constructor(
     private route: ActivatedRoute,
@@ -82,11 +84,84 @@ export class LivreurChatComponent implements OnInit, OnDestroy {
         this.loading = false;
         this.scrollToBottom();
         this.markMessagesAsRead(this.messages);
+        this.refreshConversationSummary();
       },
       error: () => {
         this.loading = false;
       }
     });
+  }
+
+  triggerImagePicker(): void {
+    if (this.loading || !this.missionId) {
+      return;
+    }
+
+    this.imageInput?.nativeElement.click();
+  }
+
+  onImageSelected(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+    input.value = '';
+
+    if (!file || !file.type.startsWith('image/')) {
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      const dataUrl = String(reader.result || '');
+      if (!dataUrl) {
+        return;
+      }
+
+      const clientMessageId = this.createClientMessageId();
+      const currentUserId = this.getCurrentUserId();
+      const recipientId = this.getRecipientClientId();
+
+      const optimisticMessage: Message = {
+        id: clientMessageId,
+        clientMessageId,
+        missionId: this.missionId,
+        expediteurId: currentUserId,
+        destinataireId: recipientId,
+        contenu: '',
+        imageUrl: dataUrl,
+        attachmentName: file.name,
+        attachmentType: file.type,
+        lu: false,
+        dateEnvoi: new Date(),
+        pending: true
+      };
+
+      this.messages = [...this.messages, optimisticMessage];
+      this.scrollToBottom();
+
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('missionId', this.missionId);
+      formData.append('destinataireId', recipientId);
+      formData.append('contenu', '');
+      formData.append('clientMessageId', clientMessageId);
+
+      this.chatService.uploadImage(formData).subscribe({
+        next: (message) => {
+          this.upsertMessage({
+            ...this.normalizeMessage(message),
+            clientMessageId,
+            pending: false
+          });
+          this.refreshConversationSummary();
+        },
+        error: () => {
+          this.messages = this.messages.map((m) =>
+            m.clientMessageId === clientMessageId ? { ...m, pending: false, failed: true } : m
+          );
+          this.refreshConversationSummary();
+        }
+      });
+    };
+    reader.readAsDataURL(file);
   }
 
   loadConversations(): void {
@@ -129,7 +204,7 @@ export class LivreurChatComponent implements OnInit, OnDestroy {
 
     this.selectedConversation = conversation;
     this.missionId = conversation.missionId;
-    this.clientId = conversation.clientId || this.clientId;
+    this.clientId = conversation.clientId || conversation.mission?.clientId || conversation.client?.id || this.clientId;
     this.mission = conversation.mission ?? null;
     this.loading = true;
 
@@ -145,6 +220,9 @@ export class LivreurChatComponent implements OnInit, OnDestroy {
     this.missionService.getMissionById(this.missionId).subscribe({
       next: (mission) => {
         this.mission = mission;
+        if (!this.clientId) {
+          this.clientId = mission.clientId || mission.client?.id || '';
+        }
         this.loadMessages();
       },
       error: () => {
@@ -168,16 +246,18 @@ export class LivreurChatComponent implements OnInit, OnDestroy {
       }
 
       this.upsertMessage(message);
+      this.refreshConversationSummary();
       this.scrollToBottom();
     });
 
     this.socketService.onMessageRead().subscribe((payload: any) => {
-      const message = this.normalizeSocketMessage(payload);
-      if (this.shouldIgnoreMessage(message)) {
+      const missionId = String(payload?.missionId || payload?.message?.missionId || '');
+      if (missionId && missionId !== this.missionId) {
         return;
       }
 
-      this.upsertMessage(message);
+      this.applyReadReceipt(payload);
+      this.refreshConversationSummary();
     });
 
     this.socketService.onMessageUpdated().subscribe((payload: any) => {
@@ -187,6 +267,7 @@ export class LivreurChatComponent implements OnInit, OnDestroy {
       }
 
       this.upsertMessage(message);
+      this.refreshConversationSummary();
     });
 
     this.socketService.onMessageDeleted().subscribe((payload: any) => {
@@ -228,41 +309,65 @@ export class LivreurChatComponent implements OnInit, OnDestroy {
     });
   }
 
-  sendMessage(): void {
-    const content = this.newMessage.trim();
-    if (!content || !this.missionId || !this.clientId) {
+  sendMessage(contentOverride = '', attachment: { dataUrl: string; name: string; type: string } | null = this.pendingAttachment): void {
+    const content = (contentOverride || this.newMessage).trim();
+    const recipientId = this.getRecipientClientId();
+    const imageUrl = attachment?.dataUrl || '';
+    const clientMessageId = this.createClientMessageId();
+
+    console.debug('[livreur chat] sendMessage called', { content, imageUrl, missionId: this.missionId, recipientId });
+
+    if (!this.missionId) {
+      console.warn('[livreur chat] sendMessage aborted: missing missionId');
+      return;
+    }
+
+    if (!recipientId) {
+      console.warn('[livreur chat] sendMessage aborted: missing recipientId');
+      return;
+    }
+
+    if (!content && !imageUrl) {
+      console.warn('[livreur chat] sendMessage aborted: empty content and no image');
       return;
     }
 
     const currentUserId = this.getCurrentUserId();
-    const clientMessageId = this.createClientMessageId();
     const optimisticMessage: Message = {
       id: clientMessageId,
       clientMessageId,
       missionId: this.missionId,
       expediteurId: currentUserId,
-      destinataireId: this.clientId,
+      destinataireId: recipientId,
       contenu: content,
+      imageUrl,
+      attachmentName: attachment?.name,
+      attachmentType: attachment?.type,
       lu: false,
       dateEnvoi: new Date(),
-      pending: false
+      pending: true
     };
 
     this.messages = [...this.messages, optimisticMessage];
     this.newMessage = '';
+    this.pendingAttachment = null;
     this.emitTyping(false);
     this.scrollToBottom();
-
-    if (this.socketService.isConnected()) {
-      this.socketService.sendMessage(this.missionId, content, this.clientId, clientMessageId);
-      return;
-    }
+    this.refreshConversationSummary();
 
     const payload: SendMessageRequest = {
       missionId: this.missionId,
-      destinataireId: this.clientId,
-      contenu: content
+      destinataireId: recipientId,
+      contenu: content,
+      clientMessageId,
+      imageUrl,
+      attachmentName: attachment?.name,
+      attachmentType: attachment?.type
     };
+
+    if (this.socketService.isConnected() && !imageUrl) {
+      this.socketService.sendMessage(this.missionId, content, recipientId, clientMessageId);
+    }
 
     this.chatService.sendMessage(payload).subscribe({
       next: (message) => {
@@ -271,12 +376,14 @@ export class LivreurChatComponent implements OnInit, OnDestroy {
           clientMessageId,
           pending: false
         });
+        this.refreshConversationSummary();
       },
       error: () => {
         this.messages = this.messages.map((message) =>
           message.clientMessageId === clientMessageId ? { ...message, pending: false, failed: true } : message
         );
         this.newMessage = content;
+        this.pendingAttachment = attachment;
       }
     });
   }
@@ -321,10 +428,9 @@ export class LivreurChatComponent implements OnInit, OnDestroy {
 
     this.messages[targetIndex] = updatedMessage;
     this.cancelEditing();
-
+    this.refreshConversationSummary();
     if (this.socketService.isConnected()) {
       this.socketService.editMessage(originalMessage.id, updatedContent, this.missionId, originalMessage.clientMessageId);
-      return;
     }
 
     this.chatService.updateMessage(originalMessage.id, updatedContent).subscribe({
@@ -333,9 +439,11 @@ export class LivreurChatComponent implements OnInit, OnDestroy {
           ...this.normalizeMessage(message),
           pending: false
         });
+        this.refreshConversationSummary();
       },
       error: () => {
         this.messages[targetIndex] = originalMessage;
+        this.refreshConversationSummary();
       }
     });
   }
@@ -362,6 +470,7 @@ export class LivreurChatComponent implements OnInit, OnDestroy {
 
       const removedMessage = this.messages[messageIndex];
       this.messages = this.messages.filter((item) => item.id !== message.id);
+      this.refreshConversationSummary();
 
       if (this.editingMessageId === message.id) {
         this.cancelEditing();
@@ -369,7 +478,6 @@ export class LivreurChatComponent implements OnInit, OnDestroy {
 
       if (this.socketService.isConnected()) {
         this.socketService.deleteMessage(message.id, this.missionId, message.clientMessageId);
-        return;
       }
 
       this.chatService.deleteMessage(message.id).subscribe({
@@ -412,10 +520,31 @@ export class LivreurChatComponent implements OnInit, OnDestroy {
   }
 
   formatTime(date: Date | string): string {
-    return new Date(date).toLocaleTimeString('fr-FR', {
+    const parsedDate = new Date(date);
+    if (Number.isNaN(parsedDate.getTime())) {
+      return '';
+    }
+
+    const now = new Date();
+    const isToday =
+      parsedDate.getFullYear() === now.getFullYear() &&
+      parsedDate.getMonth() === now.getMonth() &&
+      parsedDate.getDate() === now.getDate();
+
+    if (isToday) {
+      return new Intl.DateTimeFormat('fr-FR', {
+        hour: '2-digit',
+        minute: '2-digit'
+      }).format(parsedDate);
+    }
+
+    return new Intl.DateTimeFormat('fr-FR', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
       hour: '2-digit',
       minute: '2-digit'
-    });
+    }).format(parsedDate);
   }
 
   isMyMessage(message: Message): boolean {
@@ -453,6 +582,10 @@ export class LivreurChatComponent implements OnInit, OnDestroy {
 
   trackByMessageId(_: number, message: Message): string {
     return message.clientMessageId || message.id;
+  }
+
+  canSendMessage(): boolean {
+    return (!!this.newMessage.trim() || !!this.pendingAttachment) && !!this.missionId && !this.loading && !!this.getRecipientClientId();
   }
 
   getTypingText(): string {
@@ -521,6 +654,60 @@ export class LivreurChatComponent implements OnInit, OnDestroy {
     };
   }
 
+  private applyReadReceipt(payload: any): void {
+    const messageId = this.resolveMessageId(payload);
+    if (!messageId) {
+      return;
+    }
+
+    const index = this.messages.findIndex((message) => message.id === messageId || message.clientMessageId === messageId);
+    if (index === -1) {
+      return;
+    }
+
+    this.messages[index] = {
+      ...this.messages[index],
+      lu: true,
+      pending: false
+    };
+  }
+
+  private refreshConversationSummary(): void {
+    if (!this.missionId) {
+      return;
+    }
+
+    const currentUserId = this.getCurrentUserId();
+    const sortedMessages = this.messages
+      .filter((message) => String(message.missionId) === String(this.missionId))
+      .slice()
+      .sort((a, b) => new Date(a.dateEnvoi).getTime() - new Date(b.dateEnvoi).getTime());
+
+    if (sortedMessages.length === 0) {
+      return;
+    }
+
+    const receivedMessages = sortedMessages.filter((message) => String(message.expediteurId) !== String(currentUserId));
+    const latestReceived = receivedMessages[receivedMessages.length - 1];
+    const latestMessage = sortedMessages[sortedMessages.length - 1];
+    const previewMessage = latestReceived ?? latestMessage;
+    const unreadCount = receivedMessages.filter((message) => !message.lu).length;
+
+    const summaryPatch = {
+      preview: previewMessage?.contenu || (previewMessage?.imageUrl ? 'Photo' : 'Dernier message...'),
+      time: previewMessage ? this.formatConversationTime(previewMessage.dateEnvoi) : '',
+      unreadCount
+    };
+
+    if (this.selectedConversation?.missionId === this.missionId) {
+      this.selectedConversation = { ...this.selectedConversation, ...summaryPatch };
+    }
+
+    this.conversations = this.conversations.map((conversation) =>
+      conversation.missionId === this.missionId ? { ...conversation, ...summaryPatch } : conversation
+    );
+  }
+
   private findMessageIndex(message: Message): number {
     return this.messages.findIndex((item) => {
       if (item.id === message.id) {
@@ -534,19 +721,24 @@ export class LivreurChatComponent implements OnInit, OnDestroy {
   private normalizeMessage(message: any): Message {
     const payload = message?.message ?? message?.data ?? message ?? {};
     const dateValue = payload.dateEnvoi || payload.createdAt || payload.updatedAt || new Date();
+    const contentValue = String(payload.contenu || payload.content || '');
+    const imageUrl = payload.imageUrl || payload.mediaUrl || payload.attachmentUrl || payload.pieceJointe || (contentValue.startsWith('data:image/') ? contentValue : '');
 
     return {
       id: String(payload.id || payload._id || payload.messageId || payload.clientMessageId || this.createClientMessageId()),
       missionId: String(payload.missionId || this.missionId || ''),
       expediteurId: String(payload.expediteurId || payload.senderId || payload.userId || this.getCurrentUserId()),
       destinataireId: String(payload.destinataireId || payload.recipientId || this.clientId || ''),
-      contenu: String(payload.contenu || payload.content || ''),
+      contenu: contentValue.startsWith('data:image/') ? '' : contentValue,
       lu: !!payload.lu,
       dateEnvoi: this.parseDate(dateValue),
       clientMessageId: payload.clientMessageId,
       pending: !!payload.pending,
       failed: !!payload.failed,
-      updatedAt: payload.updatedAt ? this.parseDate(payload.updatedAt) : undefined
+      updatedAt: payload.updatedAt ? this.parseDate(payload.updatedAt) : undefined,
+      imageUrl: imageUrl ? String(imageUrl) : undefined,
+      attachmentName: payload.attachmentName || payload.fileName || undefined,
+      attachmentType: payload.attachmentType || payload.mimeType || undefined
     };
   }
 
@@ -612,12 +804,13 @@ export class LivreurChatComponent implements OnInit, OnDestroy {
 
   private normalizeConversation(conversation: any): ConversationSummary {
     const mission: Mission | null = conversation?.mission ?? conversation?.missionInfo ?? null;
-    const client: User | null = conversation?.client ?? conversation?.user ?? null;
+    const client: User | null = conversation?.client ?? conversation?.user ?? mission?.client ?? null;
     const missionId = conversation?.missionId || mission?.id || '';
     const clientName = client ? `${client.prenom ?? ''} ${client.nom ?? ''}`.trim() : '';
-    const title = conversation?.title || conversation?.name || conversation?.conversationName || clientName || 'Client';
+    const title = conversation?.title || conversation?.name || conversation?.conversationName || clientName || this.getClientDisplayName(mission) || 'Client';
     const lastMessage = conversation?.lastMessage ?? conversation?.message ?? conversation?.preview ?? '';
     const timeValue = conversation?.updatedAt || conversation?.lastMessageAt || conversation?.dateEnvoi || '';
+    const lastMessageText = typeof lastMessage === 'string' ? lastMessage : lastMessage?.contenu || (lastMessage?.imageUrl ? 'Photo' : 'Dernier message...');
 
     return {
       missionId,
@@ -625,7 +818,7 @@ export class LivreurChatComponent implements OnInit, OnDestroy {
       clientId: conversation?.clientId || conversation?.userId || client?.id || '',
       client,
       title,
-      preview: typeof lastMessage === 'string' ? lastMessage : lastMessage?.contenu || 'Dernier message...',
+      preview: lastMessageText,
       time: timeValue ? this.formatConversationTime(timeValue) : '',
       unreadCount: conversation?.unreadCount || conversation?.nonLus || 0
     };
@@ -643,13 +836,40 @@ export class LivreurChatComponent implements OnInit, OnDestroy {
     }).format(date);
   }
 
+  private getClientDisplayName(mission?: Mission | null): string {
+    const client = this.selectedConversation?.client ?? this.selectedConversation?.mission?.client ?? mission?.client ?? this.mission?.client ?? null;
+    if (!client) {
+      return '';
+    }
+
+    const name = `${client.prenom || ''} ${client.nom || ''}`.trim();
+    return name || client.email || 'Client';
+  }
+
+  private getRecipientClientId(): string {
+    return (
+      this.clientId ||
+      this.mission?.clientId ||
+      this.mission?.client?.id ||
+      this.selectedConversation?.clientId ||
+      this.selectedConversation?.client?.id ||
+      ''
+    );
+  }
+
   private markMessagesAsRead(messages: Message[]): void {
     const currentUserId = this.getCurrentUserId();
     messages.forEach((message) => {
       if (!message.lu && message.expediteurId !== currentUserId) {
         this.chatService.markAsRead(message.id).subscribe({
           next: (updatedMessage) => {
-            this.upsertMessage(this.normalizeMessage(updatedMessage));
+            const normalized = this.normalizeMessage(updatedMessage);
+            if (normalized.lu) {
+              this.upsertMessage(normalized);
+            } else {
+              this.applyReadReceipt(updatedMessage);
+            }
+            this.refreshConversationSummary();
           },
           error: () => {
             // Ignore errors when marking messages read
@@ -660,27 +880,38 @@ export class LivreurChatComponent implements OnInit, OnDestroy {
   }
 
   getClientAvatar(): string {
-    if (this.selectedConversation?.client?.avatar) {
-      return this.selectedConversation.client.avatar;
+    const client = this.selectedConversation?.client ?? this.selectedConversation?.mission?.client ?? this.mission?.client ?? null;
+    if (client?.avatar || client?.photo) {
+      return client.avatar || client.photo || 'assets/default-avatar.svg';
     }
 
     return 'assets/default-avatar.svg';
   }
 
   getClientName(): string {
-    if (this.selectedConversation?.client) {
-      const client = this.selectedConversation.client;
-      const name = `${client.prenom || ''} ${client.nom || ''}`.trim();
-      return name || client.email || 'Client';
+    return this.getClientDisplayName(this.mission) || (this.missionId ? 'Client' : 'Messagerie');
+  }
+
+  getConversationAvatar(conversation: ConversationSummary): string {
+    const client = conversation.client ?? conversation.mission?.client ?? null;
+    if (client?.avatar || client?.photo) {
+      return client.avatar || client.photo || 'assets/default-avatar.svg';
     }
 
-    if (this.mission?.client) {
-      const client = this.mission.client;
-      const name = `${client.prenom || ''} ${client.nom || ''}`.trim();
-      return name || client.email || 'Client';
-    }
+    return 'assets/default-avatar.svg';
+  }
 
-    return this.missionId ? 'Client' : 'Messagerie';
+  getMyAvatar(): string {
+    try {
+      const raw = localStorage.getItem('currentUser');
+      if (!raw) {
+        return 'assets/default-avatar.svg';
+      }
+      const user = JSON.parse(raw || '{}');
+      return user?.avatar || user?.photo || 'assets/default-avatar.svg';
+    } catch {
+      return 'assets/default-avatar.svg';
+    }
   }
 
   getAddressLabel(value: string | null | undefined): string {

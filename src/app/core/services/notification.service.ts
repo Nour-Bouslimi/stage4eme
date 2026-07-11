@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 import { Observable, BehaviorSubject, of } from 'rxjs';
-import { Notification } from '../models/notification.model';
+import { Notification, isNotificationVisibleToViewer, normalizeNotificationTarget } from '../models/notification.model';
 import { AuthService } from './auth.service';
 import { UserService } from './user.service';
 import { HttpClient } from '@angular/common/http';
@@ -43,6 +43,11 @@ export class NotificationService {
     return this.notifications$;
   }
 
+  filterVisibleNotifications(notifications: Notification[] | null | undefined): Notification[] {
+    const list = Array.isArray(notifications) ? notifications : [];
+    return list.filter((notification) => this.shouldKeepNotification(notification));
+  }
+
   loadNotificationsFromBackend(): void {
     if (!this.authService.isLoggedIn()) {
       return;
@@ -62,7 +67,8 @@ export class NotificationService {
         }
 
         const serverNotifications = this.normalizeNotifications(rawArray);
-        if (serverNotifications.length === 0) {
+        const scopedServerNotifications = serverNotifications.filter((notification) => this.shouldKeepNotification(notification));
+        if (scopedServerNotifications.length === 0) {
           console.warn('[NotificationService] server returned notifications but none could be normalized — keeping local cache');
           return;
         }
@@ -70,11 +76,14 @@ export class NotificationService {
         // dedupe by id using Map, prefer server payload for same id
         const mapById = new Map<string, Notification>();
         // start with server notifications
-        for (const n of serverNotifications) {
+        for (const n of scopedServerNotifications) {
           mapById.set(n.id, n);
         }
         // then keep local ones that server doesn't have
         for (const local of this.notificationsSubject.value) {
+          if (!this.shouldKeepNotification(local)) {
+            continue;
+          }
           if (!mapById.has(local.id)) {
             mapById.set(local.id, local);
           }
@@ -157,9 +166,8 @@ export class NotificationService {
   private upsertNotification(notification: Notification): void {
     const current = this.notificationsSubject.value.slice();
 
-    // Ignore notifications for other users
-    const currentUserId = this.getCurrentUserId();
-    if (notification.userId && currentUserId && notification.userId !== currentUserId) {
+    // Ignore notifications for other users or roles
+    if (!this.shouldKeepNotification(notification)) {
       return;
     }
 
@@ -274,19 +282,36 @@ export class NotificationService {
     return of(void 0);
   }
 
-  addNotification(notification: Omit<Notification, 'id' | 'lu' | 'createdAt'> & { id?: string; lu?: boolean; createdAt?: Date | string; userId?: string }): void {
-    const currentUserId = this.getCurrentUserId();
-    const normalizedUserId = notification.userId?.trim() || currentUserId;
-
-    if (!normalizedUserId) {
-      console.warn('Notification ignored because no target userId is available', notification);
+  addNotification(notification: {
+    type: Notification['type'];
+    titre: string;
+    message: string;
+    missionId?: string;
+    id?: string;
+    lu?: boolean;
+    createdAt?: Date | string;
+    userId?: string;
+    cibleType?: Notification['cibleType'];
+    cibleRole?: Notification['cibleRole'];
+    cibleUserId?: string;
+    targetRole?: string;
+  }): void {
+    const currentUser = this.authService.getCurrentUser();
+    const resolvedTarget = normalizeNotificationTarget(notification);
+    if (!isNotificationVisibleToViewer(resolvedTarget, currentUser)) {
       return;
     }
+
+    const normalizedUserId = resolvedTarget.cibleUserId?.trim() || currentUser?.id || '';
 
     const normalizedNotification: Notification = {
       // mark local-created notifications with a local- prefix so we can prefer server ids later
       id: notification.id ?? `local-${Date.now()}-${Math.random().toString(16).slice(2)}`,
       userId: normalizedUserId,
+      cibleType: resolvedTarget.cibleType,
+      cibleRole: resolvedTarget.cibleRole,
+      cibleUserId: resolvedTarget.cibleUserId,
+      targetRole: resolvedTarget.targetRole,
       type: notification.type,
       titre: notification.titre,
       message: notification.message,
@@ -346,7 +371,7 @@ export class NotificationService {
         ...notification,
         createdAt: new Date(notification.createdAt),
         luLe: notification.luLe ? new Date((notification as any).luLe) : undefined
-      }));
+      })).filter((notification) => this.shouldKeepNotification(notification as Notification));
 
       const deduped = filtered.filter((notification, index, self) =>
         self.findIndex(
@@ -423,12 +448,25 @@ export class NotificationService {
       .map((item) => {
         const anyItem = item as any;
 
-        const userId =
-          anyItem.userId?.toString() ||
-          anyItem.utilisateurId?.toString() ||
-          anyItem.utilisateur?.id?.toString() ||
-          this.getCurrentUserId() ||
-          '';
+        const normalizedTarget = normalizeNotificationTarget({
+          id: anyItem.id?.toString(),
+          userId:
+            anyItem.cibleUserId?.toString() ||
+            anyItem.userId?.toString() ||
+            anyItem.utilisateurId?.toString() ||
+            anyItem.utilisateur?.id?.toString() ||
+            '',
+          cibleType: anyItem.cibleType?.toString(),
+          cibleRole: anyItem.cibleRole?.toString(),
+          cibleUserId: anyItem.cibleUserId?.toString(),
+          targetRole:
+            anyItem.targetRole?.toString() ||
+            anyItem.recipientRole?.toString() ||
+            anyItem.role?.toString() ||
+            anyItem.roleDestinataire?.toString() ||
+            anyItem.destinataireRole?.toString() ||
+            anyItem.notificationRole?.toString()
+        });
 
         const createdAtValue =
           anyItem.createdAt ??
@@ -460,7 +498,11 @@ export class NotificationService {
 
         return {
           id: anyItem.id?.toString() ?? this.createId(),
-          userId,
+          userId: normalizedTarget.cibleUserId ?? '',
+          cibleType: normalizedTarget.cibleType,
+          cibleRole: normalizedTarget.cibleRole,
+          cibleUserId: normalizedTarget.cibleUserId,
+          targetRole: normalizedTarget.targetRole,
           type: typeVal as Notification['type'],
           titre: titreValue,
           message: messageValue,
@@ -470,8 +512,8 @@ export class NotificationService {
             createdAt: createdAtValue ? new Date(createdAtValue) : new Date()
         } as Notification;
       })
-      // require at least id and userId (type may be undefined for older server events)
-      .filter((item) => !!item.id && !!item.userId);
+      // require at least an id and either a userId or a target role
+      .filter((item) => !!item.id && (!!item.userId || !!(item as Notification & { targetRole?: string }).targetRole));
   }
 
   private getCurrentUserId(): string | null {
@@ -480,6 +522,10 @@ export class NotificationService {
 
   private getCurrentRole(): string | null {
     return localStorage.getItem('role');
+  }
+
+  private shouldKeepNotification(notification: Notification): boolean {
+    return isNotificationVisibleToViewer(notification, this.authService.getCurrentUser());
   }
 
   private getStorageKey(userId: string): string {
