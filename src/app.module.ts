@@ -9,6 +9,8 @@ import { RatingsModule } from './modules/ratings/ratings.module';
 import { GeolocationModule } from './modules/geolocation/geolocation.module';
 import { ConfigModule } from '@nestjs/config';
 import { CloudinaryModule } from './modules/cloudinary/cloudinary.module';
+import { VehicleSuggestionModule } from './modules/vehicle-suggestion/vehicle-suggestion.module';
+import { DriverRecommendationModule } from './modules/driver-recommendation/driver-recommendation.module';
 
 @Module({
   imports: [
@@ -31,6 +33,8 @@ import { CloudinaryModule } from './modules/cloudinary/cloudinary.module';
     NotificationsModule,
     RatingsModule,
     GeolocationModule,
+    VehicleSuggestionModule,
+    DriverRecommendationModule,
   ],
 })
 export class AppModule {}
