@@ -367,3 +367,56 @@
   color: var(--text-2);
   margin: 0;
 }
+
+/* Styles for empty / no active mission state */
+.no-mission {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 300px;
+}
+
+.no-mission .empty-card {
+  background: var(--surface);
+  border-radius: 12px;
+  padding: 28px 32px;
+  box-shadow: var(--shadow);
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  align-items: center;
+  max-width: 480px;
+}
+
+.no-mission .empty-card mat-icon {
+  font-size: 44px;
+  color: var(--secondary);
+  background: rgba(229, 90, 31, 0.08);
+  width: 72px;
+  height: 72px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+}
+
+.no-mission .empty-card p {
+  margin: 0;
+  font-size: 16px;
+  color: var(--text-2);
+}
+
+.no-mission .empty-card .back-btn {
+  margin-top: 8px;
+  padding: 8px 16px;
+  background: transparent;
+  border: 1px solid rgba(226, 232, 240, 0.8);
+  border-radius: 8px;
+  color: var(--text-1);
+}
+
+.no-mission .empty-card .back-btn:hover {
+  background: var(--background);
+}

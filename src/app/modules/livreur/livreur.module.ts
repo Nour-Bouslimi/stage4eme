@@ -26,6 +26,7 @@ const routes: Routes = [
     children: [
       { path: 'dashboard', component: LivreurDashboardComponent },
       { path: 'missions', component: LivreurMissionsComponent },
+      { path: 'active', component: ActiveMissionComponent },
       { path: 'active/:missionId', component: ActiveMissionComponent },
       { path: 'chat', component: LivreurChatComponent },
       { path: 'chat/:missionId', component: LivreurChatComponent },

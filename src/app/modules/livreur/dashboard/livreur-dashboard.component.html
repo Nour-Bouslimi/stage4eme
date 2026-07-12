@@ -12,12 +12,20 @@
     </div>
   </div>
 
-  <!-- Notes Section (simple) -->
+  <!-- Notes Section (improved) -->
   <div class="rating-badge" *ngIf="averageRating > 0 || totalRatings > 0">
-    <div class="stars-small">
-      <span *ngFor="let star of getRatingStars()" class="star-small" [class.filled]="isRatingFilled(star)" [class.half]="isRatingHalf(star)">★</span>
+    <div class="rating-card">
+      <div class="rating-left">
+        <div class="avg">{{ averageRating.toFixed(1) }}</div>
+        <div class="out-of">/5</div>
+      </div>
+      <div class="rating-right">
+        <div class="stars">
+          <span *ngFor="let star of getRatingStars()" class="star" [class.filled]="isRatingFilled(star)" [class.half]="isRatingHalf(star)">★</span>
+        </div>
+        <div class="count">{{ totalRatings }} avis</div>
+      </div>
     </div>
-    <span class="rating-text">{{ averageRating.toFixed(1) }} ({{ totalRatings }} avis)</span>
   </div>
 
   <div class="stats-grid">
@@ -56,7 +64,7 @@
         <mat-icon>payments</mat-icon>
       </div>
       <div class="stat-content">
-        <p class="stat-value">{{ stats.revenue }} TND</p>
+        <p class="stat-value">{{ stats.revenue | number:'1.2-2' }} TND</p>
         <p class="stat-label">Revenus</p>
       </div>
     </div>

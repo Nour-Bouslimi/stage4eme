@@ -865,7 +865,9 @@ export class LivreurProfilComponent implements OnInit {
 
   getRevenueLabel(): string {
     const missions = this.user?.totalMissions ?? 0;
-    return `${(missions * 60).toLocaleString('fr-FR')} €`;
+    const amount = missions * 60;
+    const formatted = amount.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    return `${formatted} TND`;
   }
 
   getAcceptanceRate(): string {

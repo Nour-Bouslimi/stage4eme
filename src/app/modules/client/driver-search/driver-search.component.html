@@ -21,32 +21,47 @@
       <p class="summary-kicker">Recherche livreurs</p>
       <h1 class="summary-title">Tous les livreurs disponibles</h1>
       <p class="summary-text">Recherchez par nom ou filtrez par type de véhicule.</p>
-
     </div>
   </section>
 
+  <!-- Badge IA uniquement en mode mission -->
+  <div class="ia-banner" *ngIf="mode === 'mission' && !loading && drivers.length > 0">
+    <mat-icon>auto_awesome</mat-icon>
+    <span>
+      <strong>{{ drivers.length }} livreurs</strong> classés par score IA
+      (note · proximité · taux d'acceptation · missions similaires)
+    </span>
+  </div>
+
   <div class="search-grid" [class.single]="mode === 'all'" *ngIf="!loading && (mode === 'all' || mission)">
+
+    <!-- ── CARTE RÉELLE (remplace les divs CSS mock) ── -->
     <section class="map-panel" *ngIf="mode === 'mission'">
-      <div class="map-surface">
-        <div class="map-grid"></div>
-        <div class="map-road road-a"></div>
-        <div class="map-road road-b"></div>
-        <div class="map-road road-c"></div>
-        <div class="map-road road-d"></div>
-
-        <div class="map-marker destination">
-          <mat-icon>near_me</mat-icon>
-          <span>Destination</span>
-        </div>
-
-        <div class="map-marker driver"></div>
-
-        <div class="map-marker departure">
-          <mat-icon>location_on</mat-icon>
-          <span>Départ</span>
-        </div>
-
-        <div class="map-credit">© DeliverEase Maps</div>
+      <div class="map-panel-header">
+        <mat-icon>map</mat-icon>
+        <span>Livreurs disponibles près du point de départ</span>
+      </div>
+      <app-map
+        [height]="'520px'"
+        [markers]="mapMarkers"
+        [polyline]="mapPolyline"
+        [center]="mapCenter"
+        [zoom]="mapZoom"
+        [fitToMarkers]="mapMarkers.length > 1">
+      </app-map>
+      <div class="map-legend-row">
+        <span class="legend-item">
+          <span class="legend-dot" style="background:#ff6b2c"></span> Départ
+        </span>
+        <span class="legend-item">
+          <span class="legend-dot" style="background:#1a3c6e"></span> Destination
+        </span>
+        <span class="legend-item">
+          <span class="legend-dot driver-dot"></span> Livreur
+        </span>
+        <span class="legend-item">
+          <span class="legend-dot top-dot"></span> Meilleur score
+        </span>
       </div>
     </section>
 
@@ -62,21 +77,15 @@
       </div>
 
       <div class="filters-row">
-        <button
-          type="button"
-          class="filter-pill"
-          [class.active]="selectedFilter === 'all'"
-          (click)="filterDrivers('all')"
-        >
+        <button type="button" class="filter-pill"
+                [class.active]="selectedFilter === 'all'"
+                (click)="filterDrivers('all')">
           Tous
         </button>
-        <button
-          type="button"
-          class="filter-pill"
-          *ngFor="let vehicle of vehicleTypes"
-          [class.active]="selectedFilter === vehicle.value"
-          (click)="filterDrivers(vehicle.value)"
-        >
+        <button type="button" class="filter-pill"
+                *ngFor="let vehicle of vehicleTypes"
+                [class.active]="selectedFilter === vehicle.value"
+                (click)="filterDrivers(vehicle.value)">
           {{ vehicle.label }}
         </button>
       </div>
@@ -88,10 +97,23 @@
       </div>
 
       <div class="drivers-list" *ngIf="paginatedDrivers.length > 0">
-        <article class="driver-card" *ngFor="let driver of paginatedDrivers">
+        <article
+          class="driver-card"
+          *ngFor="let driver of paginatedDrivers"
+          (mouseenter)="highlightDriverOnMap(driver)"
+          (mouseleave)="resetMapView()">
+
+          <!-- Rank badge IA -->
+          <div class="rank-badge" *ngIf="hasScore(driver)"
+               [style.background]="getScoreColor(driver._score)">
+            #{{ driver._rank }}
+          </div>
+
           <div class="driver-top">
             <div class="driver-avatar">
-              <img [src]="driver.avatar || 'assets/default-avatar.svg'" [alt]="driver.prenom + ' ' + driver.nom" />
+              <img [src]="driver.avatar || driver.photo || 'assets/default-avatar.svg'"
+                   [alt]="driver.prenom + ' ' + driver.nom" />
+              <span class="online-dot" [class.online]="driver.estEnLigne"></span>
             </div>
             <div class="driver-main">
               <div class="driver-name-row">
@@ -104,34 +126,73 @@
               <p class="driver-subtitle">{{ getDriverSubtitle(driver) }}</p>
               <div class="driver-stats">
                 <span>{{ getDriverMissions(driver) }} missions</span>
-                <span>{{ getDriverRate(driver) }}€/h</span>
+                <span>{{ getDriverRate(driver) }} TND/h</span>
               </div>
+
+              <!-- Score bar IA -->
+              <ng-container *ngIf="hasScore(driver)">
+                <div class="score-bar-label">
+                  <span>Score IA</span>
+                  <strong [style.color]="getScoreColor(driver._score)">
+                    {{ getScorePercent(driver._score) }}%
+                  </strong>
+                </div>
+                <div class="score-bar">
+                  <div class="score-bar-fill"
+                       [style.width.%]="getScorePercent(driver._score)"
+                       [style.background]="getScoreColor(driver._score)">
+                  </div>
+                </div>
+
+                <!-- Score details -->
+                <div class="score-details" *ngIf="driver._scoreDetails">
+                  <div class="score-detail-row">
+                    <span>Note</span>
+                    <div class="mini-bar"><div [style.width.%]="driver._scoreDetails.noteScore"></div></div>
+                    <span>{{ driver._scoreDetails.noteScore }}%</span>
+                  </div>
+                  <div class="score-detail-row">
+                    <span>Proximité</span>
+                    <div class="mini-bar"><div [style.width.%]="driver._scoreDetails.proximityScore"></div></div>
+                    <span>{{ driver._scoreDetails.proximityScore }}%</span>
+                  </div>
+                  <div class="score-detail-row">
+                    <span>Acceptation</span>
+                    <div class="mini-bar"><div [style.width.%]="driver._scoreDetails.acceptanceScore"></div></div>
+                    <span>{{ driver._scoreDetails.acceptanceScore }}%</span>
+                  </div>
+                  <div class="score-detail-row">
+                    <span>Similarité</span>
+                    <div class="mini-bar"><div [style.width.%]="driver._scoreDetails.similarityScore"></div></div>
+                    <span>{{ driver._scoreDetails.similarityScore }}%</span>
+                  </div>
+                </div>
+              </ng-container>
             </div>
           </div>
 
           <div class="driver-footer">
-            <span
-              class="availability"
-              [class.available]="driver.disponible"
-              [class.unavailable]="!driver.disponible"
-            >
+            <span class="availability"
+                  [class.available]="driver.disponible"
+                  [class.unavailable]="!driver.disponible">
               {{ getDriverStatusLabel(driver) }}
             </span>
 
-            <button
-              class="detail-btn"
-              type="button"
-              (click)="viewDriverProfile(driver.id)"
-            >
+            <button class="detail-btn" type="button" (click)="viewDriverProfile(driver.id)">
               Détail
             </button>
 
-            <button
-              *ngIf="driver.disponible"
-              class="contact-btn"
-              type="button"
-              (click)="contactDriver(driver.id)"
-            >
+            <button *ngIf="driver.disponible && mode === 'mission'"
+                    class="assign-btn" type="button"
+                    [disabled]="assigning"
+                    (click)="assignDriver(driver)">
+              <mat-icon>person_add</mat-icon>
+              {{ assigning ? 'En cours...' : 'Assigner' }}
+            </button>
+
+            <button *ngIf="driver.disponible && mode !== 'mission'"
+                    class="contact-btn" type="button"
+                    (click)="contactDriver(driver.id)">
               Contacter
             </button>
           </div>
@@ -141,19 +202,20 @@
       <div class="pagination-bar" *ngIf="filteredDrivers.length > 0">
         <div class="pagination-label">{{ getPaginationLabel() }}</div>
         <div class="pagination-controls">
-          <button class="page-btn" type="button" (click)="onPageChange(currentPage - 1)" [disabled]="currentPage === 1">
+          <button class="page-btn" type="button"
+                  (click)="onPageChange(currentPage - 1)"
+                  [disabled]="currentPage === 1">
             <mat-icon>chevron_left</mat-icon>
           </button>
-          <button
-            class="page-btn number"
-            type="button"
-            *ngFor="let page of visiblePages"
-            [class.active]="page === currentPage"
-            (click)="onPageChange(page)"
-          >
+          <button class="page-btn number" type="button"
+                  *ngFor="let page of visiblePages"
+                  [class.active]="page === currentPage"
+                  (click)="onPageChange(page)">
             {{ page }}
           </button>
-          <button class="page-btn" type="button" (click)="onPageChange(currentPage + 1)" [disabled]="currentPage === totalPages">
+          <button class="page-btn" type="button"
+                  (click)="onPageChange(currentPage + 1)"
+                  [disabled]="currentPage === totalPages">
             <mat-icon>chevron_right</mat-icon>
           </button>
         </div>
@@ -168,7 +230,7 @@
 
   <div class="loading-state" *ngIf="loading">
     <mat-spinner diameter="40"></mat-spinner>
-    <p>Chargement des livreurs...</p>
+    <p>{{ mode === 'mission' ? 'Recherche des meilleurs livreurs...' : 'Chargement des livreurs...' }}</p>
   </div>
 
   <div class="empty-state page-empty" *ngIf="!loading && mode === 'mission' && !mission">
@@ -178,6 +240,7 @@
     <button class="contact-btn" type="button" (click)="goBack()">Retour</button>
   </div>
 
+  <!-- Modal détail (inchangée) -->
   <div class="detail-modal-backdrop" *ngIf="detailModalOpen && selectedDriver" (click)="closeDriverDetail()">
     <section class="detail-modal" (click)="$event.stopPropagation()">
       <div class="detail-modal-header">
@@ -185,20 +248,19 @@
           <p class="modal-kicker">Détail du livreur</p>
           <h2>{{ selectedDriver.prenom }} {{ selectedDriver.nom }}</h2>
         </div>
-        <button type="button" class="modal-close-btn" (click)="closeDriverDetail()" aria-label="Fermer">
+        <button type="button" class="modal-close-btn" (click)="closeDriverDetail()">
           <mat-icon>close</mat-icon>
         </button>
       </div>
-
       <div class="detail-modal-body">
         <div class="detail-profile">
-          <img [src]="selectedDriver.avatar || 'assets/default-avatar.svg'" [alt]="selectedDriver.prenom + ' ' + selectedDriver.nom" />
+          <img [src]="selectedDriver.avatar || selectedDriver.photo || 'assets/default-avatar.svg'"
+               [alt]="selectedDriver.prenom" />
           <div>
             <p class="detail-subtitle">{{ getDriverVehicleLabel(selectedDriver) }}</p>
             <p class="detail-summary">{{ getDriverSubtitle(selectedDriver) }}</p>
           </div>
         </div>
-
         <div class="detail-grid">
           <div class="detail-card" *ngFor="let detail of getDriverDetails(selectedDriver)">
             <span>{{ detail.label }}</span>
@@ -206,10 +268,16 @@
           </div>
         </div>
       </div>
-
       <div class="detail-modal-footer">
         <button type="button" class="btn-secondary" (click)="closeDriverDetail()">Fermer</button>
-        <button *ngIf="selectedDriver.disponible" type="button" class="btn-primary" (click)="contactDriver(selectedDriver.id)">
+        <button *ngIf="selectedDriver.disponible && mode === 'mission'"
+                type="button" class="btn-primary"
+                (click)="assignDriver(selectedDriver); closeDriverDetail()">
+          <mat-icon>person_add</mat-icon> Assigner
+        </button>
+        <button *ngIf="selectedDriver.disponible && mode !== 'mission'"
+                type="button" class="btn-primary"
+                (click)="contactDriver(selectedDriver.id)">
           Contacter
         </button>
       </div>

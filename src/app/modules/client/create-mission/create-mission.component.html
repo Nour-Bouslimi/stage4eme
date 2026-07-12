@@ -258,16 +258,80 @@
             <p class="field-error" *ngIf="isFieldInvalid('volumeEstime')">Le volume est obligatoire.</p>
           </article>
 
-          <article class="glass-card form-card">
-            <h2>Description</h2>
-            <label class="textarea-shell">
-              <textarea
-                rows="5"
-                formControlName="description"
-                placeholder="Carton fragile contenant de la vaisselle. Manipuler avec precaution."
-              ></textarea>
-            </label>
-          </article>
+          <!-- <article class="glass-card form-card"> -->
+            <!-- <h2>Description</h2> -->
+            <!-- <label class="textarea-shell"> -->
+              <!-- <textarea -->
+                <!-- rows="5" -->
+                <!-- formControlName="description" -->
+                <!-- placeholder="Carton fragile contenant de la vaisselle. Manipuler avec precaution." -->
+              <!-- ></textarea> -->
+            <!-- </label> -->
+          <!-- </article> -->
+
+<article class="glass-card form-card">
+  <div class="card-title-row">
+    <h2>Description</h2>
+    <span class="ia-hint" *ngIf="!suggestionLoading && !suggestion">
+      ✨ Décrivez votre besoin pour une suggestion IA automatique
+    </span>
+  </div>
+
+  <label class="textarea-shell">
+    <textarea
+      rows="5"
+      formControlName="description"
+      placeholder="Ex: je veux déménager un canapé et une grande armoire..."
+      (input)="onDescriptionChange($any($event.target).value)"
+    ></textarea>
+  </label>
+
+  <!-- Chargement IA -->
+  <div class="suggestion-loading" *ngIf="suggestionLoading">
+    <mat-spinner diameter="16"></mat-spinner>
+    <span>Analyse IA en cours...</span>
+  </div>
+
+  <!-- Card suggestion -->
+  <div class="suggestion-card" *ngIf="suggestion && !suggestionLoading">
+    <div class="suggestion-header">
+      <span class="ia-badge">✨ Suggestion IA</span>
+      <span class="confidence-badge"
+            [class.high]="suggestion.confidence === 'HIGH'"
+            [class.medium]="suggestion.confidence === 'MEDIUM'"
+            [class.low]="suggestion.confidence === 'LOW'">
+        {{ suggestion.confidence }}
+      </span>
+    </div>
+
+    <div class="suggestion-body">
+      <div class="suggestion-detail">
+        <mat-icon>local_shipping</mat-icon>
+        <strong>{{ suggestion.typeVehicule }}</strong>
+      </div>
+      <div class="suggestion-detail">
+        <mat-icon>fitness_center</mat-icon>
+        <span>Poids min : <strong>{{ suggestion.poidsMinKg }} kg</strong></span>
+      </div>
+      <div class="suggestion-detail">
+        <mat-icon>inventory_2</mat-icon>
+        <span>Volume min : <strong>{{ suggestion.volumeMinM3 }} m³</strong></span>
+      </div>
+      <p class="suggestion-raison">{{ suggestion.raison }}</p>
+    </div>
+
+    <div class="suggestion-actions">
+      <button type="button" class="btn btn-primary btn-sm" (click)="applySuggestion()">
+        <mat-icon>check</mat-icon>
+        Appliquer
+      </button>
+      <button type="button" class="btn btn-secondary btn-sm" (click)="suggestion = null">
+        <mat-icon>close</mat-icon>
+        Ignorer
+      </button>
+    </div>
+  </div>
+</article>
 
           <article class="glass-card form-card">
             <h2>Instructions speciales</h2>

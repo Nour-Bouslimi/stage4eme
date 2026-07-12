@@ -106,12 +106,24 @@ export class MapComponent implements AfterViewInit, OnChanges, OnDestroy {
     }
 
     this.markers.forEach((marker) => {
-      const icon = L.divIcon({
-        className: 'custom-marker',
-        html: marker.icon || this.buildMarkerHtml(marker.kind),
-        iconSize: [40, 40],
-        iconAnchor: [20, 40]
-      });
+      let icon;
+
+      if (marker.icon) {
+        icon = L.divIcon({
+          html: marker.icon,
+          className: '',
+          iconSize: [48, 48],
+          iconAnchor: [24, 48],
+          popupAnchor: [0, -48]
+        });
+      } else {
+        icon = L.divIcon({
+          className: 'custom-marker',
+          html: this.buildMarkerHtml(marker.kind),
+          iconSize: [40, 40],
+          iconAnchor: [20, 40]
+        });
+      }
 
       L.marker([marker.lat, marker.lng], { icon })
         .addTo(this.markerLayer!)
@@ -125,9 +137,9 @@ export class MapComponent implements AfterViewInit, OnChanges, OnDestroy {
     }
 
     L.polyline(this.polyline, {
-      color: '#1A3C6E',
-      weight: 4,
-      opacity: 0.95,
+      color: '#FF0080',
+      weight: 5,
+      opacity: 1,
       lineJoin: 'round',
       lineCap: 'round'
     }).addTo(this.polylineLayer);
@@ -149,7 +161,7 @@ export class MapComponent implements AfterViewInit, OnChanges, OnDestroy {
           const point = boundsPoints[0] as [number, number];
           this.map.setView(point, Math.max(this.zoom, 12));
         } else {
-          this.map.fitBounds(L.latLngBounds(boundsPoints), { padding: [28, 28] });
+          this.map.fitBounds(L.latLngBounds(boundsPoints), { padding: [60, 60], maxZoom: 13 });
         }
 
         return;

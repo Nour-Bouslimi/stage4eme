@@ -18,13 +18,6 @@ export class GeolocationService {
 { match: ['le kef'], lat: 36.1738, lng: 8.7048 },
 { match: ['siliana'], lat: 36.0841, lng: 9.3708 },
 
-
-
-
-
-
-
-
     { match: ['sfax'], lat: 34.7397, lng: 10.7603 },
     { match: ['sousse'], lat: 35.8256, lng: 10.6406 },
     { match: ['monastir'], lat: 35.7770, lng: 10.8262 },
@@ -65,7 +58,7 @@ export class GeolocationService {
     });
   }
 
-  geocode(address: string): Observable<Array<{ address: string; latitude: number; longitude: number }>> {
+  /* geocode(address: string): Observable<Array<{ address: string; latitude: number; longitude: number }>> {
     const cleanAddress = address.trim();
 
     if (!cleanAddress) {
@@ -78,7 +71,34 @@ export class GeolocationService {
       map((response) => this.normalizeGeocodeResponse(response, cleanAddress)),
       catchError(() => of(this.normalizeGeocodeResponse(this.getFallbackCoordinates(cleanAddress), cleanAddress)))
     );
-  }
+  } */
+
+
+geocode(address: string): Observable<Array<{ address: string; latitude: number; longitude: number }>> {
+  const cleanAddress = address.trim();
+  if (!cleanAddress) return of([]);
+
+
+  const searchQuery = cleanAddress.toLowerCase().includes('tunisie')
+    ? cleanAddress
+    : `${cleanAddress}, Tunisie`;
+
+  const params = new HttpParams().set('address', searchQuery);
+
+  return this.http.get<unknown>(`${this.apiUrl}/geocode`, { params }).pipe(
+    map((response) => {
+      const results = this.normalizeGeocodeResponse(response, cleanAddress);
+      // Filtrer uniquement les coordonnées en Tunisie
+      return results.filter(r =>
+        r.latitude >= 30.2 && r.latitude <= 37.5 &&
+        r.longitude >= 7.5 && r.longitude <= 11.6
+      );
+    }),
+    catchError(() => of(this.normalizeGeocodeResponse(
+      this.getFallbackCoordinates(cleanAddress), cleanAddress
+    )))
+  );
+}
 
   geocodeAddress(address: string): Observable<any> {
     return this.geocode(address).pipe(
@@ -86,7 +106,7 @@ export class GeolocationService {
     );
   }
 
-  getRoute(start: { lat: number; lng: number }, end: { lat: number; lng: number }): Observable<{
+ /*  getRoute(start: { lat: number; lng: number }, end: { lat: number; lng: number }): Observable<{
     distanceKm: number;
     durationMinutes: number;
     polyline: [number, number][];
@@ -95,7 +115,21 @@ export class GeolocationService {
       map((response) => this.normalizeRouteResponse(response, start, end)),
       catchError(() => of(this.buildFallbackRoute(start, end)))
     );
-  }
+  } */
+
+getRoute(start: { lat: number; lng: number }, end: { lat: number; lng: number }): Observable<{
+  distanceKm: number;
+  durationMinutes: number;
+  polyline: [number, number][];
+}> {
+  return this.http.post<unknown>(
+    `${this.apiUrl}/route`,
+    { start, end }  // ← correction ici
+  ).pipe(
+    map((response) => this.normalizeRouteResponse(response, start, end)),
+    catchError(() => of(this.buildFallbackRoute(start, end)))
+  );
+}
 
   calculateRoute(depart: { lat: number; lng: number }, destination: { lat: number; lng: number }): Observable<any> {
     return this.getRoute(depart, destination);

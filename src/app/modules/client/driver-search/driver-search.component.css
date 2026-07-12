@@ -1,3 +1,155 @@
+/* ── Badge IA ── */
+.ia-banner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  margin-bottom: 16px;
+  background: rgba(108, 99, 255, 0.08);
+  border: 1px solid rgba(108, 99, 255, 0.25);
+  border-radius: 10px;
+  font-size: 0.85rem;
+  color: var(--color-primary, #6c63ff);
+}
+
+/* ── Carte ── */
+.map-panel-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.map-legend-row {
+  display: flex;
+  gap: 16px;
+  padding: 8px 14px;
+  font-size: 0.78rem;
+  border-top: 1px solid var(--color-border);
+}
+
+.legend-item { display: flex; align-items: center; gap: 5px; }
+.legend-dot {
+  width: 10px; height: 10px;
+  border-radius: 50%;
+  background: #9ca3af;
+}
+.driver-dot { background: #6c63ff; }
+.top-dot    { background: #10b981; }
+
+/* ── Rank badge ── */
+.driver-card { position: relative; }
+.rank-badge {
+  position: absolute;
+  top: 12px; right: 12px;
+  width: 28px; height: 28px;
+  border-radius: 50%;
+  color: white;
+  font-size: 0.72rem;
+  font-weight: 700;
+  display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+}
+
+/* ── Online dot ── */
+.driver-avatar { position: relative; }
+.online-dot {
+  position: absolute;
+  bottom: 2px; right: 2px;
+  width: 10px; height: 10px;
+  border-radius: 50%;
+  background: #9ca3af;
+  border: 2px solid white;
+}
+.online-dot.online { background: #10b981; }
+
+/* ── Score bar ── */
+.score-bar-label {
+  display: flex; justify-content: space-between;
+  font-size: 0.75rem; margin: 6px 0 3px;
+}
+.score-bar {
+  height: 5px;
+  background: var(--color-border);
+  border-radius: 10px;
+  overflow: hidden;
+  margin-bottom: 8px;
+}
+.score-bar-fill {
+  height: 100%;
+  border-radius: 10px;
+  transition: width 0.5s ease;
+}
+
+/* ── Score details ── */
+.score-details {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px 0 4px;
+  border-top: 1px solid var(--color-border);
+}
+.score-detail-row {
+  display: grid;
+  grid-template-columns: 100px 1fr 36px;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.72rem;
+  color: var(--color-text-secondary);
+}
+.mini-bar {
+  height: 4px;
+  background: var(--color-border);
+  border-radius: 10px;
+  overflow: hidden;
+}
+.mini-bar div {
+  height: 100%;
+  background: var(--color-primary, #6c63ff);
+  border-radius: 10px;
+}
+
+/* ── Bouton assigner ── */
+.assign-btn {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 14px;
+  background: var(--color-primary, #6c63ff);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+.assign-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+.assign-btn mat-icon { font-size: 16px; width: 16px; height: 16px; }
+
+/* ── Pins carte ── */
+:host ::ng-deep .driver-pin {
+  width: 26px; height: 26px;
+  background: #6c63ff;
+  border: 2px solid white;
+  border-radius: 50%;
+  color: white;
+  font-size: 0.7rem;
+  font-weight: 700;
+  display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+  cursor: pointer;
+}
+:host ::ng-deep .driver-pin--top {
+  background: #10b981;
+  width: 32px; height: 32px;
+  font-size: 0.8rem;
+}
+
+
 .driver-search-page {
   min-height: calc(100vh - 128px);
   padding: 8px 0 16px;
@@ -542,7 +694,7 @@
   display: grid;
   place-items: center;
   padding: 24px;
-  z-index: 35;
+  z-index: 1000;
 }
 
 .detail-modal {

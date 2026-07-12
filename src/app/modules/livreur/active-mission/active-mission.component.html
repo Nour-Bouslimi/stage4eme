@@ -134,6 +134,14 @@
     </div>
   </div>
 
+  <div class="no-mission" *ngIf="!loading && !mission">
+    <div class="empty-card">
+      <mat-icon>info</mat-icon>
+      <p>Il n'y a pas de mission active pour le moment.</p>
+      <button class="back-btn" (click)="goBack()">Retour au tableau de bord</button>
+    </div>
+  </div>
+
   <div class="loading-state" *ngIf="loading">
     <mat-spinner diameter="40"></mat-spinner>
     <p>Chargement...</p>

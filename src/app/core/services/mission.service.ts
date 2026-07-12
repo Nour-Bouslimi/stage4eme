@@ -164,6 +164,12 @@ export class MissionService {
     return this.http.get<any[]>(`${this.apiUrl}/missions/${id}/livreurs-compatibles`);
   }
 
+  assignerLivreur(missionId: string, livreurId: string): Observable<Mission> {
+    return this.http.patch<Mission>(`${this.apiUrl}/missions/${missionId}/assign`, { livreurId }).pipe(
+      map((mission) => this.withVisibleNotifications(normalizeMission(mission)))
+    );
+  }
+
   annulerMission(id: string, raisonAnnulation?: string): Observable<Mission> {
     return this.updateStatut(id, MissionStatus.ANNULEE, raisonAnnulation);
   }

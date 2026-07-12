@@ -7,7 +7,7 @@
           <p>Partagez votre expérience avec {{ getDriverName() }}</p>
         </header>
 
-        <div class="notice" *ngIf="mission?.notation && !ratingId">
+        <div class="notice" *ngIf="mission.notation && !ratingId">
           <mat-icon color="warn">error</mat-icon>
           <span class="notice-text">Mission déjà notée</span>
         </div>
@@ -48,7 +48,7 @@
                 class="star-button"
                 *ngFor="let star of [1, 2, 3, 4, 5]"
                 (click)="setRating(star)"
-                [disabled]="mission?.notation && !ratingId"
+                [disabled]="mission.notation && !ratingId"
                 [attr.aria-label]="'Noter ' + star + ' étoile' + (star > 1 ? 's' : '')"
               >
                 <mat-icon>{{ star <= rating ? 'star' : 'star_outline' }}</mat-icon>
@@ -68,7 +68,7 @@
               *ngFor="let tag of availableTags"
               [class.selected]="isTagSelected(tag.value)"
               (click)="toggleTag(tag.value)"
-              [disabled]="mission?.notation && !ratingId"
+              [disabled]="mission.notation && !ratingId"
             >
               {{ tag.label }}
             </button>
@@ -90,7 +90,7 @@
           <button type="button" class="btn-secondary" *ngIf="ratingId && !submitting" (click)="deleteRating()">
             Supprimer l'avis
           </button>
-          <button type="submit" class="btn-primary" [disabled]="submitting || ratingForm.invalid || !isFormComplete() || (mission?.notation && !ratingId)">
+          <button type="submit" class="btn-primary" [disabled]="submitting || ratingForm.invalid || !isFormComplete() || (mission.notation && !ratingId)">
             <span *ngIf="!submitting">Envoyer l'évaluation</span>
             <span *ngIf="submitting">Envoi...</span>
           </button>

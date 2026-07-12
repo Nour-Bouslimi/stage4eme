@@ -25,7 +25,7 @@ import { GeolocationService } from '../../../core/services/geolocation.service';
 import { MissionEstimation, MissionEstimationService } from '../../../core/services/mission-estimation.service';
 import { MissionService } from '../../../core/services/mission.service';
 import { ToastService } from '../../../shared/components/toast/toast.service';
-
+import { VehicleSuggestionService, VehicleSuggestion } from '../../../core/services/vehicle-suggestion.service';
 type CategoryOption = {
   value: MissionCategory;
   label: string;
@@ -82,12 +82,21 @@ export class CreateMissionComponent implements OnInit, OnDestroy {
   ];
 
   vehicleTypes: VehicleOption[] = [
-    { value: 'MOTO', label: 'Moto', icon: 'directions_bike' },
+    { value: 'BICYCLETTE', label: 'Bicyclette', icon: 'directions_bike' },
+    { value: 'MOTO', label: 'Moto', icon: 'motorcycle' },
+    { value: 'SCOOTER', label: 'Scooter', icon: 'electric_scooter' },
     { value: 'VOITURE', label: 'Voiture', icon: 'directions_car' },
+    { value: 'PICKUP', label: 'Pickup', icon: 'signpost' },
     { value: 'FOURGONNETTE', label: 'Camionnette', icon: 'local_shipping' },
-    { value: 'PETIT_CAMION', label: 'Petit camion', icon: 'local_shipping' }
+    { value: 'PETIT_CAMION', label: 'Petit camion', icon: 'local_shipping' },
+    { value: 'GROS_CAMION', label: 'Gros camion', icon: 'local_shipping' }
   ];
 
+
+//Suggestion intelligente du type de véhicule
+suggestion: VehicleSuggestion | null = null;
+suggestionLoading = false;
+private suggestionTimeout: any;
   constructor(
     private fb: FormBuilder,
     private missionService: MissionService,
@@ -95,7 +104,8 @@ export class CreateMissionComponent implements OnInit, OnDestroy {
     private geolocationService: GeolocationService,
     private router: Router,
     private route: ActivatedRoute,
-    private toastService: ToastService
+    private toastService: ToastService,
+    private vehicleSuggestionService: VehicleSuggestionService
   ) {}
 
   ngOnInit(): void {
@@ -757,4 +767,36 @@ export class CreateMissionComponent implements OnInit, OnDestroy {
       return value.trim().length > 0 ? null : { blank: true };
     };
   }
+
+// Suggestion intelligente du type de véhicule
+onDescriptionChange(value: string): void {
+  this.suggestion = null;
+  clearTimeout(this.suggestionTimeout);
+
+  if (!value || value.trim().length < 10) return;
+
+  this.suggestionTimeout = setTimeout(() => {
+    this.suggestionLoading = true;
+    this.vehicleSuggestionService.suggest(value.trim()).subscribe({
+      next: (result) => {
+        this.suggestion = result;
+        this.suggestionLoading = false;
+      },
+      error: () => {
+        this.suggestionLoading = false;
+      }
+    });
+  }, 800);
+}
+
+applySuggestion(): void {
+  if (!this.suggestion) return;
+  this.createMissionForm.patchValue({
+    typeVehiculeRequis: this.suggestion.typeVehicule,
+    poidsEstime: this.suggestion.poidsMinKg,
+    volumeEstime: this.suggestion.volumeMinM3,
+  });
+  this.toastService.success('Suggestion appliquée avec succès');
+  this.suggestion = null;
+}
 }

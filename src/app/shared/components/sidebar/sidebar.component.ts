@@ -161,10 +161,13 @@ export class SidebarComponent implements OnInit {
           return;
         }
 
-        this.router.navigate(['/livreur/missions']);
+        // No active mission: navigate to the active mission page (without id)
+        // so the component can display a "no active mission" message instead of
+        // redirecting to the missions list.
+        this.router.navigate(['/livreur/active']);
       },
       error: () => {
-        this.router.navigate(['/livreur/missions']);
+        this.router.navigate(['/livreur/active']);
       }
     });
   }
