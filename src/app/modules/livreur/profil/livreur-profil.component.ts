@@ -90,6 +90,7 @@ export class LivreurProfilComponent implements OnInit {
       nom: ['', [Validators.required, Validators.minLength(2)]],
       email: ['', [Validators.required, Validators.email]],
       telephone: ['', [Validators.required, Validators.pattern(/^[0-9]{8}$/)]],
+      adresseParDefaut: [''],
       cin: ['', [Validators.required, Validators.minLength(8)]],
       motDePasse: ['', [Validators.minLength(6)]],
       availabilityStart: ['07:00', [Validators.required]],
@@ -172,6 +173,7 @@ export class LivreurProfilComponent implements OnInit {
       nom: user.nom,
       email: user.email,
       telephone: user.telephone,
+      adresseParDefaut: user.adresseParDefaut,
       cin: user.cin,
       motDePasse: '',
       availabilityStart: '07:00',
@@ -553,6 +555,7 @@ export class LivreurProfilComponent implements OnInit {
       this.appendField(formData, 'email', this.profileForm.get('email')?.value);
       this.appendField(formData, 'telephone', this.profileForm.get('telephone')?.value);
       this.appendField(formData, 'cin', this.profileForm.get('cin')?.value);
+      this.appendField(formData, 'adresseParDefaut', this.profileForm.get('adresseParDefaut')?.value);
       this.appendField(formData, 'typeVehicule', this.profileForm.get('vehiculeType')?.value);
       this.appendField(formData, 'immatriculationVehicule', this.profileForm.get('vehiculeImmatriculation')?.value);
       this.appendField(formData, 'poidsMaxKg', this.profileForm.get('vehiculePoidsMax')?.value);

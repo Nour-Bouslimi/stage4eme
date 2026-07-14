@@ -49,6 +49,7 @@ type MapMarker = {
   lng: number;
   popup?: string;
   icon?: string;
+  kind?: 'departure' | 'destination';
 };
 
 @Component({
@@ -69,6 +70,7 @@ export class CreateMissionComponent implements OnInit, OnDestroy {
   mapCenter: [number, number] = [34.0, 9.0];
   mapZoom = 6;
   mapMarkers: MapMarker[] = [];
+  mapPolyline: [number, number][] = [];
 
   private readonly destroy$ = new Subject<void>();
 
@@ -87,7 +89,7 @@ export class CreateMissionComponent implements OnInit, OnDestroy {
     { value: 'SCOOTER', label: 'Scooter', icon: 'electric_scooter' },
     { value: 'VOITURE', label: 'Voiture', icon: 'directions_car' },
     { value: 'PICKUP', label: 'Pickup', icon: 'signpost' },
-    { value: 'FOURGONNETTE', label: 'Camionnette', icon: 'local_shipping' },
+    { value: 'FOURGONNETTE', label: 'FOURGONNETTE', icon: 'local_shipping' },
     { value: 'PETIT_CAMION', label: 'Petit camion', icon: 'local_shipping' },
     { value: 'GROS_CAMION', label: 'Gros camion', icon: 'local_shipping' }
   ];
@@ -501,14 +503,19 @@ private suggestionTimeout: any;
             lat: depart.lat,
             lng: depart.lng,
             popup: 'Depart',
-            icon: '<div class="custom-map-pin custom-map-pin--departure"><span></span></div>'
+            kind: 'departure'
           },
           {
             lat: destination.lat,
             lng: destination.lng,
             popup: 'Destination',
-            icon: '<div class="custom-map-pin custom-map-pin--destination"><span></span></div>'
+            kind: 'destination'
           }
+        ];
+
+        this.mapPolyline = [
+          [depart.lat, depart.lng],
+          [destination.lat, destination.lng]
         ];
 
         this.mapCenter = [
@@ -541,14 +548,18 @@ private suggestionTimeout: any;
           lat: depart.latitude,
           lng: depart.longitude,
           popup: 'Depart',
-          icon: '<div class="custom-map-pin custom-map-pin--departure"><span></span></div>'
+          kind: 'departure'
         },
         {
           lat: destination.latitude,
           lng: destination.longitude,
           popup: 'Destination',
-          icon: '<div class="custom-map-pin custom-map-pin--destination"><span></span></div>'
+          kind: 'destination'
         }
+      ];
+      this.mapPolyline = [
+        [depart.latitude, depart.longitude],
+        [destination.latitude, destination.longitude]
       ];
       this.mapCenter = [(depart.latitude + destination.latitude) / 2, (depart.longitude + destination.longitude) / 2];
       this.mapZoom = 8;
@@ -625,6 +636,7 @@ private suggestionTimeout: any;
 
   private clearMapPreview(): void {
     this.mapMarkers = [];
+    this.mapPolyline = [];
     this.geocodingError = null;
     this.geocodingLoading = false;
     this.mapCenter = [34.0, 9.0];

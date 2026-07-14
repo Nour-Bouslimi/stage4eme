@@ -44,6 +44,7 @@ export class CreateLivreurComponent implements OnInit {
       nom: ['', [Validators.required, Validators.minLength(2)]],
       email: ['', [Validators.required, Validators.email]],
       telephone: ['', [Validators.required, Validators.pattern(/^[0-9]{8}$/)]],
+      adresseParDefaut: ['', [Validators.required, Validators.minLength(5), Validators.pattern(/\S/)]],
       motDePasse: ['', [Validators.required, Validators.pattern(this.temporaryPasswordPattern)]],
       vehiculeType: [VehicleType.VOITURE, Validators.required],
       vehiculeImmatriculation: ['', Validators.required],
@@ -66,6 +67,7 @@ export class CreateLivreurComponent implements OnInit {
       nom: (this.createLivreurForm.get('nom')?.value || '').trim(),
       email: (this.createLivreurForm.get('email')?.value || '').trim(),
       telephone: (this.createLivreurForm.get('telephone')?.value || '').trim(),
+      adresseParDefaut: (this.createLivreurForm.get('adresseParDefaut')?.value || '').trim(),
       motDePasse: this.createLivreurForm.get('motDePasse')?.value,
       typeVehicule: this.createLivreurForm.get('vehiculeType')?.value,
       immatriculationVehicule: (this.createLivreurForm.get('vehiculeImmatriculation')?.value || '').trim(),
@@ -151,6 +153,30 @@ export class CreateLivreurComponent implements OnInit {
 
     if (control.errors['required']) {
       return 'Ce champ est obligatoire.';
+    }
+
+    if (control.errors['minlength']) {
+      const requiredLength = control.errors['minlength'].requiredLength;
+      return `Minimum ${requiredLength} caractères.`;
+    }
+
+    if (control.errors['pattern']) {
+      if (fieldName === 'motDePasse') {
+        return 'Le mot de passe doit contenir au moins 10 caractères, une majuscule, une minuscule, un chiffre et un caractère spécial.';
+      }
+
+      if (fieldName === 'adresseParDefaut') {
+        return 'L’adresse par défaut ne peut pas être vide.';
+      }
+
+      switch (fieldName) {
+        case 'telephone':
+          return 'Le téléphone doit contenir exactement 8 chiffres.';
+        case 'vehiculeImmatriculation':
+          return 'Format d’immatriculation invalide.';
+        default:
+          return 'Format invalide.';
+      }
     }
 
     if (control.errors['email']) {

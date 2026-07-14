@@ -68,6 +68,19 @@
           </div>
 
           <div class="form-group full-width">
+            <label for="adresseParDefaut">Adresse par défaut</label>
+            <input
+              id="adresseParDefaut"
+              type="text"
+              formControlName="adresseParDefaut"
+              placeholder="Avenue Habib Bourguiba, Tunis"
+              class="form-input"
+              [class.invalid]="isFieldInvalid('adresseParDefaut')"
+            />
+            <small class="field-error" *ngIf="isFieldInvalid('adresseParDefaut')">{{ getFieldError('adresseParDefaut') }}</small>
+          </div>
+
+          <div class="form-group full-width">
             <label for="motDePasse">Mot de passe</label>
             <div class="password-field">
               <input

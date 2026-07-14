@@ -82,6 +82,11 @@
             </small>
           </div>
 
+          <div class="form-group full-width">
+            <label for="adresseParDefaut">Adresse par défaut</label>
+            <input id="adresseParDefaut" type="text" formControlName="adresseParDefaut" [readonly]="!editing" class="form-input" [placeholder]="editing ? 'Avenue Habib Bourguiba, Tunis' : 'Non renseigné'" />
+          </div>
+
           <div class="form-group">
             <label for="cin">CIN</label>
             <input id="cin" type="text" formControlName="cin" [readonly]="!editing" class="form-input" [placeholder]="editing ? 'CIN' : 'Non renseigné'" />

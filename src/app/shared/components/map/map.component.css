@@ -23,9 +23,9 @@
   border: none;
 }
 
-.tracking-pin {
-  width: 40px;
-  height: 40px;
+.custom-map-pin {
+  width: 46px;
+  height: 46px;
   border-radius: 50% 50% 50% 0;
   transform: rotate(-45deg);
   display: flex;
@@ -35,18 +35,58 @@
   box-shadow: 0 10px 20px rgba(8, 24, 48, 0.24);
 }
 
+.custom-map-pin span {
+  transform: rotate(45deg);
+  font-size: 18px;
+  line-height: 1;
+}
+
+.custom-map-pin--departure {
+  background: linear-gradient(135deg, #ff7a3c 10%, #ff3a7a 100%);
+}
+
+.custom-map-pin--destination {
+  background: linear-gradient(135deg, #1d4ed8 10%, #2563eb 100%);
+}
+
+.tracking-pin {
+  position: relative;
+  width: 54px;
+  height: 54px;
+  border-radius: 50% 50% 50% 0;
+  transform: rotate(-45deg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 3px solid #ffffff;
+  box-shadow: 0 14px 30px rgba(8, 24, 48, 0.25);
+}
+
+.tracking-pin::after {
+  content: '';
+  position: absolute;
+  bottom: -8px;
+  left: 50%;
+  width: 12px;
+  height: 12px;
+  background: rgba(255, 255, 255, 0.92);
+  border-radius: 50%;
+  transform: translateX(-50%);
+  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.24);
+}
+
 .tracking-pin span {
   transform: rotate(45deg);
-  font-size: 16px;
+  font-size: 20px;
   line-height: 1;
 }
 
 .tracking-pin--departure {
-  background: #ff6b2c;
+  background: linear-gradient(135deg, #ff7a3c 10%, #ff3a7a 100%);
 }
 
 .tracking-pin--destination {
-  background: #1a3c6e;
+  background: linear-gradient(135deg, #1d4ed8 10%, #2563eb 100%);
 }
 
 .tracking-pin--driver {

@@ -17,6 +17,7 @@ export interface CreateLivreurPayload {
   email: string;
   telephone: string;
   motDePasse: string;
+  adresseParDefaut?: string;
   cin?: string;
   typeVehicule: string;
   immatriculationVehicule: string;

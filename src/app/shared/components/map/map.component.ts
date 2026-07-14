@@ -120,8 +120,9 @@ export class MapComponent implements AfterViewInit, OnChanges, OnDestroy {
         icon = L.divIcon({
           className: 'custom-marker',
           html: this.buildMarkerHtml(marker.kind),
-          iconSize: [40, 40],
-          iconAnchor: [20, 40]
+          iconSize: [54, 54],
+          iconAnchor: [27, 54],
+          popupAnchor: [0, -44]
         });
       }
 
@@ -174,13 +175,29 @@ export class MapComponent implements AfterViewInit, OnChanges, OnDestroy {
   private buildMarkerHtml(kind?: 'departure' | 'destination' | 'driver'): string {
     switch (kind) {
       case 'departure':
-        return '<div class="tracking-pin tracking-pin--departure" aria-label="Départ"><span>📍</span></div>';
+        return `
+          <div style="background:#FF6B2C;width:48px;height:48px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);border:3px solid white;box-shadow:0 6px 18px rgba(0,0,0,0.28);display:flex;align-items:center;justify-content:center;">
+            <span style="transform:rotate(45deg);font-size:18px;">📍</span>
+          </div>
+        `;
       case 'destination':
-        return '<div class="tracking-pin tracking-pin--destination" aria-label="Destination"><span>🏁</span></div>';
+        return `
+          <div style="background:#1A3C6E;width:48px;height:48px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);border:3px solid white;box-shadow:0 6px 18px rgba(0,0,0,0.28);display:flex;align-items:center;justify-content:center;">
+            <span style="transform:rotate(45deg);font-size:18px;">🏁</span>
+          </div>
+        `;
       case 'driver':
-        return '<div class="tracking-pin tracking-pin--driver" aria-label="Livreur"><span>🚚</span></div>';
+        return `
+          <div style="background:#22C55E;width:44px;height:44px;border-radius:50%;display:flex;align-items:center;justify-content:center;border:3px solid white;box-shadow:0 6px 18px rgba(0,0,0,0.22);">
+            <span style="font-size:18px;">🚚</span>
+          </div>
+        `;
       default:
-        return '<div class="tracking-pin tracking-pin--default"><span></span></div>';
+        return `
+          <div style="background:#64748B;width:42px;height:42px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);border:3px solid white;box-shadow:0 6px 18px rgba(0,0,0,0.22);display:flex;align-items:center;justify-content:center;">
+            <span style="transform:rotate(45deg);font-size:16px;"></span>
+          </div>
+        `;
     }
   }
 
