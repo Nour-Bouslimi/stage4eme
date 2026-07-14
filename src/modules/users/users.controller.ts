@@ -50,32 +50,9 @@ export class UsersController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('ADMIN')
   @Post('create-livreur')
-  @UseInterceptors(
-    FileFieldsInterceptor(
-      [
-        { name: 'photoCin', maxCount: 1 },
-        { name: 'photoVehicule', maxCount: 1 },
-      ],
-      {
-        storage: multer.memoryStorage(),
-        limits: {
-          fileSize: 10 * 1024 * 1024,
-        },
-      },
-    ),
-  )
   async createLivreur(
-    @UploadedFiles()
-    files: {
-      photoCin?: Express.Multer.File[];
-      photoVehicule?: Express.Multer.File[];
-    },
     @Body() dto: CreateLivreurDto,
   ) {
-    dto.photoCin = (await this.uploadFirstFile(files.photoCin)) ?? dto.photoCin;
-    dto.photoVehicule =
-      (await this.uploadFirstFile(files.photoVehicule)) ?? dto.photoVehicule;
-
     const result = await this.usersService.createLivreur(dto);
     return {
       ...toPublicUser(result.user),

@@ -7,9 +7,15 @@ import { Utilisateur } from './entities/user.entity';
 import { DisponibiliteLivreur } from './entities/disponibilite-livreur.entity';
 import { CloudinaryModule } from '../cloudinary/cloudinary.module';
 import { MailModule } from '../mail/mail.module';
+import { GeolocationModule } from '../geolocation/geolocation.module';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Utilisateur, DisponibiliteLivreur]), CloudinaryModule, MailModule],
+  imports: [
+    TypeOrmModule.forFeature([Utilisateur, DisponibiliteLivreur]),
+    CloudinaryModule,
+    MailModule,
+    forwardRef(() => GeolocationModule),
+  ],
   providers: [UsersService],
   controllers: [UsersController, AdminUsersController],
   exports: [UsersService],

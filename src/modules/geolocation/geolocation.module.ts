@@ -6,7 +6,7 @@ import { UsersModule } from '../users/users.module';
 import { MissionsModule } from '../missions/missions.module';
 
 @Module({
-  imports: [UsersModule, forwardRef(() => MissionsModule)],
+  imports: [forwardRef(() => UsersModule), forwardRef(() => MissionsModule)],
   providers: [GeolocationGateway, GeolocationService],
   controllers: [GeolocationController],
   exports: [GeolocationService],

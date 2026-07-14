@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable, InternalServerErrorException, Logger, NotFoundException, UnauthorizedException } from '@nestjs/common';
+import { BadRequestException, Inject, Injectable, InternalServerErrorException, Logger, NotFoundException, UnauthorizedException, forwardRef } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
 import * as bcrypt from 'bcrypt';
@@ -8,6 +8,7 @@ import { RoleUtilisateur } from '../../common/enums/role-utilisateur.enum';
 import { StatutDisponibilite } from '../../common/enums/statut-disponibilite.enum';
 import { TypeVehicule } from '../../common/enums/type-vehicule.enum';
 import { MailService } from '../mail/mail.service';
+import { GeolocationService } from '../geolocation/geolocation.service';
 import { CreateLivreurDto } from './dto/create-livreur.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { DisponibiliteLivreur } from './entities/disponibilite-livreur.entity';
@@ -33,6 +34,8 @@ export class UsersService {
     private readonly disponibiliteRepository: Repository<DisponibiliteLivreur>,
     private readonly mailService: MailService,
     private readonly configService: ConfigService,
+    @Inject(forwardRef(() => GeolocationService))
+    private readonly geolocationService: GeolocationService,
   ) {}
 
   private normalizeVehicle(input: Partial<CreateLivreurDto> | Partial<Utilisateur>) {
@@ -237,6 +240,22 @@ export class UsersService {
     this.validateTemporaryPassword(temporaryPassword);
     const vehicle = this.normalizeVehicle(dto);
 
+    // Récupérer les coordonnées à partir de l'adresse si fournie
+    let latitude: number | undefined;
+    let longitude: number | undefined;
+    if (dto.adresseParDefaut?.trim()) {
+      try {
+        const geocodeResults = await this.geolocationService.geocode(dto.adresseParDefaut);
+        if (geocodeResults?.length) {
+          latitude = geocodeResults[0].latitude;
+          longitude = geocodeResults[0].longitude;
+          this.logger.log(`createLivreur: geocoded address "${dto.adresseParDefaut}" to lat=${latitude}, lng=${longitude}`);
+        }
+      } catch (error) {
+        this.logger.warn(`createLivreur: geocoding failed for address "${dto.adresseParDefaut}": ${error}`);
+      }
+    }
+
     const created = await this.usersRepository.manager.transaction(async (manager) => {
       const usersRepo = manager.getRepository(Utilisateur);
       const disponibiliteRepo = manager.getRepository(DisponibiliteLivreur);
@@ -245,51 +264,27 @@ export class UsersService {
       const user = usersRepo.create({
         email: dto.email.trim().toLowerCase(),
         motDePasseHash: hash,
+        prenom: dto.prenom,
+        nom: dto.nom,
         telephone: dto.telephone,
-        cin: dto.cin,
-        photoCin: dto.photoCin,
+        adresseParDefaut: dto.adresseParDefaut,
         typeVehicule: vehicle.typeVehicule as TypeVehicule,
         immatriculationVehicule: vehicle.immatriculationVehicule,
-        photoVehicule: vehicle.photoVehicule,
         poidsMaxKg: vehicle.poidsMaxKg,
         volumeMaxM3: vehicle.volumeMaxM3,
         rayonServiceKm: vehicle.rayonServiceKm,
-        statutDisponibilite: dto.statutDisponibilite || StatutDisponibilite.DISPONIBLE,
-        noteMoyenne: dto.noteMoyenne || 0,
-        totalNotes: dto.totalNotes || 0,
-        latitudeActuelle: dto.latitudeActuelle,
-        longitudeActuelle: dto.longitudeActuelle,
-        estEnLigne: typeof dto.estEnLigne === 'boolean' ? dto.estEnLigne : true,
+        latitudeActuelle: latitude,
+        longitudeActuelle: longitude,
+        statutDisponibilite: StatutDisponibilite.DISPONIBLE,
+        noteMoyenne: 0,
+        totalNotes: 0,
+        estEnLigne: true,
         role: RoleUtilisateur.LIVREUR,
         mustChangePassword: true,
       } as DeepPartial<Utilisateur>);
 
       const savedUser = await usersRepo.save(user);
       this.logger.log(`createLivreur: savedUser.id=${savedUser.id}`);
-
-      if (dto.disponibilites?.length) {
-        for (const slot of dto.disponibilites) {
-          const normalized = this.normalizeAvailability(slot);
-          const inserted = await manager.query(
-            `
-              INSERT INTO disponibilites_livreur
-                ("fromDay", "toDay", active, "startTime", "endTime", "livreurId")
-              VALUES
-                ($1, $2, $3, $4, $5, $6)
-              RETURNING *
-            `,
-            [
-              normalized.fromDay ?? null,
-              normalized.toDay ?? null,
-              normalized.active ?? true,
-              normalized.startTime ?? null,
-              normalized.endTime ?? null,
-              savedUser.id,
-            ],
-          );
-          this.logger.log(`createLivreur inserted dispo=${JSON.stringify(inserted?.[0] ?? inserted)}`);
-        }
-      }
 
       return usersRepo.findOne({
         where: { id: savedUser.id },
