@@ -66,7 +66,6 @@ export class GeolocationService {
       // fallback
     }
 
-    // Fallback coordonnées Tunis centre
     return [
       {
         address: address,
@@ -74,6 +73,17 @@ export class GeolocationService {
         longitude: 10.1815,
       },
     ];
+  }
+
+  async geocodeAddress(address: string): Promise<{ latitude: number; longitude: number }> {
+    const results = await this.geocode(address);
+    if (!results || !results.length) {
+      return { latitude: 36.8065, longitude: 10.1815 };
+    }
+    return {
+      latitude: results[0].latitude,
+      longitude: results[0].longitude,
+    };
   }
 
   async reverseGeocode(lat: number, lng: number) {

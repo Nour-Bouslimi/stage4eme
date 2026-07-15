@@ -240,17 +240,15 @@ export class UsersService {
     this.validateTemporaryPassword(temporaryPassword);
     const vehicle = this.normalizeVehicle(dto);
 
-    // Récupérer les coordonnées à partir de l'adresse si fournie
+    // Récupérer les coordonnées à partir de l'adresse par défaut
     let latitude: number | undefined;
     let longitude: number | undefined;
     if (dto.adresseParDefaut?.trim()) {
       try {
-        const geocodeResults = await this.geolocationService.geocode(dto.adresseParDefaut);
-        if (geocodeResults?.length) {
-          latitude = geocodeResults[0].latitude;
-          longitude = geocodeResults[0].longitude;
-          this.logger.log(`createLivreur: geocoded address "${dto.adresseParDefaut}" to lat=${latitude}, lng=${longitude}`);
-        }
+        const coords = await this.geolocationService.geocodeAddress(dto.adresseParDefaut);
+        latitude = coords.latitude;
+        longitude = coords.longitude;
+        this.logger.log(`createLivreur: geocoded address "${dto.adresseParDefaut}" to lat=${latitude}, lng=${longitude}`);
       } catch (error) {
         this.logger.warn(`createLivreur: geocoding failed for address "${dto.adresseParDefaut}": ${error}`);
       }
@@ -339,7 +337,20 @@ export class UsersService {
     if (typeof dto.telephone === 'string') user.telephone = dto.telephone;
     if (typeof dto.cin === 'string') user.cin = dto.cin;
     if (typeof dto.photoCin === 'string') user.photoCin = dto.photoCin;
-    if (typeof dto.adresseParDefaut === 'string') user.adresseParDefaut = dto.adresseParDefaut;
+    if (typeof dto.adresseParDefaut === 'string') {
+      user.adresseParDefaut = dto.adresseParDefaut;
+      if (dto.adresseParDefaut.trim()) {
+        try {
+          const coords = await this.geolocationService.geocodeAddress(dto.adresseParDefaut);
+          user.latitudeActuelle = coords.latitude;
+          user.longitudeActuelle = coords.longitude;
+          this.logger.log(`updateProfile: geocoded address "${dto.adresseParDefaut}" to lat=${coords.latitude}, lng=${coords.longitude}`);
+        } catch (error) {
+          this.logger.warn(`updateProfile: geocoding failed for address "${dto.adresseParDefaut}": ${error}`);
+          // Continue with update even if geocoding fails - address will be saved without coordinates
+        }
+      }
+    }
     if (typeof dto.photo === 'string') user.photo = dto.photo;
     if (typeof dto.avatar === 'string') user.photo = dto.avatar;
     if (typeof dto.typeVehicule !== 'undefined') user.typeVehicule = dto.typeVehicule as TypeVehicule;
@@ -351,8 +362,10 @@ export class UsersService {
     if (typeof dto.statutDisponibilite !== 'undefined') user.statutDisponibilite = dto.statutDisponibilite as StatutDisponibilite;
     if (typeof dto.noteMoyenne === 'number') user.noteMoyenne = dto.noteMoyenne;
     if (typeof dto.totalNotes === 'number') user.totalNotes = dto.totalNotes;
-    if (typeof dto.latitudeActuelle === 'number') user.latitudeActuelle = dto.latitudeActuelle;
-    if (typeof dto.longitudeActuelle === 'number') user.longitudeActuelle = dto.longitudeActuelle;
+    // Coordonnées directes: ne pas surcharger si l'adresse a été géocodée
+    const addressWasGeocoded = typeof dto.adresseParDefaut === 'string' && dto.adresseParDefaut.trim();
+    if (typeof dto.latitudeActuelle === 'number' && !addressWasGeocoded) user.latitudeActuelle = dto.latitudeActuelle;
+    if (typeof dto.longitudeActuelle === 'number' && !addressWasGeocoded) user.longitudeActuelle = dto.longitudeActuelle;
     if (typeof dto.estEnLigne === 'boolean') user.estEnLigne = dto.estEnLigne;
     if (typeof dto.totalMissions === 'number') user.totalMissions = dto.totalMissions;
     if (typeof dto.missionsAnnulees === 'number') user.missionsAnnulees = dto.missionsAnnulees;
