@@ -13,7 +13,7 @@
       <strong>{{ getAddressLabel(mission.adresseLivraison) }}</strong>
     </div>
     <div class="summary-meta">{{ getMissionSummaryLabel() }}</div>
-    <button class="modify-btn" type="button" (click)="modifyMission()">Modifier</button>
+    <!-- <button class="modify-btn" type="button" (click)="modifyMission()">Modifier</button> -->
   </section>
 
   <section class="all-drivers-summary" *ngIf="mode === 'all'">
@@ -42,12 +42,12 @@
         <span>Livreurs disponibles près du point de départ</span>
       </div>
       <app-map
-        [height]="'520px'"
         [markers]="mapMarkers"
-        [polyline]="mapPolyline"
         [center]="mapCenter"
         [zoom]="mapZoom"
-        [fitToMarkers]="mapMarkers.length > 1">
+        [fitToMarkers]="true"
+        [polyline]="mapPolyline"
+        [height]="'480px'">
       </app-map>
       <div class="map-legend-row">
         <span class="legend-item">
@@ -96,10 +96,46 @@
         <span class="results-total" *ngIf="mode === 'all' && !loading">{{ getAvailabilitySummary() }}</span>
       </div>
 
+      <section class="selected-driver-summary">
+        <div class="selected-driver-card" *ngIf="selectedDriver; else noDriverSelected">
+          <div class="selected-driver-title">Livreur sélectionné</div>
+          <div class="selected-driver-top">
+            <img [src]="selectedDriver.avatar || selectedDriver.photo || 'assets/default-avatar.svg'"
+                 [alt]="selectedDriver.prenom + ' ' + selectedDriver.nom" />
+            <div>
+              <h3>{{ selectedDriver.prenom }} {{ selectedDriver.nom }}</h3>
+              <p>{{ getDriverVehicleLabel(selectedDriver) }}</p>
+              <div class="selected-driver-badges">
+                <span class="badge">{{ getDriverRating(selectedDriver) }} ★</span>
+                <span class="badge">{{ getDriverNotesCount(selectedDriver) }} avis</span>
+                <span class="badge">{{ getDriverMissions(selectedDriver) }} missions</span>
+              </div>
+            </div>
+          </div>
+          <div class="selected-driver-info">
+            <span>{{ selectedDriver.email || 'Email inconnu' }}</span>
+            <span>{{ selectedDriver.telephone || 'Téléphone inconnu' }}</span>
+            <span>{{ getDriverStatusLabel(selectedDriver) }}</span>
+          </div>
+          <div class="selected-driver-actions">
+            <button class="detail-btn" type="button" (click)="viewDriverProfile(selectedDriver.id)">Voir plus de détails</button>
+          </div>
+        </div>
+
+        <ng-template #noDriverSelected>
+          <div class="selected-driver-card placeholder">
+            <div class="selected-driver-title">Livreur sélectionné</div>
+            <div class="placeholder-text">Sélectionnez un livreur pour voir ses informations à droite.</div>
+          </div>
+        </ng-template>
+      </section>
+
       <div class="drivers-list" *ngIf="paginatedDrivers.length > 0">
         <article
           class="driver-card"
           *ngFor="let driver of paginatedDrivers"
+          [class.selected]="selectedDriver?.id === driver.id"
+          (click)="selectDriver(driver)"
           (mouseenter)="highlightDriverOnMap(driver)"
           (mouseleave)="resetMapView()">
 
@@ -126,6 +162,7 @@
               <p class="driver-subtitle">{{ getDriverSubtitle(driver) }}</p>
               <div class="driver-stats">
                 <span>{{ getDriverMissions(driver) }} missions</span>
+                <span>{{ getDriverNotesCount(driver) }} avis</span>
                 <span>{{ getDriverRate(driver) }} TND/h</span>
               </div>
 
@@ -182,13 +219,6 @@
               Détail
             </button>
 
-            <button *ngIf="driver.disponible && mode === 'mission'"
-                    class="assign-btn" type="button"
-                    [disabled]="assigning"
-                    (click)="assignDriver(driver)">
-              <mat-icon>person_add</mat-icon>
-              {{ assigning ? 'En cours...' : 'Assigner' }}
-            </button>
 
             <button *ngIf="driver.disponible && mode !== 'mission'"
                     class="contact-btn" type="button"
@@ -259,6 +289,11 @@
           <div>
             <p class="detail-subtitle">{{ getDriverVehicleLabel(selectedDriver) }}</p>
             <p class="detail-summary">{{ getDriverSubtitle(selectedDriver) }}</p>
+            <p class="detail-meta">
+              {{ getDriverMissions(selectedDriver) }} missions ·
+              {{ getDriverNotesCount(selectedDriver) }} avis ·
+              {{ getDriverStatusLabel(selectedDriver) }}
+            </p>
           </div>
         </div>
         <div class="detail-grid">
@@ -270,11 +305,6 @@
       </div>
       <div class="detail-modal-footer">
         <button type="button" class="btn-secondary" (click)="closeDriverDetail()">Fermer</button>
-        <button *ngIf="selectedDriver.disponible && mode === 'mission'"
-                type="button" class="btn-primary"
-                (click)="assignDriver(selectedDriver); closeDriverDetail()">
-          <mat-icon>person_add</mat-icon> Assigner
-        </button>
         <button *ngIf="selectedDriver.disponible && mode !== 'mission'"
                 type="button" class="btn-primary"
                 (click)="contactDriver(selectedDriver.id)">

@@ -17,6 +17,9 @@ type TrackingMarker = {
   popup?: string;
   icon?: string;
   kind?: 'departure' | 'destination' | 'driver';
+  iconSize?: [number, number];
+  iconAnchor?: [number, number];
+  popupAnchor?: [number, number];
 };
 
 @Component({
@@ -106,27 +109,34 @@ export class MapComponent implements AfterViewInit, OnChanges, OnDestroy {
     }
 
     this.markers.forEach((marker) => {
+      const lat = Number(marker.lat);
+      const lng = Number(marker.lng);
+      if (Number.isNaN(lat) || Number.isNaN(lng)) {
+        return;
+      }
+
       let icon;
 
+      const isLocationMarker = marker.kind === 'departure' || marker.kind === 'destination';
       if (marker.icon) {
         icon = L.divIcon({
           html: marker.icon,
           className: '',
-          iconSize: [48, 48],
-          iconAnchor: [24, 48],
-          popupAnchor: [0, -48]
+          iconSize: marker.iconSize ?? (isLocationMarker ? [68, 68] : [48, 48]),
+          iconAnchor: marker.iconAnchor ?? (isLocationMarker ? [34, 68] : [24, 48]),
+          popupAnchor: marker.popupAnchor ?? (isLocationMarker ? [0, -62] : [0, -48])
         });
       } else {
         icon = L.divIcon({
           className: 'custom-marker',
           html: this.buildMarkerHtml(marker.kind),
-          iconSize: [54, 54],
-          iconAnchor: [27, 54],
-          popupAnchor: [0, -44]
+          iconSize: marker.iconSize ?? (isLocationMarker ? [68, 68] : [54, 54]),
+          iconAnchor: marker.iconAnchor ?? (isLocationMarker ? [34, 68] : [27, 54]),
+          popupAnchor: marker.popupAnchor ?? (isLocationMarker ? [0, -62] : [0, -44])
         });
       }
 
-      L.marker([marker.lat, marker.lng], { icon })
+      L.marker([lat, lng], { icon })
         .addTo(this.markerLayer!)
         .bindPopup(marker.popup || '');
     });
@@ -151,22 +161,16 @@ export class MapComponent implements AfterViewInit, OnChanges, OnDestroy {
       return;
     }
 
-    if (this.fitToMarkers) {
-      const boundsPoints: L.LatLngExpression[] = [
-        ...this.markers.map((marker) => [marker.lat, marker.lng] as L.LatLngTuple),
-        ...this.polyline
-      ];
-
-      if (boundsPoints.length > 0) {
-        if (boundsPoints.length === 1) {
-          const point = boundsPoints[0] as [number, number];
-          this.map.setView(point, Math.max(this.zoom, 12));
-        } else {
-          this.map.fitBounds(L.latLngBounds(boundsPoints), { padding: [60, 60], maxZoom: 13 });
-        }
-
-        return;
-      }
+    if (this.fitToMarkers && this.markers.length >= 2) {
+      const bounds = L.latLngBounds(
+        this.markers.map(m => [m.lat, m.lng] as [number, number])
+      );
+      this.map.fitBounds(bounds, {
+        padding: [150, 150],
+        maxZoom: 10,
+        animate: true
+      });
+      return;
     }
 
     this.map.setView(this.center, this.zoom);

@@ -14,7 +14,16 @@ type DriverSearchMode = 'mission' | 'all';
 // Union type pour gérer les deux modes
 type DriverItem = (User & { _score?: number; _distanceKm?: number; _scoreDetails?: any }) | any;
 
-type MapMarker = { lat: number; lng: number; popup?: string; icon?: string };
+type MapMarker = {
+  lat: number;
+  lng: number;
+  popup?: string;
+  icon?: string;
+  kind?: 'departure' | 'destination' | 'driver';
+  iconSize?: [number, number];
+  iconAnchor?: [number, number];
+  popupAnchor?: [number, number];
+};
 
 @Component({
   selector: 'app-driver-search',
@@ -38,11 +47,12 @@ export class DriverSearchComponent implements OnInit {
   currentPage = 1;
   pageSize = 4;
   selectedDriver: DriverItem | null = null;
+  selectedDriverDetails: User | null = null;
   detailModalOpen = false;
 
   // Carte ← nouveau
   mapCenter: [number, number] = [36.8065, 10.1815];
-  mapZoom = 10;
+  mapZoom = 9;
   mapMarkers: MapMarker[] = [];
   mapPolyline: [number, number][] = [];
 
@@ -52,7 +62,7 @@ export class DriverSearchComponent implements OnInit {
     { value: VehicleType.SCOOTER, label: 'Scooter' },
     { value: VehicleType.VOITURE, label: 'Voiture' },
     { value: VehicleType.PICKUP, label: 'Pickup' },
-    { value: VehicleType.FOURGONNETTE, label: 'Camionnette' },
+    { value: VehicleType.FOURGONNETTE, label: 'Fourgonnette' },
     { value: VehicleType.PETIT_CAMION, label: 'Petit camion' },
     { value: VehicleType.GROS_CAMION, label: 'Gros camion' }
   ];
@@ -62,7 +72,7 @@ export class DriverSearchComponent implements OnInit {
     private router: Router,
     private missionService: MissionService,
     private userService: UserService,
-    private recommendationService: DriverRecommendationService // ← nouveau
+    private recommendationService: DriverRecommendationService
   ) {}
 
   ngOnInit(): void {
@@ -92,39 +102,71 @@ export class DriverSearchComponent implements OnInit {
   // ← nouveau : charge les livreurs recommandés + classés par score
   loadRecommendedDrivers(): void {
     this.loading = true;
-    this.recommendationService.recommend(this.missionId).pipe(
+
+    const recommendations$ = this.recommendationService.recommend(this.missionId).pipe(
       catchError(() => of([] as DriverRecommendation[]))
-    ).subscribe({
-      next: (recommendations) => {
+    );
+    const availableDrivers$ = this.userService.getLivreursDisponibles().pipe(
+      catchError(() => of([] as any[]))
+    );
+
+    forkJoin({ recommendations: recommendations$, availableDrivers: availableDrivers$ }).subscribe({
+      next: ({ recommendations, availableDrivers }) => {
         this.recommendations = recommendations;
-        // Adapter au format attendu par le template existant
-        this.drivers = recommendations.map((r) => ({
-          id: r.id,
-          prenom: r.prenom,
-          nom: r.nom,
-          photo: r.photo,
-          avatar: r.photo,
-          email: '',
-          telephone: r.telephone,
-          noteMoyenne: r.noteMoyenne,
-          note: r.noteMoyenne,
-          disponible: true,
-          estEnLigne: r.estEnLigne,
-          typeVehicule: r.typeVehicule,
-          vehicule: { type: r.typeVehicule as VehicleType },
-          totalMissions: r.totalMissions,
-          latitudeActuelle: r.latitudeActuelle,
-          longitudeActuelle: r.longitudeActuelle,
-          // Champs IA
-          _score: r.score,
-          _distanceKm: r.distanceKm,
-          _rank: r.rank,
-          _scoreDetails: r.scoreDetails,
-        }));
+
+        const availableDriversMap = new Map(availableDrivers.map((driver: any) => [driver.id, driver]));
+
+        this.drivers = recommendations.map((r) => {
+          const detail = availableDriversMap.get(r.id);
+          const vehicleInfo = detail?.vehicule ?? (detail ? {
+            type: detail.typeVehicule as VehicleType,
+            immatriculation: detail.immatriculationVehicule ?? '',
+            photo: detail.photoVehicule,
+            poidsMax: detail.poidsMaxKg ?? 0,
+            volumeMax: detail.volumeMaxM3 ?? 0,
+            rayonService: detail.rayonServiceKm ?? 0
+          } : {
+            type: r.typeVehicule as VehicleType,
+            immatriculation: '',
+            poidsMax: 0,
+            volumeMax: 0,
+            rayonService: 0
+          });
+
+          return {
+            id: r.id,
+            prenom: r.prenom,
+            nom: r.nom,
+            photo: r.photo,
+            avatar: r.photo,
+            email: detail?.email ?? '',
+            telephone: detail?.telephone ?? r.telephone,
+            noteMoyenne: r.noteMoyenne,
+            note: r.noteMoyenne,
+            disponible: true,
+            estEnLigne: r.estEnLigne,
+            typeVehicule: r.typeVehicule,
+            vehicule: vehicleInfo,
+            immatriculationVehicule: detail?.immatriculationVehicule,
+            poidsMaxKg: detail?.poidsMaxKg,
+            volumeMaxM3: detail?.volumeMaxM3,
+            rayonServiceKm: detail?.rayonServiceKm,
+            totalMissions: r.totalMissions,
+            latitudeActuelle: r.latitudeActuelle,
+            longitudeActuelle: r.longitudeActuelle,
+            // Champs IA
+            _score: r.score,
+            _distanceKm: r.distanceKm,
+            _rank: r.rank,
+            _scoreDetails: r.scoreDetails,
+          };
+        });
+
         this.availableDriversCount = this.drivers.length;
         this.totalDrivers = this.drivers.length;
-        this.buildDriverMarkers(recommendations); // ← nouveau
+        this.buildDriverMarkers(recommendations);
         this.applyFilters();
+        this.selectedDriver = this.filteredDrivers[0] ?? null;
         this.loading = false;
       },
       error: () => {
@@ -150,6 +192,7 @@ export class DriverSearchComponent implements OnInit {
         this.availableDriversCount = availableDrivers.length;
         this.totalDrivers = totalDrivers.length || availableDrivers.length;
         this.applyFilters();
+        this.selectedDriver = this.filteredDrivers[0] ?? null;
         this.loading = false;
       },
       error: () => {
@@ -177,8 +220,10 @@ export class DriverSearchComponent implements OnInit {
 
   // ← nouveau : centrer la carte sur le livreur survolé
   highlightDriverOnMap(driver: DriverItem): void {
-    if (!driver.latitudeActuelle || !driver.longitudeActuelle) return;
-    this.mapCenter = [driver.latitudeActuelle, driver.longitudeActuelle];
+    const lat = Number(driver.latitudeActuelle ?? driver.latitude);
+    const lng = Number(driver.longitudeActuelle ?? driver.longitude);
+    if (Number.isNaN(lat) || Number.isNaN(lng)) return;
+    this.mapCenter = [lat, lng];
     this.mapZoom = 12;
   }
 
@@ -188,7 +233,7 @@ export class DriverSearchComponent implements OnInit {
     } else {
       this.mapCenter = [36.8065, 10.1815];
     }
-    this.mapZoom = 10;
+    this.mapZoom = 9;
   }
 
   // ← nouveau
@@ -228,13 +273,17 @@ export class DriverSearchComponent implements OnInit {
   }
 
   viewDriverProfile(driverId: string): void {
-    this.selectedDriver = this.drivers.find((driver) => driver.id === driverId) ?? null;
+    this.selectedDriver = this.drivers.find((driver) => driver.id === driverId) ?? this.selectedDriver;
+    this.selectedDriverDetails = this.selectedDriver ? { ...this.selectedDriver } : null;
     this.detailModalOpen = !!this.selectedDriver;
+  }
+
+  selectDriver(driver: DriverItem): void {
+    this.selectedDriver = driver;
   }
 
   closeDriverDetail(): void {
     this.detailModalOpen = false;
-    this.selectedDriver = null;
   }
 
   modifyMission(): void {
@@ -326,12 +375,21 @@ export class DriverSearchComponent implements OnInit {
   }
 
   getDriverDistance(driver: DriverItem): number {
-    if (driver._distanceKm !== undefined) return driver._distanceKm;
+    const distanceValue = driver._distanceKm ?? driver.distanceKm ?? driver.distance;
+    const parsed = typeof distanceValue === 'number' ? distanceValue : Number(distanceValue);
+    if (!Number.isNaN(parsed)) {
+      return Number(parsed.toFixed(1));
+    }
     return Number(this.hashToRange(driver.id, 0.8, 6.4).toFixed(1));
   }
 
   getDriverMissions(driver: DriverItem): number {
-    return driver.totalMissions ?? Math.round(this.hashToRange(driver.id + 'missions', 45, 380));
+    const missions = driver.totalMissions ?? driver.missions ?? 0;
+    const parsed = Number(missions);
+    if (!Number.isNaN(parsed) && parsed >= 0) {
+      return parsed;
+    }
+    return Math.round(this.hashToRange(driver.id + 'missions', 45, 380));
   }
 
   getDriverRate(driver: DriverItem): number {
@@ -343,7 +401,23 @@ export class DriverSearchComponent implements OnInit {
   }
 
   getDriverRating(driver: DriverItem): number {
-    return Number((driver.noteMoyenne ?? driver.note ?? this.hashToRange(driver.id + 'rating', 4.1, 4.9)).toFixed(1));
+    const rawRating = driver.noteMoyenne ?? driver.note ?? driver.noteAverage ?? driver.rating;
+    const parsedRating = typeof rawRating === 'number'
+      ? rawRating
+      : Number(rawRating);
+    const rating = Number.isNaN(parsedRating)
+      ? this.hashToRange(driver.id + 'rating', 4.1, 4.9)
+      : parsedRating;
+    return Number(rating.toFixed(1));
+  }
+
+  getDriverNotesCount(driver: DriverItem): number {
+    const notesSource = driver.totalNotes ?? driver.nombreAvis ?? driver.notesCount ?? driver.ratingCount;
+    const parsedNotes = Number(notesSource);
+    if (!Number.isNaN(parsedNotes) && parsedNotes >= 0) {
+      return parsedNotes;
+    }
+    return 0;
   }
 
   getDriverStatusLabel(driver: DriverItem): string {
@@ -354,24 +428,62 @@ export class DriverSearchComponent implements OnInit {
     return `${this.getDriverVehicleLabel(driver)} · ${this.getDriverDistance(driver)} km`;
   }
 
+  getDriverVehicleCapacity(driver: DriverItem): string {
+    const maxWeight = driver.vehicule?.poidsMax ?? driver.poidsMaxKg;
+    const maxVolume = driver.vehicule?.volumeMax ?? driver.volumeMaxM3;
+    const weightLabel = maxWeight ? `${maxWeight} kg` : '';
+    const volumeLabel = maxVolume ? `${maxVolume} m³` : '';
+    if (!weightLabel && !volumeLabel) {
+      return 'N/A';
+    }
+    return [weightLabel, volumeLabel].filter(Boolean).join(' · ');
+  }
+
+  getDriverLastActivity(driver: DriverItem): string {
+    const last = driver.derniereActivite ?? driver.derniereMiseAJourPosition;
+    if (!last) {
+      return 'Aucune donnée';
+    }
+    const date = typeof last === 'string' ? new Date(last) : last;
+    if (Number.isNaN(date.getTime())) {
+      return String(last);
+    }
+    return date.toLocaleDateString('fr-FR', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric'
+    });
+  }
+
   getDriverVehicleLabel(driver: DriverItem): string {
     const vehicleType = driver.vehicule?.type ?? driver.typeVehicule;
     return vehicleType ? this.getVehicleLabel(vehicleType as VehicleType) : 'Livreur';
   }
 
+  getSelectedDriverSource(): DriverItem | null {
+    return this.selectedDriverDetails ?? this.selectedDriver;
+  }
+
   getDriverDetails(driver: DriverItem): Array<{ label: string; value: string }> {
+    const source = this.selectedDriverDetails ?? driver;
+    const vehicleRegistration = source.vehicule?.immatriculation || source.immatriculationVehicule || 'N/A';
+    const vehicleCapacity = this.getDriverVehicleCapacity(source);
+
     return [
-      { label: 'Nom', value: `${driver.prenom || ''} ${driver.nom || ''}`.trim() || 'N/A' },
-      { label: 'Email', value: driver.email || 'N/A' },
-      { label: 'Téléphone', value: driver.telephone || 'N/A' },
-      { label: 'Véhicule', value: this.getDriverVehicleLabel(driver) },
-      { label: 'Distance', value: `${this.getDriverDistance(driver)} km` },
-      { label: 'Missions', value: `${this.getDriverMissions(driver)} missions` },
-      { label: 'Tarif', value: `${this.getDriverRate(driver)} TND/h` },
-      { label: 'Note', value: `${this.getDriverRating(driver)}` },
-      { label: 'Statut', value: this.getDriverStatusLabel(driver) },
-      ...(driver._score !== undefined ? [
-        { label: 'Score IA', value: `${this.getScorePercent(driver._score)}%` }
+      { label: 'Nom', value: `${source.prenom || ''} ${source.nom || ''}`.trim() || 'N/A' },
+      { label: 'Email', value: source.email || 'N/A' },
+      { label: 'Téléphone', value: source.telephone || 'N/A' },
+      { label: 'Véhicule', value: this.getDriverVehicleLabel(source) },
+      { label: 'Immatriculation', value: vehicleRegistration },
+      { label: 'Capacité', value: vehicleCapacity },
+      { label: 'Rayon de service', value: `${source.vehicule?.rayonService ?? source.rayonServiceKm ?? 0} km` },
+      { label: 'Missions', value: `${this.getDriverMissions(source)} missions` },
+      { label: 'Avis', value: `${this.getDriverNotesCount(source)} notes` },
+      { label: 'Note moyenne', value: `${this.getDriverRating(source)}` },
+      { label: 'Statut', value: this.getDriverStatusLabel(source) },
+      { label: 'Dernière activité', value: this.getDriverLastActivity(source) },
+      ...(source._score !== undefined ? [
+        { label: 'Score IA', value: `${this.getScorePercent(source._score)}%` }
       ] : [])
     ];
   }
@@ -382,57 +494,42 @@ export class DriverSearchComponent implements OnInit {
 
   // ── Carte ──────────────────────────────────────────────
 
-  private buildMissionMarkers(mission: Mission): void {
-    const markers: MapMarker[] = [];
+   private buildMissionMarkers(mission: Mission): void {
+     const markers: MapMarker[] = [];
 
-    if (mission.latitudeRamassage && mission.longitudeRamassage) {
+     const pickupLat = Number(mission.latitudeRamassage);
+     const pickupLng = Number(mission.longitudeRamassage);
+
+     const dropoffLat = Number(mission.latitudeLivraison);
+     const dropoffLng = Number(mission.longitudeLivraison);
+
+    if (!Number.isNaN(pickupLat) && !Number.isNaN(pickupLng)) {
       markers.push({
-        lat: Number(mission.latitudeRamassage),
-        lng: Number(mission.longitudeRamassage),
+        lat: pickupLat,
+        lng: pickupLng,
         popup: 'Point de départ',
-        icon: `
-          <div style="
-            background:#FF6B2C;
-            width:36px;height:36px;
-            border-radius:50% 50% 50% 0;
-            transform:rotate(-45deg);
-            border:3px solid white;
-            box-shadow:0 2px 8px rgba(0,0,0,0.3);
-            display:flex;align-items:center;justify-content:center;
-          ">
-            <span style="transform:rotate(45deg);font-size:16px;">📍</span>
-          </div>
-        `
+        kind: 'departure'
       });
     }
 
-    if (mission.latitudeLivraison && mission.longitudeLivraison) {
+    if (!Number.isNaN(dropoffLat) && !Number.isNaN(dropoffLng)) {
       markers.push({
-        lat: Number(mission.latitudeLivraison),
-        lng: Number(mission.longitudeLivraison),
+        lat: dropoffLat,
+        lng: dropoffLng,
         popup: 'Destination',
-        icon: `
-          <div style="
-            background:#1A3C6E;
-            width:36px;height:36px;
-            border-radius:50% 50% 50% 0;
-            transform:rotate(-45deg);
-            border:3px solid white;
-            box-shadow:0 2px 8px rgba(0,0,0,0.3);
-            display:flex;align-items:center;justify-content:center;
-          ">
-            <span style="transform:rotate(45deg);font-size:16px;">🏁</span>
-          </div>
-        `
+        kind: 'destination'
       });
     }
 
-    // Construire la polyline entre départ et destination
-    if (mission.latitudeRamassage && mission.longitudeRamassage &&
-        mission.latitudeLivraison && mission.longitudeLivraison) {
+    const routeStartLat = Number(mission.latitudeRamassage);
+    const routeStartLng = Number(mission.longitudeRamassage);
+    const routeEndLat = Number(mission.latitudeLivraison);
+    const routeEndLng = Number(mission.longitudeLivraison);
+
+    if ([routeStartLat, routeStartLng, routeEndLat, routeEndLng].every((value) => !Number.isNaN(value))) {
       this.mapPolyline = [
-        [Number(mission.latitudeRamassage), Number(mission.longitudeRamassage)],
-        [Number(mission.latitudeLivraison), Number(mission.longitudeLivraison)]
+        [routeStartLat, routeStartLng],
+        [routeEndLat, routeEndLng]
       ];
     } else {
       this.mapPolyline = [];
@@ -440,104 +537,110 @@ export class DriverSearchComponent implements OnInit {
 
     if (markers.length > 0) {
       this.mapCenter = [markers[0].lat, markers[0].lng];
-      this.mapZoom = 10;
+      this.mapZoom = 9;
     }
 
     this.mapMarkers = markers;
-  }
+   }
 
-  private buildDriverMarkers(recommendations: DriverRecommendation[]): void {
-    const missionMarkers = this.mapMarkers; // garder départ/destination
 
-    const driverMarkers: MapMarker[] = recommendations
-      .filter((r) => r.latitudeActuelle && r.longitudeActuelle)
-      .map((r) => {
-        const isBestScore = r.rank === 1;
-        const borderColor = isBestScore ? '#22C55E' : '#6366F1';
-        const size = isBestScore ? 48 : 44;
+   private buildDriverMarkers(recommendations: DriverRecommendation[]): void {
+     const missionMarkers = this.mapMarkers; // garder départ/destination
 
-        // Décalage plus important vers la gauche pour le meilleur score pour éviter le chevauchement
-        let lat = r.latitudeActuelle;
-        let lng = r.longitudeActuelle;
-        if (isBestScore) {
-          lng -= 0.2; // Décalage d'environ 20km vers l'ouest
-          lat += 0.1; // Décalage vers le nord
-        }
+     const driverMarkers: MapMarker[] = recommendations
+       .map((r) => {
+         const lat = Number(r.latitudeActuelle);
+         const lng = Number(r.longitudeActuelle);
+         return {
+           ...r,
+           lat,
+           lng
+         } as DriverRecommendation & { lat: number; lng: number };
+       })
+       .filter((r) => !Number.isNaN(r.lat) && !Number.isNaN(r.lng))
+       .map((r) => {
+         const isBestScore = r.rank === 1;
+         const borderColor = isBestScore ? '#22C55E' : '#6366F1';
+         const size = isBestScore ? 48 : 44;
+         const lat = r.lat;
+         const lng = r.lng;
 
-        let iconHtml: string;
+         let iconHtml: string;
 
-        if (r.photo) {
-          iconHtml = `
-            <div style="
-              width:${size}px;height:${size}px;
-              border-radius:50%;
-              border:3px solid ${borderColor};
-              box-shadow:0 2px 8px rgba(0,0,0,0.3);
-              overflow:hidden;
-              background:white;
-            ">
-              <img src="${r.photo}"
-                   style="width:100%;height:100%;object-fit:cover;"
-                   onerror="this.parentElement.innerHTML='🚚'"/>
-            </div>
-          `;
-        } else {
-          iconHtml = `
-            <div style="
-              width:${size}px;height:${size}px;
-              border-radius:50%;
-              border:3px solid ${borderColor};
-              box-shadow:0 2px 8px rgba(0,0,0,0.3);
-              background:${borderColor};
-              display:flex;align-items:center;justify-content:center;
-              font-size:20px;
-            ">🚚</div>
-          `;
-        }
+         if (r.photo) {
+           iconHtml = `
+             <div style="
+               width:${size}px;height:${size}px;
+               border-radius:50%;
+               border:3px solid ${borderColor};
+               box-shadow:0 2px 8px rgba(0,0,0,0.3);
+               overflow:hidden;
+               background:white;
+             ">
+               <img src="${r.photo}"
+                    style="width:100%;height:100%;object-fit:cover;"
+                    onerror="this.parentElement.innerHTML='🚚'"/>
+             </div>
+           `;
+         } else {
+           iconHtml = `
+             <div style="
+               width:${size}px;height:${size}px;
+               border-radius:50%;
+               border:3px solid ${borderColor};
+               box-shadow:0 2px 8px rgba(0,0,0,0.3);
+               background:${borderColor};
+               display:flex;align-items:center;justify-content:center;
+               font-size:20px;
+             ">🚚</div>
+           `;
+         }
 
-        const popupHtml = `
-          <div style="
-            font-family:Inter,sans-serif;
-            min-width:200px;
-            padding:12px;
-          ">
-            <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
-              <div style="
-                width:28px;height:28px;
-                border-radius:50%;
-                background:${isBestScore ? '#22C55E' : '#6366F1'};
-                color:white;
-                font-weight:700;
-                font-size:12px;
-                display:flex;align-items:center;justify-content:center;
-              ">#${r.rank}</div>
-              <div style="font-weight:700;font-size:14px;">
-                ${r.prenom} ${r.nom}
-              </div>
-            </div>
-            <div style="font-size:12px;line-height:1.6;color:#333;">
-              <div>⭐ Note: ${r.noteMoyenne ?? 'N/A'}</div>
-              <div>📍 Distance: ${r.distanceKm} km</div>
-              <div>🚗 Véhicule: ${r.typeVehicule}</div>
-              <div>📞 Téléphone: ${r.telephone || 'N/A'}</div>
-              <div>📦 Missions: ${r.totalMissions ?? 'N/A'}</div>
-              <div style="margin-top:6px;padding-top:6px;border-top:1px solid #eee;">
-                <strong>Score IA: ${Math.round(r.score * 100)}%</strong>
-              </div>
-            </div>
-          </div>
-        `;
+         const popupHtml = `
+           <div style="
+             font-family:Inter,sans-serif;
+             min-width:200px;
+             padding:12px;
+           ">
+             <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+               <div style="
+                 width:28px;height:28px;
+                 border-radius:50%;
+                 background:${isBestScore ? '#22C55E' : '#6366F1'};
+                 color:white;
+                 font-weight:700;
+                 font-size:12px;
+                 display:flex;align-items:center;justify-content:center;
+               ">#${r.rank}</div>
+               <div style="font-weight:700;font-size:14px;">
+                 ${r.prenom} ${r.nom}
+               </div>
+             </div>
+             <div style="font-size:12px;line-height:1.6;color:#333;">
+               <div>⭐ Note: ${r.noteMoyenne ?? 'N/A'}</div>
+               <div>📍 Distance: ${r.distanceKm} km</div>
+               <div>🚗 Véhicule: ${r.typeVehicule}</div>
+               <div>📞 Téléphone: ${r.telephone || 'N/A'}</div>
+               <div>📦 Missions: ${r.totalMissions ?? 'N/A'}</div>
+               <div style="margin-top:6px;padding-top:6px;border-top:1px solid #eee;">
+                 <strong>Score IA: ${Math.round(r.score * 100)}%</strong>
+               </div>
+             </div>
+           </div>
+         `;
 
-        return {
-          lat: lat,
-          lng: lng,
-          popup: popupHtml,
-          icon: iconHtml
-        };
-      });
+         return {
+           lat: lat,
+           lng: lng,
+           popup: popupHtml,
+           icon: iconHtml
+         };
+       });
 
-    this.mapMarkers = [...missionMarkers, ...driverMarkers];
-  }
+     this.mapMarkers = [...missionMarkers, ...driverMarkers];
+   }
+
+
 
   private applyFilters(): void {
     const query = this.searchQuery.trim().toLowerCase();
@@ -552,6 +655,10 @@ export class DriverSearchComponent implements OnInit {
 
     this.currentPage = Math.min(this.currentPage, this.totalPages);
     this.updatePagination();
+
+    if (!this.selectedDriver || !this.filteredDrivers.some((driver) => driver.id === this.selectedDriver?.id)) {
+      this.selectedDriver = this.filteredDrivers[0] ?? null;
+    }
   }
 
   private updatePagination(): void {
