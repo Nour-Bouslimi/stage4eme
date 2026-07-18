@@ -1,4 +1,5 @@
 import { Component, OnInit } from '@angular/core';
+import { Router } from '@angular/router';
 import { AuthService } from '../../../core/services/auth.service';
 import { MissionService } from '../../../core/services/mission.service';
 import { UserService } from '../../../core/services/user.service';
@@ -29,6 +30,7 @@ export class ClientDashboardComponent implements OnInit {
   constructor(
     private authService: AuthService,
     private missionService: MissionService,
+    private router: Router,
     private userService: UserService
   ) {}
 
@@ -105,7 +107,16 @@ export class ClientDashboardComponent implements OnInit {
   }
 
   contactDriver(driverId: string): void {
-    console.log('Contacter livreur:', driverId);
+    const assignedMission = this.activeMissions.find(
+      (mission) => mission.livreur?.id === driverId || mission.livreurId === driverId
+    );
+
+    if (assignedMission?.id) {
+      this.router.navigate(['/client/chat', assignedMission.id]);
+      return;
+    }
+
+    this.router.navigate(['/client/create-mission']);
   }
 
   getStatusLabel(status: MissionStatus): string {

@@ -50,7 +50,8 @@
           <th>Véhicule</th>
           <th>Note</th>
           <th>Disponibilité</th>
-          <th>Missions</th>
+          <th>Missions acceptées</th>
+          <th>Compte</th>
           <th>Actions</th>
         </tr>
       </thead>
@@ -84,16 +85,23 @@
               {{ livreur.disponible ? 'Disponible' : 'Indisponible' }}
             </span>
           </td>
-          <td>0</td>
+          <td>
+            <span class="missions-count">{{ getAcceptedMissionsCount(livreur) }}</span>
+          </td>
+          <td>
+            <span class="account-badge" [class.active]="livreur.estActif" [class.inactive]="!livreur.estActif">
+              {{ livreur.estActif ? 'Actif' : 'Désactivé' }}
+            </span>
+          </td>
           <td>
             <div class="action-buttons">
-              <button class="action-btn view" (click)="viewLivreur(livreur.id)" mat-icon-button>
+              <button class="action-btn view" (click)="viewLivreur(livreur)" mat-icon-button>
                 <mat-icon>visibility</mat-icon>
               </button>
-              <button class="action-btn deactivate" (click)="deactivateLivreur(livreur.id)" mat-icon-button>
-                <mat-icon>block</mat-icon>
+              <button class="action-btn" [class.deactivate]="livreur.estActif" [class.reactivate]="!livreur.estActif" (click)="toggleLivreurAccount(livreur)" mat-icon-button>
+                <mat-icon>{{ livreur.estActif ? 'block' : 'restart_alt' }}</mat-icon>
               </button>
-              <button class="action-btn delete" (click)="deleteLivreur(livreur.id)" mat-icon-button>
+              <button class="action-btn delete" (click)="confirmDeleteLivreur(livreur)" mat-icon-button>
                 <mat-icon>delete</mat-icon>
               </button>
             </div>
@@ -104,7 +112,8 @@
 
     <div class="empty-state" *ngIf="filteredLivreurs.length === 0">
       <mat-icon class="empty-icon">people_outline</mat-icon>
-      <p>Aucun livreur trouvé</p>
+      <h3>Aucun livreur trouvé</h3>
+      <p>Essayez un autre filtre ou une autre recherche.</p>
     </div>
   </div>
 
@@ -130,6 +139,14 @@
             <span>{{ livreur.vehicule ? getVehicleLabel(livreur.vehicule.type) : 'N/A' }}</span>
           </div>
           <div class="info-item">
+            <mat-icon class="info-icon">assignment_turned_in</mat-icon>
+            <span>{{ getAcceptedMissionsCount(livreur) }} missions acceptées</span>
+          </div>
+          <div class="info-item">
+            <mat-icon class="info-icon">verified_user</mat-icon>
+            <span>{{ livreur.estActif ? 'Compte actif' : 'Compte désactivé' }}</span>
+          </div>
+          <div class="info-item">
             <mat-icon class="info-icon">fitness_center</mat-icon>
             <span>Max {{ livreur.vehicule?.poidsMax || 'N/A' }}kg</span>
           </div>
@@ -143,15 +160,24 @@
           <span class="status-badge" [class.available]="livreur.disponible">
             {{ livreur.disponible ? 'Disponible' : 'Indisponible' }}
           </span>
-          <button class="view-btn" (click)="viewLivreur(livreur.id)">
-            Voir détails
-          </button>
+          <div class="card-actions">
+            <button class="action-btn view" (click)="viewLivreur(livreur)" mat-icon-button>
+              <mat-icon>visibility</mat-icon>
+            </button>
+            <button class="action-btn" [class.deactivate]="livreur.estActif" [class.reactivate]="!livreur.estActif" (click)="toggleLivreurAccount(livreur)" mat-icon-button>
+              <mat-icon>{{ livreur.estActif ? 'block' : 'restart_alt' }}</mat-icon>
+            </button>
+            <button class="action-btn delete" (click)="confirmDeleteLivreur(livreur)" mat-icon-button>
+              <mat-icon>delete</mat-icon>
+            </button>
+          </div>
         </div>
       </div>
 
       <div class="empty-state" *ngIf="filteredLivreurs.length === 0">
         <mat-icon class="empty-icon">people_outline</mat-icon>
-        <p>Aucun livreur trouvé</p>
+        <h3>Aucun livreur trouvé</h3>
+        <p>Essayez un autre filtre ou une autre recherche.</p>
       </div>
     </div>
   </div>
@@ -159,5 +185,60 @@
   <div class="loading-state" *ngIf="loading">
     <mat-spinner diameter="40"></mat-spinner>
     <p>Chargement...</p>
+  </div>
+
+  <div class="modal-backdrop" *ngIf="detailModalOpen && selectedLivreur" (click)="closeDetailModal()">
+    <section class="modal-card" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <div>
+          <p class="modal-kicker">Profil livreur</p>
+          <h2>{{ selectedLivreur.prenom }} {{ selectedLivreur.nom }}</h2>
+        </div>
+        <button type="button" class="modal-close" (click)="closeDetailModal()">
+          <mat-icon>close</mat-icon>
+        </button>
+      </div>
+
+      <div class="modal-body">
+        <div class="profile-banner">
+          <img [src]="selectedLivreur.avatar || 'assets/default-avatar.svg'" alt="Livreur" />
+          <div>
+            <strong>{{ selectedLivreur.prenom }} {{ selectedLivreur.nom }}</strong>
+            <span>{{ selectedLivreur.email }}</span>
+          </div>
+        </div>
+
+        <div class="detail-grid">
+          <div class="detail-row">
+            <span>Téléphone</span>
+            <strong>{{ selectedLivreur.telephone || 'Non renseigné' }}</strong>
+          </div>
+          <div class="detail-row">
+            <span>Véhicule</span>
+            <strong>{{ selectedLivreur.vehicule ? getVehicleLabel(selectedLivreur.vehicule.type) : 'N/A' }}</strong>
+          </div>
+          <div class="detail-row">
+            <span>Missions acceptées</span>
+            <strong>{{ getAcceptedMissionsCount(selectedLivreur) }}</strong>
+          </div>
+          <div class="detail-row">
+            <span>Compte</span>
+            <strong>{{ selectedLivreur.estActif ? 'Actif' : 'Désactivé' }}</strong>
+          </div>
+          <div class="detail-row">
+            <span>Disponibilité</span>
+            <strong>{{ selectedLivreur.disponible ? 'Disponible' : 'Indisponible' }}</strong>
+          </div>
+          <div class="detail-row">
+            <span>Note</span>
+            <strong>{{ selectedLivreur.note || 'N/A' }}</strong>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="btn ghost" (click)="closeDetailModal()">Fermer</button>
+      </div>
+    </section>
   </div>
 </div>

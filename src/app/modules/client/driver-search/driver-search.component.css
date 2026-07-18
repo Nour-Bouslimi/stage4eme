@@ -426,6 +426,42 @@
   color: var(--text-1);
 }
 
+.mission-route-details {
+  margin: 18px 0 10px;
+  border: 1px solid #e2e8f0;
+  border-radius: 18px;
+  background: #f8fafc;
+  padding: 16px;
+}
+
+.route-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: center;
+  padding: 10px 0;
+  border-bottom: 1px solid #e5e7eb;
+  font-size: 14px;
+  color: var(--text-2);
+}
+
+.route-row:last-child {
+  border-bottom: none;
+}
+
+.route-row span {
+  font-size: 13px;
+  color: var(--secondary);
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.route-row strong {
+  color: var(--text-1);
+  font-weight: 700;
+  text-align: right;
+}
+
 .filters-row {
   display: flex;
   gap: 10px;

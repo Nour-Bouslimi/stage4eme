@@ -50,6 +50,12 @@ export class MissionService {
     );
   }
 
+  getAllMissions(): Observable<Mission[]> {
+    return this.http.get<Mission[]>(`${this.apiUrl}/missions`).pipe(
+      map((missions) => missions.map((mission) => this.withVisibleNotifications(normalizeMission(mission))))
+    );
+  }
+
   getMissionsForLivreur(statut?: string): Observable<Mission[]> {
     const url = statut ? `${this.apiUrl}/missions?statut=${encodeURIComponent(statut)}` : `${this.apiUrl}/missions`;
 

@@ -149,8 +149,35 @@ export class MissionHistoryComponent implements OnInit {
     this.router.navigate(['/client/tracking', missionId]);
   }
 
-  contactDriver(missionId: string): void {
-    console.log('Contacter livreur pour mission:', missionId);
+  contactDriver(mission: Mission): void {
+    if (!this.canChatMission(mission)) {
+      return;
+    }
+
+    this.router.navigate(['/client/chat', mission.id]);
+  }
+
+  canChatMission(mission: Mission): boolean {
+    if (!mission.id) {
+      return false;
+    }
+
+    if (mission.statut === MissionStatus.EN_ATTENTE && !mission.livreurId) {
+      return false;
+    }
+
+    return [
+      MissionStatus.ACCEPTEE,
+      MissionStatus.EN_ROUTE,
+      MissionStatus.ARRIVEE,
+      MissionStatus.EN_LIVRAISON,
+      MissionStatus.TERMINEE,
+      MissionStatus.ANNULEE
+    ].includes(mission.statut);
+  }
+
+  isChatArchived(mission: Mission): boolean {
+    return mission.statut === MissionStatus.TERMINEE || mission.statut === MissionStatus.ANNULEE;
   }
 
   rateMission(missionId: string): void {

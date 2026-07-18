@@ -1,109 +1,370 @@
 <div class="admin-dashboard">
-  <div class="dashboard-header">
-    <h1 class="dashboard-title">Tableau de bord administrateur</h1>
-    <p class="dashboard-subtitle">Vue d'ensemble de la plateforme</p>
+  <section class="hero-card">
+    <div class="hero-copy">
+      <p class="eyebrow">Vue d'ensemble</p>
+      <h1 class="dashboard-title">Tableau de bord administrateur</h1>
+      <p class="dashboard-subtitle">
+        Suivi en temps réel de l'activité de la plateforme, des missions, des clients et des livreurs.
+      </p>
+      <div class="hero-meta">
+        <span class="meta-pill">
+          <mat-icon>update</mat-icon>
+          <span *ngIf="lastUpdated; else noUpdate">Mis à jour le {{ formatDate(lastUpdated) }}</span>
+          <ng-template #noUpdate>Synchronisation en cours</ng-template>
+        </span>
+        <span class="meta-pill subtle">
+          <mat-icon>insights</mat-icon>
+          {{ stats.completionRate | number:'1.0-0' }}% de missions terminées
+        </span>
+      </div>
+    </div>
+
+    <div class="hero-actions">
+      <button type="button" class="action-btn primary" (click)="loadDashboardData()">
+        <mat-icon>refresh</mat-icon>
+        Actualiser
+      </button>
+      <button type="button" class="action-btn ghost" (click)="goToMissions()">
+        <mat-icon>assignment</mat-icon>
+        Voir les missions
+      </button>
+    </div>
+  </section>
+
+  <div class="error-banner" *ngIf="errorMessage">
+    <mat-icon>warning</mat-icon>
+    <span>{{ errorMessage }}</span>
   </div>
 
-  <div class="stats-grid">
-    <div class="stat-card">
-      <div class="stat-icon missions">
+  <section class="stats-grid">
+    <article class="stat-card stat-card--missions">
+      <div class="stat-icon">
         <mat-icon>local_shipping</mat-icon>
       </div>
       <div class="stat-content">
         <p class="stat-value">{{ stats.totalMissions }}</p>
         <p class="stat-label">Total missions</p>
       </div>
-    </div>
+    </article>
 
-    <div class="stat-card">
-      <div class="stat-icon active">
+    <article class="stat-card stat-card--active">
+      <div class="stat-icon">
         <mat-icon>play_circle</mat-icon>
       </div>
       <div class="stat-content">
         <p class="stat-value">{{ stats.activeMissions }}</p>
         <p class="stat-label">Missions actives</p>
       </div>
-    </div>
+    </article>
 
-    <div class="stat-card">
-      <div class="stat-icon clients">
-        <mat-icon>people</mat-icon>
+    <article class="stat-card stat-card--clients">
+      <div class="stat-icon">
+        <mat-icon>groups</mat-icon>
       </div>
       <div class="stat-content">
         <p class="stat-value">{{ stats.totalClients }}</p>
         <p class="stat-label">Clients</p>
       </div>
-    </div>
+    </article>
 
-    <div class="stat-card">
-      <div class="stat-icon livreurs">
+    <article class="stat-card stat-card--drivers">
+      <div class="stat-icon">
         <mat-icon>local_taxi</mat-icon>
       </div>
       <div class="stat-content">
         <p class="stat-value">{{ stats.totalLivreurs }}</p>
         <p class="stat-label">Livreurs</p>
       </div>
+    </article>
+
+    <article class="stat-card stat-card--online">
+      <div class="stat-icon">
+        <mat-icon>wifi</mat-icon>
+      </div>
+      <div class="stat-content">
+        <p class="stat-value">{{ stats.onlineLivreurs }}</p>
+        <p class="stat-label">Livreurs en ligne</p>
+      </div>
+    </article>
+
+    <article class="stat-card stat-card--revenue">
+      <div class="stat-icon">
+        <mat-icon>payments</mat-icon>
+      </div>
+      <div class="stat-content">
+        <p class="stat-value">{{ formatMoney(stats.totalRevenue) }} TND</p>
+        <p class="stat-label">Chiffre d'affaires</p>
+      </div>
+    </article>
+  </section>
+
+  <section class="dashboard-grid">
+    <div class="panel panel--chart">
+      <div class="panel-header">
+        <div>
+          <p class="panel-kicker">Activité</p>
+          <h2 class="panel-title">Missions par jour</h2>
+          <p class="panel-subtitle">{{ getTrendSubtitle() }}</p>
+        </div>
+        <span class="panel-badge">{{ dailyMissionSeries.length }} jours</span>
+      </div>
+
+      <div class="trend-chart" *ngIf="trendPoints.length > 0; else emptyTrend">
+        <svg class="trend-chart__svg" viewBox="0 0 1000 320" preserveAspectRatio="none" aria-label="Évolution des missions">
+          <defs>
+            <linearGradient id="trendFill" x1="0" x2="0" y1="0" y2="1">
+              <stop offset="0%" stop-color="#ff6b2c" stop-opacity="0.24" />
+              <stop offset="100%" stop-color="#ff6b2c" stop-opacity="0.02" />
+            </linearGradient>
+            <linearGradient id="trendStroke" x1="0" x2="1" y1="0" y2="0">
+              <stop offset="0%" stop-color="#ff7d42" />
+              <stop offset="50%" stop-color="#ff6b2c" />
+              <stop offset="100%" stop-color="#1a3c6e" />
+            </linearGradient>
+          </defs>
+
+          <g class="trend-grid">
+            <line *ngFor="let line of [72, 124, 176, 228]" [attr.x1]="32" [attr.x2]="968" [attr.y1]="line" [attr.y2]="line"></line>
+          </g>
+
+          <path class="trend-area" [attr.d]="trendAreaPath"></path>
+          <path class="trend-line" [attr.d]="trendPath"></path>
+
+          <g class="trend-points">
+            <g *ngFor="let point of trendPoints; let index = index; trackBy: trackByLabel">
+              <circle class="trend-point" [attr.cx]="point.x" [attr.cy]="point.y" r="6"></circle>
+              <circle class="trend-point trend-point--halo" [attr.cx]="point.x" [attr.cy]="point.y" r="13"></circle>
+              <text class="trend-point-value" [attr.x]="point.x" [attr.y]="point.y - 18">{{ point.count }}</text>
+            </g>
+          </g>
+
+          <g class="trend-axis">
+            <g *ngFor="let point of trendPoints; let index = index; trackBy: trackByLabel">
+              <text *ngIf="index % 5 === 0 || index === trendPoints.length - 1" class="trend-axis-label" [attr.x]="point.x" y="298">
+                {{ point.label }}
+              </text>
+            </g>
+          </g>
+        </svg>
+
+        <div class="trend-summary">
+          <div class="trend-metric">
+            <span class="trend-metric__label">Pic</span>
+            <strong>{{ trendMaxCount }}</strong>
+          </div>
+          <div class="trend-metric">
+            <span class="trend-metric__label">Moyenne</span>
+            <strong>{{ ((stats.totalMissions && dailyMissionSeries.length ? (stats.totalMissions / dailyMissionSeries.length) : 0)) | number:'1.1-1' }}</strong>
+          </div>
+          <div class="trend-metric trend-metric--accent">
+            <span class="trend-metric__label">Tendance</span>
+            <strong>{{ trendPoints.length > 0 ? 'Stable' : 'N/A' }}</strong>
+          </div>
+        </div>
+      </div>
+
+      <ng-template #emptyTrend>
+        <div class="trend-empty">
+          <mat-icon>show_chart</mat-icon>
+          <p>Aucune donnée disponible pour construire le graphique.</p>
+        </div>
+      </ng-template>
     </div>
-  </div>
 
-  <div class="dashboard-content">
-    <div class="charts-section">
-      <div class="chart-card">
-        <div class="chart-header">
-          <h3 class="chart-title">Missions par jour (30 jours)</h3>
-        </div>
-        <div class="chart-placeholder">
-          <mat-icon class="placeholder-icon">show_chart</mat-icon>
-          <p>Graphique des missions</p>
+    <aside class="panel panel--side">
+      <div class="panel-header">
+        <div>
+          <p class="panel-kicker">Performance</p>
+          <h2 class="panel-title">Vue opérationnelle</h2>
         </div>
       </div>
 
-      <div class="chart-card">
-        <div class="chart-header">
-          <h3 class="chart-title">Répartition par catégorie</h3>
+      <div class="insight-list">
+        <div class="insight-card">
+          <span class="insight-label">Missions terminées</span>
+          <strong>{{ stats.completedMissions }}</strong>
         </div>
-        <div class="chart-placeholder">
-          <mat-icon class="placeholder-icon">pie_chart</mat-icon>
-          <p>Graphique circulaire</p>
+        <div class="insight-card">
+          <span class="insight-label">Missions annulées</span>
+          <strong>{{ stats.cancelledMissions }}</strong>
+        </div>
+        <div class="insight-card">
+          <span class="insight-label">Missions non assignées</span>
+          <strong>{{ stats.unassignedMissions }}</strong>
+        </div>
+        <div class="insight-card">
+          <span class="insight-label">Prix moyen</span>
+          <strong>{{ formatMoney(stats.averagePrice) }} TND</strong>
+        </div>
+        <div class="insight-card">
+          <span class="insight-label">Taux de complétion</span>
+          <strong>{{ formatPercent(stats.completionRate) }}</strong>
+        </div>
+        <div class="insight-card">
+          <span class="insight-label">Taux d'annulation</span>
+          <strong>{{ formatPercent(stats.cancellationRate) }}</strong>
+        </div>
+      </div>
+
+      <div class="quick-actions">
+        <button type="button" class="quick-action" (click)="goToClients()">
+          <mat-icon>groups</mat-icon>
+          Clients
+        </button>
+        <button type="button" class="quick-action" (click)="goToLivreurs()">
+          <mat-icon>badge</mat-icon>
+          Livreurs
+        </button>
+        <button type="button" class="quick-action" (click)="goToMissions()">
+          <mat-icon>assignment</mat-icon>
+          Missions
+        </button>
+      </div>
+    </aside>
+  </section>
+
+  <section class="dashboard-grid dashboard-grid--secondary">
+    <div class="panel">
+      <div class="panel-header">
+        <div>
+          <p class="panel-kicker">Répartition</p>
+          <h2 class="panel-title">Par statut</h2>
+        </div>
+      </div>
+
+      <div class="breakdown-list">
+        <div class="breakdown-item" *ngFor="let item of statusBreakdown; trackBy: trackByLabel">
+          <div class="breakdown-head">
+            <span class="breakdown-dot" [style.background]="item.color"></span>
+            <span class="breakdown-label">{{ item.label }}</span>
+            <strong class="breakdown-count">{{ item.count }}</strong>
+          </div>
+          <div class="breakdown-track">
+            <div class="breakdown-fill" [style.width.%]="item.percent" [style.background]="item.color"></div>
+          </div>
         </div>
       </div>
     </div>
 
-    <div class="recent-missions-section">
-      <div class="section-header">
-        <h3 class="section-title">Missions récentes</h3>
-        <a class="view-all-link">Voir tout</a>
+    <div class="panel">
+      <div class="panel-header">
+        <div>
+          <p class="panel-kicker">Répartition</p>
+          <h2 class="panel-title">Par catégorie</h2>
+        </div>
       </div>
 
-      <div class="missions-list">
-        <div class="mission-item" *ngFor="let mission of recentMissions">
-          <div class="mission-icon">
-            <mat-icon>local_shipping</mat-icon>
+      <div class="category-grid">
+        <div class="category-card" *ngFor="let item of categoryBreakdown; trackBy: trackByLabel">
+          <div class="category-top">
+            <span class="category-dot" [style.background]="item.color"></span>
+            <span class="category-name">{{ item.label }}</span>
           </div>
-          <div class="mission-details">
-            <h4 class="mission-title">{{ mission.depart.ville }} → {{ mission.destination.ville }}</h4>
-            <p class="mission-meta">{{ mission.categorie }} • {{ mission.createdAt | date:'dd/MM/yyyy' }}</p>
+          <strong class="category-count">{{ item.count }}</strong>
+          <div class="category-track">
+            <div class="category-fill" [style.width.%]="item.percent" [style.background]="item.color"></div>
           </div>
-          <div class="mission-status">
-            <span class="status-badge" [class]="getStatusColor(mission.statut)">
-              {{ getStatusLabel(mission.statut) }}
-            </span>
-          </div>
-          <div class="mission-price">
-            <span>{{ mission.prix }} TND</span>
-          </div>
-        </div>
-
-        <div class="empty-state" *ngIf="recentMissions.length === 0">
-          <mat-icon class="empty-icon">inbox</mat-icon>
-          <p>Aucune mission récente</p>
         </div>
       </div>
     </div>
-  </div>
+  </section>
+
+  <section class="dashboard-grid dashboard-grid--top">
+    <div class="panel">
+      <div class="panel-header">
+        <div>
+          <p class="panel-kicker">Classement</p>
+          <h2 class="panel-title">Top livreurs</h2>
+        </div>
+      </div>
+
+      <div class="leaderboard" *ngIf="topLivreurs.length > 0; else emptyTopLivreurs">
+        <article class="leaderboard-item" *ngFor="let item of topLivreurs; trackBy: trackByParticipant">
+          <img class="leaderboard-avatar" [src]="item.avatar" [alt]="item.name" />
+          <div class="leaderboard-copy">
+            <h3>{{ item.name }}</h3>
+            <p>{{ item.email || 'Livreur' }}</p>
+          </div>
+          <strong class="leaderboard-score">{{ item.count }}</strong>
+        </article>
+      </div>
+
+      <ng-template #emptyTopLivreurs>
+        <div class="empty-state compact">
+          <mat-icon class="empty-icon">groups</mat-icon>
+          <p>Aucune donnée disponible</p>
+        </div>
+      </ng-template>
+    </div>
+
+    <div class="panel">
+      <div class="panel-header">
+        <div>
+          <p class="panel-kicker">Classement</p>
+          <h2 class="panel-title">Top clients</h2>
+        </div>
+      </div>
+
+      <div class="leaderboard" *ngIf="topClients.length > 0; else emptyTopClients">
+        <article class="leaderboard-item" *ngFor="let item of topClients; trackBy: trackByParticipant">
+          <img class="leaderboard-avatar" [src]="item.avatar" [alt]="item.name" />
+          <div class="leaderboard-copy">
+            <h3>{{ item.name }}</h3>
+            <p>{{ item.email || 'Client' }}</p>
+          </div>
+          <strong class="leaderboard-score">{{ item.count }}</strong>
+        </article>
+      </div>
+
+      <ng-template #emptyTopClients>
+        <div class="empty-state compact">
+          <mat-icon class="empty-icon">groups</mat-icon>
+          <p>Aucune donnée disponible</p>
+        </div>
+      </ng-template>
+    </div>
+  </section>
+
+  <section class="panel recent-panel">
+    <div class="panel-header">
+      <div>
+        <p class="panel-kicker">Opérations</p>
+        <h2 class="panel-title">Missions récentes</h2>
+      </div>
+      <div class="panel-header-actions">
+        <span class="panel-badge">{{ getVisibleRecentMissions().length }} dernières missions</span>
+        <button type="button" class="text-link" (click)="goToMissions()">Voir tout</button>
+      </div>
+    </div>
+
+    <div class="recent-list" *ngIf="getVisibleRecentMissions().length > 0; else emptyRecent">
+      <article class="recent-item" *ngFor="let mission of getVisibleRecentMissions(); trackBy: trackByMissionId">
+        <div class="recent-icon">
+          <mat-icon>local_shipping</mat-icon>
+        </div>
+        <div class="recent-details">
+          <h3 class="recent-route">{{ getMissionRouteLabel(mission) }}</h3>
+          <p class="recent-meta">{{ getMissionMeta(mission) }}</p>
+        </div>
+        <div class="recent-status">
+          <span class="status-pill" [ngClass]="'status-pill--' + getStatusColor(mission.statut)">
+            {{ getStatusLabel(mission.statut) }}
+          </span>
+        </div>
+        <div class="recent-price">{{ formatMoney(mission.prix || 0) }} TND</div>
+      </article>
+    </div>
+
+    <ng-template #emptyRecent>
+      <div class="empty-state">
+        <mat-icon class="empty-icon">inbox</mat-icon>
+        <p>Aucune mission récente</p>
+      </div>
+    </ng-template>
+  </section>
 
   <div class="loading-state" *ngIf="loading">
-    <mat-spinner diameter="40"></mat-spinner>
-    <p>Chargement...</p>
+    <mat-spinner diameter="44"></mat-spinner>
+    <p>Chargement du tableau de bord...</p>
   </div>
 </div>

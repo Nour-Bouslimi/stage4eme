@@ -76,6 +76,17 @@
         />
       </div>
 
+      <section class="mission-route-details" *ngIf="mode === 'mission' && mission">
+        <div class="route-row">
+          <span>Départ</span>
+          <strong>{{ getAddressLabel(mission.adresseRamassage) }}</strong>
+        </div>
+        <div class="route-row">
+          <span>Destination</span>
+          <strong>{{ getAddressLabel(mission.adresseLivraison) }}</strong>
+        </div>
+      </section>
+
       <div class="filters-row">
         <button type="button" class="filter-pill"
                 [class.active]="selectedFilter === 'all'"
@@ -119,6 +130,11 @@
           </div>
           <div class="selected-driver-actions">
             <button class="detail-btn" type="button" (click)="viewDriverProfile(selectedDriver.id)">Voir plus de détails</button>
+            <button *ngIf="selectedDriver.disponible"
+                    class="contact-btn" type="button"
+                    (click)="contactDriver(selectedDriver.id)">
+              Contacter
+            </button>
           </div>
         </div>
 
@@ -219,8 +235,7 @@
               Détail
             </button>
 
-
-            <button *ngIf="driver.disponible && mode !== 'mission'"
+            <button *ngIf="driver.disponible"
                     class="contact-btn" type="button"
                     (click)="contactDriver(driver.id)">
               Contacter

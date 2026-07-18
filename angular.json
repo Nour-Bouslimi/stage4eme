@@ -21,11 +21,12 @@
       "prefix": "app",
       "architect": {
         "build": {
-          "builder": "@angular-devkit/build-angular:application",
+          "builder": "@angular-devkit/build-angular:browser",
           "options": {
-            "outputPath": "dist/frontendstage",
+            "outputPath": "C:/Users/nour-/AppData/Local/Temp/frontendstage-build",
             "index": "src/index.html",
-            "browser": "src/main.ts",
+            "main": "./src/main.ts",
+            "deleteOutputPath": false,
             "polyfills": [
               "zone.js"
             ],
@@ -33,27 +34,27 @@
             "assets": [
               {
               "glob": "**/*",
-              "input": "public"
+            "input": "./public"
             }
           ],
           "styles": [
-            "node_modules/leaflet/dist/leaflet.css",
-            "src/styles.css"
+            "./src/styles.css"
           ],
           "scripts": []
           },
           "configurations": {
             "production": {
+              "optimization": false,
               "budgets": [
                 {
                   "type": "initial",
-                  "maximumWarning": "500kB",
-                  "maximumError": "1MB"
+                  "maximumWarning": "5MB",
+                  "maximumError": "7MB"
                 },
                 {
                   "type": "anyComponentStyle",
-                  "maximumWarning": "6kB",
-                  "maximumError": "8kB"
+                  "maximumWarning": "20kB",
+                  "maximumError": "30kB"
                 }
               ],
               "outputHashing": "all"
@@ -92,12 +93,11 @@
             "assets": [
               {
               "glob": "**/*",
-              "input": "public"
+            "input": "./public"
             }
           ],
           "styles": [
-            "node_modules/leaflet/dist/leaflet.css",
-            "src/styles.css"
+            "./src/styles.css"
           ],
           "scripts": []
           }
@@ -106,6 +106,9 @@
     }
   },
   "cli": {
+    "cache": {
+      "enabled": false
+    },
     "analytics": "621ddc06-8829-4088-a972-973efde8a5b8"
   }
 }

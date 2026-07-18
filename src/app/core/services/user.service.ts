@@ -123,6 +123,12 @@ export class UserService {
     );
   }
 
+  reactiverUser(id: string): Observable<User> {
+    return this.http.patch<User>(`${this.apiUrl}/admin/users/${id}/reactiver`, {}).pipe(
+      map(user => normalizeUser(user))
+    );
+  }
+
   supprimerUser(id: string): Observable<void> {
     return this.http.delete<void>(`${this.apiUrl}/admin/users/${id}`);
   }

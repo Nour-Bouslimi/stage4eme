@@ -240,6 +240,24 @@ export class LivreurDashboardComponent implements OnInit {
     }
   }
 
+  getAddressLabel(addressValue: string | null | undefined, fallback?: { rue?: string | null; ville?: string | null; codePostal?: string | null; pays?: string | null } | null): string {
+    const parts = this.parseAddressParts(addressValue);
+    if (parts.length > 0) {
+      return parts.join(', ');
+    }
+
+    const fallbackParts = [
+      fallback?.rue,
+      fallback?.ville,
+      fallback?.codePostal,
+      fallback?.pays
+    ]
+      .map((part) => String(part || '').trim())
+      .filter((part) => part.length > 0);
+
+    return fallbackParts.length > 0 ? fallbackParts.join(', ') : 'Adresse non renseignée';
+  }
+
   getRatingStars(): number[] {
     return Array.from({ length: 5 }, (_, i) => i + 1);
   }
@@ -262,5 +280,21 @@ export class LivreurDashboardComponent implements OnInit {
 
   isReviewRatingHalf(rating: number, star: number): boolean {
     return star === Math.ceil(rating) && rating % 1 !== 0;
+  }
+
+  private parseAddressParts(addressValue: string | null | undefined): string[] {
+    if (!addressValue) {
+      return [];
+    }
+
+    try {
+      const parsed = JSON.parse(addressValue) as { rue?: string; ville?: string; codePostal?: string; pays?: string };
+      return [parsed.rue, parsed.ville, parsed.codePostal, parsed.pays]
+        .map((part) => String(part || '').trim())
+        .filter((part) => part.length > 0);
+    } catch {
+      const cleaned = String(addressValue).trim();
+      return cleaned ? [cleaned] : [];
+    }
   }
 }

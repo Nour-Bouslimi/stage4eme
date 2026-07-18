@@ -1,7 +1,9 @@
 import { Component, OnInit } from '@angular/core';
 import { Router } from '@angular/router';
+import { MatDialog } from '@angular/material/dialog';
 import { UserService } from '../../../core/services/user.service';
 import { User, VehicleType } from '../../../core/models/user.model';
+import { ConfirmDialogComponent } from '../../../shared/components/confirm-dialog/confirm-dialog.component';
 
 @Component({
   selector: 'app-livreurs-list',
@@ -16,6 +18,8 @@ export class LivreursListComponent implements OnInit {
   vehicleFilter: VehicleType | 'all' = 'all';
   availabilityFilter: 'all' | 'available' | 'unavailable' = 'all';
   viewMode: 'table' | 'grid' = 'table';
+  detailModalOpen = false;
+  selectedLivreur: User | null = null;
 
   vehicleTypes: { value: VehicleType; label: string }[] = [
     { value: VehicleType.BICYCLETTE, label: 'Bicyclette' },
@@ -30,7 +34,8 @@ export class LivreursListComponent implements OnInit {
 
   constructor(
     private userService: UserService,
-    private router: Router
+    private router: Router,
+    private dialog: MatDialog
   ) {}
 
   ngOnInit(): void {
@@ -67,27 +72,25 @@ export class LivreursListComponent implements OnInit {
   filterLivreurs(): void {
     let filtered = [...this.livreurs];
 
-    // Filtre par recherche
     if (this.searchQuery) {
-      filtered = filtered.filter(livreur =>
-        livreur.prenom.toLowerCase().includes(this.searchQuery.toLowerCase()) ||
-        livreur.nom.toLowerCase().includes(this.searchQuery.toLowerCase()) ||
-        livreur.email.toLowerCase().includes(this.searchQuery.toLowerCase())
+      const query = this.searchQuery.toLowerCase();
+      filtered = filtered.filter((livreur) =>
+        [livreur.prenom, livreur.nom, livreur.email]
+          .filter(Boolean)
+          .join(' ')
+          .toLowerCase()
+          .includes(query)
       );
     }
 
-    // Filtre par véhicule
     if (this.vehicleFilter !== 'all') {
-      filtered = filtered.filter(livreur => 
-        livreur.vehicule?.type === this.vehicleFilter
-      );
+      filtered = filtered.filter((livreur) => livreur.vehicule?.type === this.vehicleFilter);
     }
 
-    // Filtre par disponibilité
     if (this.availabilityFilter === 'available') {
-      filtered = filtered.filter(livreur => livreur.disponible);
+      filtered = filtered.filter((livreur) => livreur.disponible);
     } else if (this.availabilityFilter === 'unavailable') {
-      filtered = filtered.filter(livreur => !livreur.disponible);
+      filtered = filtered.filter((livreur) => !livreur.disponible);
     }
 
     this.filteredLivreurs = filtered;
@@ -101,26 +104,38 @@ export class LivreursListComponent implements OnInit {
     this.router.navigate(['/admin/livreurs/create']);
   }
 
-  viewLivreur(livreurId: string): void {
-    this.router.navigate(['/admin/livreurs', livreurId]);
+  viewLivreur(livreur: User): void {
+    this.selectedLivreur = livreur;
+    this.detailModalOpen = true;
   }
 
-  deactivateLivreur(livreurId: string): void {
-    this.userService.desactiverUser(livreurId).subscribe({
-      next: () => {
-        this.loadLivreurs();
-      }
-    });
+  closeDetailModal(): void {
+    this.detailModalOpen = false;
+    this.selectedLivreur = null;
   }
 
-  deleteLivreur(livreurId: string): void {
-    if (confirm('Êtes-vous sûr de vouloir supprimer ce livreur ?')) {
-      this.userService.supprimerUser(livreurId).subscribe({
-        next: () => {
-          this.loadLivreurs();
-        }
-      });
-    }
+  toggleLivreurAccount(livreur: User): void {
+    const isActive = !!livreur.estActif;
+    this.openConfirmation(
+      isActive ? 'Désactiver ce livreur ?' : 'Réactiver ce livreur ?',
+      isActive
+        ? 'Le compte sera suspendu et le livreur ne pourra plus se connecter.'
+        : 'Le compte sera de nouveau accessible pour le livreur.',
+      isActive ? 'Désactiver' : 'Réactiver',
+      () => (isActive
+        ? this.userService.desactiverUser(livreur.id)
+        : this.userService.reactiverUser(livreur.id)
+      ).subscribe({ next: () => this.loadLivreurs() })
+    );
+  }
+
+  confirmDeleteLivreur(livreur: User): void {
+    this.openConfirmation(
+      'Supprimer ce livreur ?',
+      'Cette action est définitive. Le compte et ses données seront supprimés.',
+      'Supprimer',
+      () => this.userService.supprimerUser(livreur.id).subscribe({ next: () => this.loadLivreurs() })
+    );
   }
 
   getVehicleLabel(type: string): string {
@@ -135,5 +150,32 @@ export class LivreursListComponent implements OnInit {
       GROS_CAMION: 'Gros camion'
     };
     return labels[type] || type;
+  }
+
+  getAcceptedMissionsCount(livreur: User): number {
+    return Array.isArray(livreur.missionsAcceptees) ? livreur.missionsAcceptees.length : livreur.totalMissions ?? 0;
+  }
+
+  private openConfirmation(
+    title: string,
+    message: string,
+    confirmText: string,
+    onConfirm: () => void
+  ): void {
+    const dialogRef = this.dialog.open(ConfirmDialogComponent, {
+      width: '420px',
+      data: {
+        title,
+        message,
+        confirmText,
+        cancelText: 'Annuler'
+      }
+    });
+
+    dialogRef.afterClosed().subscribe((confirmed) => {
+      if (confirmed) {
+        onConfirm();
+      }
+    });
   }
 }

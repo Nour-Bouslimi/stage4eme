@@ -14,8 +14,11 @@ export class SocketService {
   connect(): void {
     if (!this.socket) {
       const token = localStorage.getItem('token');
-      this.socket = io(environment.socketUrl, {
+      const userId = localStorage.getItem('userId') || undefined;
+      const namespace = environment.socketUrl?.replace(/\/$/, '') + '/chat';
+      this.socket = io(namespace, {
         auth: { token },
+        query: { userId },
         transports: ['websocket']
       });
 
@@ -142,7 +145,8 @@ export class SocketService {
 
   onTyping(): Observable<any> {
     if (this.socket) {
-      return fromEvent(this.socket, 'typing');
+      // server broadcasts 'userTyping' when someone types in a mission room
+      return fromEvent(this.socket, 'userTyping');
     }
     return new Observable();
   }

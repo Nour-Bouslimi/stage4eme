@@ -1,6 +1,8 @@
 import { Component, OnInit } from '@angular/core';
+import { MatDialog } from '@angular/material/dialog';
 import { UserService } from '../../../core/services/user.service';
 import { User } from '../../../core/models/user.model';
+import { ConfirmDialogComponent } from '../../../shared/components/confirm-dialog/confirm-dialog.component';
 
 @Component({
   selector: 'app-clients-list',
@@ -12,8 +14,13 @@ export class ClientsListComponent implements OnInit {
   filteredClients: User[] = [];
   loading = true;
   searchQuery = '';
+  detailModalOpen = false;
+  selectedClient: User | null = null;
 
-  constructor(private userService: UserService) {}
+  constructor(
+    private userService: UserService,
+    private dialog: MatDialog
+  ) {}
 
   ngOnInit(): void {
     this.loadClients();
@@ -35,36 +42,79 @@ export class ClientsListComponent implements OnInit {
   }
 
   onSearch(): void {
-    if (this.searchQuery) {
-      this.filteredClients = this.clients.filter(client =>
-        client.prenom.toLowerCase().includes(this.searchQuery.toLowerCase()) ||
-        client.nom.toLowerCase().includes(this.searchQuery.toLowerCase()) ||
-        client.email.toLowerCase().includes(this.searchQuery.toLowerCase())
+    const query = this.searchQuery.trim().toLowerCase();
+    if (query) {
+      this.filteredClients = this.clients.filter((client) =>
+        [client.prenom, client.nom, client.email]
+          .filter(Boolean)
+          .join(' ')
+          .toLowerCase()
+          .includes(query)
       );
-    } else {
-      this.filteredClients = this.clients;
+      return;
     }
+
+    this.filteredClients = this.clients;
   }
 
-  viewClient(clientId: string): void {
-    console.log('Voir client:', clientId);
+  viewClient(client: User): void {
+    this.selectedClient = client;
+    this.detailModalOpen = true;
   }
 
-  deactivateClient(clientId: string): void {
-    this.userService.desactiverUser(clientId).subscribe({
-      next: () => {
-        this.loadClients();
+  closeDetailModal(): void {
+    this.detailModalOpen = false;
+    this.selectedClient = null;
+  }
+
+  toggleClientAccount(client: User): void {
+    const isActive = !!client.estActif;
+    this.openConfirmation(
+      isActive ? 'Désactiver ce client ?' : 'Réactiver ce client ?',
+      isActive
+        ? 'Le compte sera suspendu et le client ne pourra plus se connecter.'
+        : 'Le compte sera de nouveau accessible pour le client.',
+      isActive ? 'Désactiver' : 'Réactiver',
+      () => (isActive
+        ? this.userService.desactiverUser(client.id)
+        : this.userService.reactiverUser(client.id)
+      ).subscribe({ next: () => this.loadClients() })
+    );
+  }
+
+  confirmDeleteClient(client: User): void {
+    this.openConfirmation(
+      'Supprimer ce client ?',
+      'Cette action est définitive. Le compte et les données liées seront supprimés.',
+      'Supprimer',
+      () => this.userService.supprimerUser(client.id).subscribe({ next: () => this.loadClients() })
+    );
+  }
+
+  getClientMissionsCount(client: User): number {
+    return Array.isArray(client.missionsCreees) ? client.missionsCreees.length : client.totalMissions ?? 0;
+  }
+
+  private openConfirmation(
+    title: string,
+    message: string,
+    confirmText: string,
+    onConfirm: () => void
+  ): void {
+    const dialogRef = this.dialog.open(ConfirmDialogComponent, {
+      width: '420px',
+      data: {
+        title,
+        message,
+        confirmText,
+        cancelText: 'Annuler'
       }
     });
-  }
 
-  deleteClient(clientId: string): void {
-    if (confirm('Êtes-vous sûr de vouloir supprimer ce client ?')) {
-      this.userService.supprimerUser(clientId).subscribe({
-        next: () => {
-          this.loadClients();
-        }
-      });
-    }
+    dialogRef.afterClosed().subscribe((confirmed) => {
+      if (confirmed) {
+        onConfirm();
+      }
+    });
   }
 }

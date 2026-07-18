@@ -57,7 +57,7 @@ export class ClientChatComponent implements OnInit, OnDestroy {
   ) {}
 
   ngOnInit(): void {
-    this.missionId = this.route.snapshot.paramMap.get('missionId') || '';
+    this.missionId = this.getRouteMissionId();
     this.driverId = this.route.snapshot.queryParamMap.get('driverId') || '';
     this.setupSocket();
 
@@ -66,6 +66,14 @@ export class ClientChatComponent implements OnInit, OnDestroy {
     } else {
       this.loadConversations();
     }
+  }
+
+  private getRouteMissionId(): string {
+    return (
+      this.route.snapshot.paramMap.get('missionId') ||
+      this.route.snapshot.queryParamMap.get('missionId') ||
+      ''
+    );
   }
 
   ngOnDestroy(): void {

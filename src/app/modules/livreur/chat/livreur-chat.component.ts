@@ -56,7 +56,7 @@ export class LivreurChatComponent implements OnInit, OnDestroy {
   ) {}
 
   ngOnInit(): void {
-    this.missionId = this.route.snapshot.paramMap.get('missionId') || '';
+    this.missionId = this.route.snapshot.paramMap.get('missionId') || this.route.snapshot.queryParamMap.get('missionId') || '';
     this.clientId = this.route.snapshot.queryParamMap.get('clientId') || '';
     this.setupSocket();
     this.loadConversations();

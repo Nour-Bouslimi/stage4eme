@@ -202,13 +202,11 @@ export class TrackingComponent implements OnInit, OnDestroy {
   }
 
   contactDriver(): void {
-    if (!this.mission?.livreur?.id) {
+    if (!this.missionId) {
       return;
     }
 
-    this.router.navigate(['/client/chat', this.missionId], {
-      queryParams: { driverId: this.mission.livreur.id }
-    });
+    this.router.navigate(['/client/chat', this.missionId]);
   }
 
   getStatusColor(status: MissionStatus): string {

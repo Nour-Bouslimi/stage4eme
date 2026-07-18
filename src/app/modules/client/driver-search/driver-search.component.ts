@@ -264,12 +264,26 @@ export class DriverSearchComponent implements OnInit {
 
   contactDriver(driverId: string): void {
     if (this.mode === 'mission' && this.missionId) {
-      this.router.navigate(['/client/chat', this.missionId], {
-        queryParams: { driverId }
+      this.assigning = true;
+      this.missionService.assignerLivreur(this.missionId, driverId).subscribe({
+        next: () => {
+          this.assigning = false;
+          this.router.navigate(['/client/chat', this.missionId]);
+        },
+        error: () => {
+          this.assigning = false;
+          this.router.navigate(['/client/chat', this.missionId]);
+        }
       });
       return;
     }
-    console.log('Contacter livreur:', driverId);
+
+    if (this.missionId) {
+      this.router.navigate(['/client/chat', this.missionId]);
+      return;
+    }
+
+    this.router.navigate(['/client/chat']);
   }
 
   viewDriverProfile(driverId: string): void {

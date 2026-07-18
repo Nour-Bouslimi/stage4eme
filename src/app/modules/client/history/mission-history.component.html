@@ -103,7 +103,7 @@
               >
                 <mat-icon>play_arrow</mat-icon>
               </button>
-              <button class="action-btn" type="button" (click)="contactDriver(mission.id)" mat-icon-button aria-label="Message">
+              <button class="action-btn" type="button" [disabled]="!canChatMission(mission)" (click)="contactDriver(mission)" mat-icon-button aria-label="Message">
                 <mat-icon>chat_bubble_outline</mat-icon>
               </button>
               <button

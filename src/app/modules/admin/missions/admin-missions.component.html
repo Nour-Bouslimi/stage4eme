@@ -1,7 +1,7 @@
 <div class="admin-missions">
   <div class="page-header">
     <h1 class="page-title">Gestion des missions</h1>
-    <p class="page-subtitle">Consultez et gérez toutes les missions de la plateforme</p>
+    <p class="page-subtitle">Consultez et gerez toutes les missions de la plateforme</p>
   </div>
 
   <div class="filters-section">
@@ -11,12 +11,19 @@
         type="text"
         [(ngModel)]="searchQuery"
         (input)="onSearch()"
-        placeholder="Rechercher une mission..."
+        placeholder="Rechercher par trajet ou categorie..."
         class="search-input"
       />
     </div>
 
     <div class="filter-selects">
+      <select [(ngModel)]="sortOption" (change)="onSortChange()" class="filter-select">
+        <option value="date-desc">Plus recentes</option>
+        <option value="date-asc">Plus anciennes</option>
+        <option value="price-desc">Prix decroissant</option>
+        <option value="price-asc">Prix croissant</option>
+      </select>
+
       <select [(ngModel)]="statusFilter" (change)="onStatusFilterChange()" class="filter-select">
         <option value="all">Tous les statuts</option>
         <option *ngFor="let status of statuses" [value]="status.value">
@@ -25,7 +32,7 @@
       </select>
 
       <select [(ngModel)]="categoryFilter" (change)="onCategoryFilterChange()" class="filter-select">
-        <option value="all">Toutes les catégories</option>
+        <option value="all">Toutes les categories</option>
         <option *ngFor="let category of categories" [value]="category.value">
           {{ category.label }}
         </option>
@@ -34,44 +41,57 @@
   </div>
 
   <div class="missions-table-container" *ngIf="!loading">
-    <table class="missions-table">
+    <div class="table-toolbar" *ngIf="filteredMissions.length > 0">
+      <p>{{ getPaginationLabel() }}</p>
+    </div>
+
+    <table class="missions-table" *ngIf="paginatedMissions.length > 0">
       <thead>
         <tr>
-          <th>ID</th>
           <th>Trajet</th>
-          <th>Catégorie</th>
+          <th>Categorie</th>
           <th>Statut</th>
           <th>Poids</th>
+          <th>Distance</th>
           <th>Prix</th>
           <th>Date</th>
           <th>Actions</th>
         </tr>
       </thead>
       <tbody>
-        <tr *ngFor="let mission of filteredMissions">
-          <td>
-          </td>
+        <tr *ngFor="let mission of paginatedMissions">
           <td>
             <div class="route-info">
-              <span class="route-point">{{ mission.depart.ville }}</span>
-              <mat-icon class="route-arrow">arrow_forward</mat-icon>
-              <span class="route-point">{{ mission.destination.ville }}</span>
+              <div class="route-icon">
+                <mat-icon>local_shipping</mat-icon>
+              </div>
+              <div class="route-copy">
+                <strong class="route-title">{{ getRouteLabel(mission) }}</strong>
+                <span class="route-subtitle">
+                  {{ getClientLabel(mission) }} • {{ getDriverLabel(mission) }}
+                </span>
+                <div class="route-meta">
+                  <span class="route-pill">{{ getFormattedDistance(mission) }}</span>
+                  <span class="route-pill muted">{{ getFormattedWeight(mission) }}</span>
+                </div>
+              </div>
             </div>
           </td>
           <td>
             <span class="category-badge">{{ getCategoryLabel(mission.categorie) }}</span>
           </td>
           <td>
-            <span class="status-badge" [class]="getStatusColor(mission.statut)">
+            <span class="status-badge" [ngClass]="getStatusColor(mission.statut)">
               {{ getStatusLabel(mission.statut) }}
             </span>
           </td>
-          <td>{{ mission.poids }} kg</td>
-          <td>{{ mission.prix || 'N/A' }} TND</td>
-          <td>{{ mission.createdAt | date:'dd/MM/yyyy' }}</td>
+          <td>{{ getFormattedWeight(mission) }}</td>
+          <td>{{ getFormattedDistance(mission) }}</td>
+          <td>{{ getFormattedPrice(mission) }}</td>
+          <td>{{ getFormattedDate(mission.createdAt) }}</td>
           <td>
             <div class="action-buttons">
-              <button class="action-btn view" (click)="viewMission(mission.id)" mat-icon-button>
+              <button class="action-btn view" (click)="viewMission(mission)" mat-icon-button>
                 <mat-icon>visibility</mat-icon>
               </button>
             </div>
@@ -80,9 +100,33 @@
       </tbody>
     </table>
 
+    <div class="pagination-bar" *ngIf="filteredMissions.length > pageSize">
+      <div class="pagination-label">{{ getPaginationLabel() }}</div>
+      <div class="pagination-controls">
+        <button class="page-btn" type="button" (click)="onPageChange(currentPage - 1)" [disabled]="currentPage === 1">
+          <mat-icon>chevron_left</mat-icon>
+        </button>
+
+        <button
+          class="page-btn number"
+          type="button"
+          *ngFor="let page of visiblePages"
+          [class.active]="page === currentPage"
+          (click)="onPageChange(page)"
+        >
+          {{ page }}
+        </button>
+
+        <button class="page-btn" type="button" (click)="onPageChange(currentPage + 1)" [disabled]="currentPage === totalPages">
+          <mat-icon>chevron_right</mat-icon>
+        </button>
+      </div>
+    </div>
+
     <div class="empty-state" *ngIf="filteredMissions.length === 0">
       <mat-icon class="empty-icon">inbox</mat-icon>
-      <p>Aucune mission trouvée</p>
+      <h3>Aucune mission trouvée</h3>
+      <p>Essayez de modifier les filtres ou la recherche pour afficher des missions.</p>
     </div>
   </div>
 
@@ -90,4 +134,76 @@
     <mat-spinner diameter="40"></mat-spinner>
     <p>Chargement...</p>
   </div>
+
+  <div class="modal-backdrop" *ngIf="detailModalOpen && selectedMission" (click)="closeDetailModal()">
+    <section class="modal-card details-modal" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <div>
+          <p class="modal-kicker">Details de la mission</p>
+          <h2>{{ getRouteLabel(selectedMission) }}</h2>
+        </div>
+        <button type="button" class="modal-close" (click)="closeDetailModal()">
+          <mat-icon>close</mat-icon>
+        </button>
+      </div>
+
+      <div class="modal-body">
+        <div class="detail-grid">
+          <div class="detail-row">
+            <span>Depart</span>
+            <strong>{{ getAddressLabel(selectedMission.adresseRamassage, selectedMission.depart) }}</strong>
+          </div>
+          <div class="detail-row">
+            <span>Destination</span>
+            <strong>{{ getAddressLabel(selectedMission.adresseLivraison, selectedMission.destination) }}</strong>
+          </div>
+          <div class="detail-row">
+            <span>Categorie</span>
+            <strong>{{ getCategoryLabel(selectedMission.categorie) }}</strong>
+          </div>
+          <div class="detail-row">
+            <span>Statut</span>
+            <strong>{{ getStatusLabel(selectedMission.statut) }}</strong>
+          </div>
+          <div class="detail-row">
+            <span>Poids</span>
+            <strong>{{ getFormattedWeight(selectedMission) }}</strong>
+          </div>
+          <div class="detail-row">
+            <span>Prix</span>
+            <strong>{{ getFormattedPrice(selectedMission) }}</strong>
+          </div>
+          <div class="detail-row">
+            <span>Date de creation</span>
+            <strong>{{ getFormattedDate(selectedMission.createdAt) }}</strong>
+          </div>
+          <div class="detail-row">
+            <span>Livreur</span>
+            <strong>
+              <ng-container *ngIf="selectedMission.livreur; else noDriver">
+                {{ selectedMission.livreur.prenom }} {{ selectedMission.livreur.nom }}
+              </ng-container>
+            </strong>
+          </div>
+        </div>
+
+        <div class="detail-note" *ngIf="selectedMission.description || selectedMission.instructionsSpeciales">
+          <div *ngIf="selectedMission.description">
+            <span>Description</span>
+            <p>{{ selectedMission.description }}</p>
+          </div>
+          <div *ngIf="selectedMission.instructionsSpeciales">
+            <span>Instructions speciales</span>
+            <p>{{ selectedMission.instructionsSpeciales }}</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="btn ghost" (click)="closeDetailModal()">Fermer</button>
+      </div>
+    </section>
+  </div>
+
+  <ng-template #noDriver>Non assigne</ng-template>
 </div>

@@ -185,6 +185,10 @@ export class ActiveMissionComponent implements OnInit, OnDestroy {
   }
 
   contactClient(): void {
+    if (!this.missionId) {
+      return;
+    }
+
     this.router.navigate(['/livreur/chat', this.missionId]);
   }
 

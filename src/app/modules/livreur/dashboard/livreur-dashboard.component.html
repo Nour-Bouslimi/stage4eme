@@ -90,7 +90,7 @@
             <mat-icon class="point-icon">location_on</mat-icon>
             <div class="point-details">
               <span class="point-label">Départ</span>
-              <span class="point-address">{{ activeMission.depart.rue }}, {{ activeMission.depart.ville }}</span>
+              <span class="point-address">{{ getAddressLabel(activeMission.adresseRamassage, activeMission.depart) }}</span>
             </div>
           </div>
           <mat-icon class="route-arrow">arrow_downward</mat-icon>
@@ -98,7 +98,7 @@
             <mat-icon class="point-icon">flag</mat-icon>
             <div class="point-details">
               <span class="point-label">Destination</span>
-              <span class="point-address">{{ activeMission.destination.rue }}, {{ activeMission.destination.ville }}</span>
+              <span class="point-address">{{ getAddressLabel(activeMission.adresseLivraison, activeMission.destination) }}</span>
             </div>
           </div>
         </div>
@@ -132,7 +132,7 @@
             <mat-icon>local_shipping</mat-icon>
           </div>
           <div class="mission-details">
-            <h3 class="mission-title">{{ mission.depart.ville }} → {{ mission.destination.ville }}</h3>
+            <h3 class="mission-title">{{ getAddressLabel(mission.adresseRamassage, mission.depart) }} → {{ getAddressLabel(mission.adresseLivraison, mission.destination) }}</h3>
             <p class="mission-meta">{{ mission.createdAt | date:'dd/MM/yyyy':'':'fr' }} • {{ mission.categorie }}</p>
           </div>
           <div class="mission-status">
@@ -187,7 +187,7 @@
         <div class="mission-summary">
           <div class="summary-row">
             <span class="summary-label">Trajet</span>
-            <span class="summary-value">{{ newMission.depart.ville }} → {{ newMission.destination.ville }}</span>
+            <span class="summary-value">{{ getAddressLabel(newMission.adresseRamassage, newMission.depart) }} → {{ getAddressLabel(newMission.adresseLivraison, newMission.destination) }}</span>
           </div>
           <div class="summary-row">
             <span class="summary-label">Catégorie</span>
