@@ -8,6 +8,7 @@ import {
   OneToMany,
   OneToOne,
   JoinColumn,
+  Index,
 } from 'typeorm';
 import { CategorieMission } from '../../../common/enums/categorie-mission.enum';
 import { TypeVehicule } from '../../../common/enums/type-vehicule.enum';
@@ -17,6 +18,11 @@ import { Message } from '../../chat/entities/message.entity';
 import { Notation } from '../../ratings/entities/notation.entity';
 import { Notification } from '../../notifications/entities/notification.entity';
 
+@Index('idx_missions_created_at', ['createdAt'])
+@Index('idx_missions_status_created_at', ['statut', 'createdAt'])
+@Index('idx_missions_category_created_at', ['categorie', 'createdAt'])
+@Index('idx_missions_client_created_at', ['clientId', 'createdAt'])
+@Index('idx_missions_livreur_created_at', ['livreurId', 'createdAt'])
 @Entity('missions')
 export class Mission {
   @PrimaryGeneratedColumn('uuid')
@@ -46,7 +52,11 @@ export class Mission {
   @Column({ nullable: true })
   instructionsSpeciales: string;
 
-  @Column({ type: 'enum', enum: CategorieMission, default: CategorieMission.LIVRAISON_COLIS })
+  @Column({
+    type: 'enum',
+    enum: CategorieMission,
+    default: CategorieMission.LIVRAISON_COLIS,
+  })
   categorie: CategorieMission;
 
   @Column({ type: 'enum', enum: TypeVehicule, nullable: true })
@@ -73,7 +83,11 @@ export class Mission {
   @Column({ nullable: true })
   heureDemandee: string;
 
-  @Column({ type: 'enum', enum: StatutMission, default: StatutMission.EN_ATTENTE })
+  @Column({
+    type: 'enum',
+    enum: StatutMission,
+    default: StatutMission.EN_ATTENTE,
+  })
   statut: StatutMission;
 
   @Column({ type: 'timestamptz', nullable: true })
@@ -107,7 +121,10 @@ export class Mission {
   @Column({ type: 'uuid', nullable: true })
   livreurId: string;
 
-  @ManyToOne(() => Utilisateur, (u) => u.missionsAcceptees, { nullable: true, eager: true })
+  @ManyToOne(() => Utilisateur, (u) => u.missionsAcceptees, {
+    nullable: true,
+    eager: true,
+  })
   @JoinColumn({ name: 'livreurId' })
   livreur: Utilisateur;
 

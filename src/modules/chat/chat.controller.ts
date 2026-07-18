@@ -52,8 +52,8 @@ export class ChatController {
     @UploadedFile() file?: Express.Multer.File,
   ) {
     const message = file
-      ? await this.chatService.sendImageMessage(req.user.id, dto as any, file)
-      : await this.chatService.sendMessage(req.user.id, dto as any);
+      ? await this.chatService.sendImageMessage(req.user.id, dto, file)
+      : await this.chatService.sendMessage(req.user.id, dto);
     this.chatGateway.broadcastNewMessage(message);
     return message;
   }
@@ -71,7 +71,7 @@ export class ChatController {
     }
     const message = await this.chatService.sendImageMessage(
       req.user.id,
-      dto as any,
+      dto,
       file,
     );
     this.chatGateway.broadcastNewMessage(message);
@@ -96,7 +96,7 @@ export class ChatController {
     const message = await this.chatService.updateMessage(
       messageId,
       req.user.id,
-      dto as any,
+      dto,
     );
     this.chatGateway.broadcastMessageUpdated(message);
     return message;

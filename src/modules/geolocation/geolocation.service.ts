@@ -1,4 +1,9 @@
-import { BadRequestException, Inject, Injectable, forwardRef } from '@nestjs/common';
+import {
+  BadRequestException,
+  Inject,
+  Injectable,
+  forwardRef,
+} from '@nestjs/common';
 import { UsersService } from '../users/users.service';
 
 @Injectable()
@@ -75,7 +80,9 @@ export class GeolocationService {
     ];
   }
 
-  async geocodeAddress(address: string): Promise<{ latitude: number; longitude: number }> {
+  async geocodeAddress(
+    address: string,
+  ): Promise<{ latitude: number; longitude: number }> {
     const results = await this.geocode(address);
     if (!results || !results.length) {
       return { latitude: 36.8065, longitude: 10.1815 };
@@ -144,7 +151,7 @@ export class GeolocationService {
     };
   }
 
- /*  async route(input: {
+  /*  async route(input: {
     start: { lat: number; lng: number };
     end: { lat: number; lng: number };
   }) {
@@ -163,41 +170,44 @@ export class GeolocationService {
     return this.fallbackRoute(start, end);
   } */
 
+  async route(input: {
+    start?: { lat: number; lng: number };
+    end?: { lat: number; lng: number };
+    // Accepter aussi les anciens noms par compatibilité
+    depart?: { lat: number; lng: number };
+    destination?: { lat: number; lng: number };
+  }) {
+    // Accepter start/end OU depart/destination
+    const startPoint = input.start ?? input.depart;
+    const endPoint = input.end ?? input.destination;
 
-    async route(input: {
-  start?: { lat: number; lng: number };
-  end?: { lat: number; lng: number };
-  // Accepter aussi les anciens noms par compatibilité
-  depart?: { lat: number; lng: number };
-  destination?: { lat: number; lng: number };
-}) {
-  // Accepter start/end OU depart/destination
-  const startPoint = input.start ?? input.depart;
-  const endPoint = input.end ?? input.destination;
-
-  if (!startPoint || !endPoint) {
-    throw new BadRequestException('Points de départ et d\'arrivée requis');
-  }
-
-  const start = this.normalizePoint(startPoint, 'départ');
-  const end = this.normalizePoint(endPoint, 'arrivée');
-
-  console.log(`🗺️ Route: [${start.lat},${start.lng}] → [${end.lat},${end.lng}]`);
-
-  try {
-    const result = await this.fetchOsrmRoute(start, end);
-    if (result) {
-      console.log(`✅ OSRM: ${result.distanceKm} km, ${result.durationMinutes} min`);
-      return result;
+    if (!startPoint || !endPoint) {
+      throw new BadRequestException("Points de départ et d'arrivée requis");
     }
-  } catch (err) {
-    console.error('❌ OSRM error:', err);
-  }
 
-  console.warn('⚠️ Fallback haversine utilisé');
-  return this.fallbackRoute(start, end);
-}
- /*  private async fetchOsrmRoute(
+    const start = this.normalizePoint(startPoint, 'départ');
+    const end = this.normalizePoint(endPoint, 'arrivée');
+
+    console.log(
+      `🗺️ Route: [${start.lat},${start.lng}] → [${end.lat},${end.lng}]`,
+    );
+
+    try {
+      const result = await this.fetchOsrmRoute(start, end);
+      if (result) {
+        console.log(
+          `✅ OSRM: ${result.distanceKm} km, ${result.durationMinutes} min`,
+        );
+        return result;
+      }
+    } catch (err) {
+      console.error('❌ OSRM error:', err);
+    }
+
+    console.warn('⚠️ Fallback haversine utilisé');
+    return this.fallbackRoute(start, end);
+  }
+  /*  private async fetchOsrmRoute(
     start: { lat: number; lng: number },
     end: { lat: number; lng: number },
   ) {
@@ -254,68 +264,69 @@ export class GeolocationService {
     }
   } */
 
+  private async fetchOsrmRoute(
+    start: { lat: number; lng: number },
+    end: { lat: number; lng: number },
+  ) {
+    const osrmUrls = [
+      // Instance principale OSRM - profile voiture optimisé
+      `https://router.project-osrm.org/route/v1/driving/` +
+        `${start.lng},${start.lat};${end.lng},${end.lat}` +
+        `?overview=full&geometries=geojson&steps=false&annotations=false`,
 
-    private async fetchOsrmRoute(
-  start: { lat: number; lng: number },
-  end: { lat: number; lng: number },
-) {
-  const osrmUrls = [
-    // Instance principale OSRM - profile voiture optimisé
-    `https://router.project-osrm.org/route/v1/driving/` +
-    `${start.lng},${start.lat};${end.lng},${end.lat}` +
-    `?overview=full&geometries=geojson&steps=false&annotations=false`,
+      // Instance alternative OpenStreetMap DE
+      `https://routing.openstreetmap.de/routed-car/route/v1/driving/` +
+        `${start.lng},${start.lat};${end.lng},${end.lat}` +
+        `?overview=full&geometries=geojson&steps=false`,
+    ];
 
-    // Instance alternative OpenStreetMap DE
-    `https://routing.openstreetmap.de/routed-car/route/v1/driving/` +
-    `${start.lng},${start.lat};${end.lng},${end.lat}` +
-    `?overview=full&geometries=geojson&steps=false`,
-  ];
+    for (const url of osrmUrls) {
+      try {
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 8000);
 
-  for (const url of osrmUrls) {
-    try {
-      const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 8000);
+        const response = await fetch(url, {
+          signal: controller.signal,
+          headers: { 'User-Agent': 'DeliverEase/1.0' },
+        });
 
-      const response = await fetch(url, {
-        signal: controller.signal,
-        headers: { 'User-Agent': 'DeliverEase/1.0' },
-      });
+        clearTimeout(timeout);
+        if (!response.ok) continue;
 
-      clearTimeout(timeout);
-      if (!response.ok) continue;
+        const payload = (await response.json()) as {
+          code?: string;
+          routes?: Array<{
+            distance?: number;
+            duration?: number;
+            geometry?: { coordinates?: Array<[number, number]> };
+          }>;
+        };
 
-      const payload = (await response.json()) as {
-        code?: string;
-        routes?: Array<{
-          distance?: number;
-          duration?: number;
-          geometry?: { coordinates?: Array<[number, number]> };
-        }>;
-      };
+        if (payload.code !== 'Ok' || !payload.routes?.length) continue;
 
-      if (payload.code !== 'Ok' || !payload.routes?.length) continue;
+        const route = payload.routes[0];
+        if (!route.distance || !route.duration) continue;
 
-      const route = payload.routes[0];
-      if (!route.distance || !route.duration) continue;
-
-      const polyline: [number, number][] =
-        route.geometry?.coordinates?.map(
+        const polyline: [number, number][] = route.geometry?.coordinates?.map(
           ([lng, lat]) => [lat, lng] as [number, number],
-        ) ?? [[start.lat, start.lng], [end.lat, end.lng]];
+        ) ?? [
+          [start.lat, start.lng],
+          [end.lat, end.lng],
+        ];
 
-      return {
-        distanceKm: Number((route.distance / 1000).toFixed(2)),
-        durationMinutes: Math.max(1, Math.round(route.duration / 60)),
-        polyline,
-        source: 'osrm',
-      };
-    } catch {
-      continue;
+        return {
+          distanceKm: Number((route.distance / 1000).toFixed(2)),
+          durationMinutes: Math.max(1, Math.round(route.duration / 60)),
+          polyline,
+          source: 'osrm',
+        };
+      } catch {
+        continue;
+      }
     }
-  }
 
-  return null;
-}
+    return null;
+  }
 
   private fallbackRoute(
     start: { lat: number; lng: number },
@@ -334,10 +345,7 @@ export class GeolocationService {
     const distanceKm = Number((distanceVol * 1.35).toFixed(2));
 
     // Estimation vitesse : 50 km/h moyenne (mélange ville/route)
-    const durationMinutes = Math.max(
-      5,
-      Math.round((distanceKm / 50) * 60),
-    );
+    const durationMinutes = Math.max(5, Math.round((distanceKm / 50) * 60));
 
     return {
       distanceKm,
@@ -350,10 +358,7 @@ export class GeolocationService {
     };
   }
 
-  private normalizePoint(
-    point: { lat: number; lng: number },
-    label: string,
-  ) {
+  private normalizePoint(point: { lat: number; lng: number }, label: string) {
     const lat = Number(point?.lat);
     const lng = Number(point?.lng);
 
@@ -365,14 +370,9 @@ export class GeolocationService {
 
     // Vérification optionnelle : coordonnées dans la Tunisie
     const { minLat, maxLat, minLng, maxLng } = this.TUNISIA_BOUNDS;
-    if (
-      lat < minLat || lat > maxLat ||
-      lng < minLng || lng > maxLng
-    ) {
+    if (lat < minLat || lat > maxLat || lng < minLng || lng > maxLng) {
       // Avertissement seulement, pas d'erreur bloquante
-      console.warn(
-        `⚠️ Coordonnées hors Tunisie : lat=${lat}, lng=${lng}`,
-      );
+      console.warn(`⚠️ Coordonnées hors Tunisie : lat=${lat}, lng=${lng}`);
     }
 
     return { lat, lng };
@@ -390,9 +390,9 @@ export class GeolocationService {
     const dLon = toRad(lon2 - lon1);
     const a =
       Math.sin(dLat / 2) ** 2 +
-      Math.cos(toRad(lat1)) *
-        Math.cos(toRad(lat2)) *
-        Math.sin(dLon / 2) ** 2;
-    return Number((R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))).toFixed(2));
+      Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) ** 2;
+    return Number(
+      (R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))).toFixed(2),
+    );
   }
 }

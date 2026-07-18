@@ -175,6 +175,14 @@ export class UsersController {
 
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('ADMIN')
+  @Patch('admin/users/:id/reactiver')
+  async reactiverUser(@Param('id') id: string) {
+    const user = await this.usersService.reactivateUser(id);
+    return toPublicUser(user);
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('ADMIN')
   @Delete('admin/users/:id')
   async supprimerUser(@Param('id') id: string) {
     await this.usersService.removeUser(id);

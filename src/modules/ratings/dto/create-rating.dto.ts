@@ -1,5 +1,13 @@
 import { Transform } from 'class-transformer';
-import { IsEnum, IsInt, IsNotEmpty, IsOptional, IsString, Max, Min } from 'class-validator';
+import {
+  IsEnum,
+  IsInt,
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+  Max,
+  Min,
+} from 'class-validator';
 import { Appreciation } from '../enums/appreciation.enum';
 
 export class CreateRatingDto {

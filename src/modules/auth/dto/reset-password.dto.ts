@@ -8,7 +8,10 @@ export class ResetPasswordDto {
 
   @IsString()
   @IsNotEmpty()
-  @Transform(({ value, obj }) => obj.password ?? obj.newPassword ?? obj.motDePasse ?? value)
+  @Transform(
+    ({ value, obj }) =>
+      obj.password ?? obj.newPassword ?? obj.motDePasse ?? value,
+  )
   @MinLength(8)
   motDePasse: string;
 

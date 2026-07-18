@@ -1,4 +1,10 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, ManyToOne } from 'typeorm';
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  CreateDateColumn,
+  ManyToOne,
+} from 'typeorm';
 import { TypeNotification } from '../../../common/enums/type-notification.enum';
 import { RoleUtilisateur } from '../../../common/enums/role-utilisateur.enum';
 import { Utilisateur } from '../../users/entities/user.entity';

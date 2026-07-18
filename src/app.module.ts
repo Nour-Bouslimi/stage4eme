@@ -11,6 +11,7 @@ import { ConfigModule } from '@nestjs/config';
 import { CloudinaryModule } from './modules/cloudinary/cloudinary.module';
 import { VehicleSuggestionModule } from './modules/vehicle-suggestion/vehicle-suggestion.module';
 import { DriverRecommendationModule } from './modules/driver-recommendation/driver-recommendation.module';
+import { AdminDashboardModule } from './modules/admin-dashboard/admin-dashboard.module';
 
 @Module({
   imports: [
@@ -35,6 +36,7 @@ import { DriverRecommendationModule } from './modules/driver-recommendation/driv
     GeolocationModule,
     VehicleSuggestionModule,
     DriverRecommendationModule,
+    AdminDashboardModule,
   ],
 })
 export class AppModule {}

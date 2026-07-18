@@ -1,4 +1,12 @@
-import { Controller, Post, UseGuards, Req, Body, Get, Param } from '@nestjs/common';
+import {
+  Controller,
+  Post,
+  UseGuards,
+  Req,
+  Body,
+  Get,
+  Param,
+} from '@nestjs/common';
 import { RatingsService } from './ratings.service';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { CreateRatingDto } from './dto/create-rating.dto';

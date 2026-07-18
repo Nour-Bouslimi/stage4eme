@@ -7,11 +7,8 @@ import { Mission } from '../missions/entities/mission.entity';
 import { MissionsModule } from '../missions/missions.module';
 
 @Module({
-  imports: [
-    TypeOrmModule.forFeature([Utilisateur, Mission]),
-    MissionsModule,
-  ],
+  imports: [TypeOrmModule.forFeature([Utilisateur, Mission]), MissionsModule],
   providers: [DriverRecommendationService],
-  controllers: [DriverRecommendationController]
+  controllers: [DriverRecommendationController],
 })
 export class DriverRecommendationModule {}

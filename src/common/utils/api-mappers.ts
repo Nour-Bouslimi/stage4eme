@@ -9,13 +9,34 @@ import { TypeNotification } from '../enums/type-notification.enum';
 import { RoleUtilisateur } from '../enums/role-utilisateur.enum';
 
 const DAY_ABBREVIATIONS: Record<string, number> = {
-  mon: 1, monday: 1, lun: 1, lundi: 1,
-  mar: 2, mardi: 2, tue: 2, tuesday: 2,
-  mer: 3, mercredi: 3, wed: 3, wednesday: 3,
-  jeu: 4, jeudi: 4, thu: 4, thursday: 4,
-  ven: 5, vendredi: 5, fri: 5, friday: 5,
-  sam: 6, samedi: 6, sat: 6, saturday: 6,
-  dim: 0, dimanche: 0, sun: 0, sunday: 0,
+  mon: 1,
+  monday: 1,
+  lun: 1,
+  lundi: 1,
+  mar: 2,
+  mardi: 2,
+  tue: 2,
+  tuesday: 2,
+  mer: 3,
+  mercredi: 3,
+  wed: 3,
+  wednesday: 3,
+  jeu: 4,
+  jeudi: 4,
+  thu: 4,
+  thursday: 4,
+  ven: 5,
+  vendredi: 5,
+  fri: 5,
+  friday: 5,
+  sam: 6,
+  samedi: 6,
+  sat: 6,
+  saturday: 6,
+  dim: 0,
+  dimanche: 0,
+  sun: 0,
+  sunday: 0,
 };
 
 const normalizeDayIndex = (value?: string | null) => {
@@ -30,7 +51,14 @@ const parseTimeToMinutes = (time?: string | null) => {
   if (!match) return null;
   const hours = Number(match[1]);
   const minutes = Number(match[2]);
-  if (Number.isNaN(hours) || Number.isNaN(minutes) || hours < 0 || hours > 23 || minutes < 0 || minutes > 59) {
+  if (
+    Number.isNaN(hours) ||
+    Number.isNaN(minutes) ||
+    hours < 0 ||
+    hours > 23 ||
+    minutes < 0 ||
+    minutes > 59
+  ) {
     return null;
   }
   return hours * 60 + minutes;
@@ -52,9 +80,11 @@ const isSlotAvailableNow = (slot: DisponibiliteLivreur) => {
 
   if (startDayIndex !== null && endDayIndex !== null) {
     if (startDayIndex <= endDayIndex) {
-      if (currentDayIndex < startDayIndex || currentDayIndex > endDayIndex) return false;
+      if (currentDayIndex < startDayIndex || currentDayIndex > endDayIndex)
+        return false;
     } else {
-      if (currentDayIndex < startDayIndex && currentDayIndex > endDayIndex) return false;
+      if (currentDayIndex < startDayIndex && currentDayIndex > endDayIndex)
+        return false;
     }
   } else if (startDayIndex !== null) {
     if (currentDayIndex !== startDayIndex) return false;
@@ -78,21 +108,27 @@ const isSlotAvailableNow = (slot: DisponibiliteLivreur) => {
   return false;
 };
 
-export const isUserAvailableNow = (user: Partial<Utilisateur> | null | undefined) => {
+export const isUserAvailableNow = (
+  user: Partial<Utilisateur> | null | undefined,
+) => {
   if (!user) return false;
   if (user.role !== 'LIVREUR') return false;
   if (user.estActif === false) return false;
   if (user.estEnLigne !== true) return false;
   if (user.statutDisponibilite !== StatutDisponibilite.DISPONIBLE) return false;
 
-  if (!Array.isArray((user as Utilisateur).disponibilites) || (user as Utilisateur).disponibilites.length === 0) {
+  if (
+    !Array.isArray((user as Utilisateur).disponibilites) ||
+    (user as Utilisateur).disponibilites.length === 0
+  ) {
     return true;
   }
 
-  return ((user as Utilisateur).disponibilites as DisponibiliteLivreur[]).some(isSlotAvailableNow);
+  return (user as Utilisateur).disponibilites.some(isSlotAvailableNow);
 };
 
-export const toIso = (value: unknown) => (value ? new Date(value as string | number | Date).toISOString() : null);
+export const toIso = (value: unknown) =>
+  value ? new Date(value as string | number | Date).toISOString() : null;
 
 export const toNumber = (value: unknown) => {
   if (value === null || value === undefined || value === '') {
@@ -138,7 +174,8 @@ export const isNotificationVisibleToViewer = (
   const targetType = (notification as any).cibleType ?? null;
   const targetRole = (notification as any).cibleRole ?? null;
   const targetUserId = (notification as any).cibleUtilisateurId ?? null;
-  const recipientId = notification.utilisateur?.id ?? (notification as any).userId ?? null;
+  const recipientId =
+    notification.utilisateur?.id ?? (notification as any).userId ?? null;
 
   if (targetType === 'USER') {
     return targetUserId === viewer.userId || recipientId === viewer.userId;
@@ -155,7 +192,12 @@ export const isNotificationVisibleToViewer = (
 export const filterNotificationsForViewer = (
   notifications: Array<Notification | Partial<Notification>> | undefined,
   viewer?: NotificationViewer,
-) => (Array.isArray(notifications) ? notifications.filter((notification) => isNotificationVisibleToViewer(notification, viewer)) : []);
+) =>
+  Array.isArray(notifications)
+    ? notifications.filter((notification) =>
+        isNotificationVisibleToViewer(notification, viewer),
+      )
+    : [];
 
 export const mapVehicleFromUser = (user: Partial<Utilisateur> | undefined) => ({
   type: user?.typeVehicule ?? null,
@@ -176,11 +218,13 @@ export const mapAvailability = (slot: DisponibiliteLivreur) => ({
   createdAt: toIso(slot.createdAt),
 });
 
-export const toPublicUser = (user: Utilisateur | Partial<Utilisateur> | null | undefined) => {
+export const toPublicUser = (
+  user: Utilisateur | Partial<Utilisateur> | null | undefined,
+) => {
   if (!user) return null;
   const vehicule = mapVehicleFromUser(user);
   const disponibilites = Array.isArray((user as Utilisateur).disponibilites)
-    ? ((user as Utilisateur).disponibilites as DisponibiliteLivreur[]).map(mapAvailability)
+    ? (user as Utilisateur).disponibilites.map(mapAvailability)
     : [];
 
   const available = isUserAvailableNow(user);
@@ -194,7 +238,10 @@ export const toPublicUser = (user: Utilisateur | Partial<Utilisateur> | null | u
     avatar: user.photo ?? null,
     role: user.role ?? null,
     estActif: typeof user.estActif === 'boolean' ? user.estActif : true,
-    mustChangePassword: typeof user.mustChangePassword === 'boolean' ? user.mustChangePassword : false,
+    mustChangePassword:
+      typeof user.mustChangePassword === 'boolean'
+        ? user.mustChangePassword
+        : false,
     cin: user.cin ?? null,
     photoCin: user.photoCin ?? null,
     typeVehicule: user.typeVehicule ?? null,
@@ -218,13 +265,21 @@ export const toPublicUser = (user: Utilisateur | Partial<Utilisateur> | null | u
     updatedAt: toIso(user.updatedAt),
     disponibilites,
     missionsCreees: Array.isArray((user as Utilisateur).missionsCreees)
-      ? (user as Utilisateur).missionsCreees.map((mission) => toMissionSummary(mission))
+      ? (user as Utilisateur).missionsCreees.map((mission) =>
+          toMissionSummary(mission),
+        )
       : [],
     missionsAcceptees: Array.isArray((user as Utilisateur).missionsAcceptees)
-      ? (user as Utilisateur).missionsAcceptees.map((mission) => toMissionSummary(mission))
+      ? (user as Utilisateur).missionsAcceptees.map((mission) =>
+          toMissionSummary(mission),
+        )
       : [],
-    notesDonnees: Array.isArray((user as Utilisateur).notesDonnees) ? (user as Utilisateur).notesDonnees : [],
-    messages: Array.isArray((user as Utilisateur).messages) ? (user as Utilisateur).messages : [],
+    notesDonnees: Array.isArray((user as Utilisateur).notesDonnees)
+      ? (user as Utilisateur).notesDonnees
+      : [],
+    messages: Array.isArray((user as Utilisateur).messages)
+      ? (user as Utilisateur).messages
+      : [],
     disponible: available,
     note: toNumber(user.noteMoyenne) ?? 0,
     nombreAvis: toNumber(user.totalNotes) ?? 0,
@@ -263,7 +318,9 @@ export const toMessage = (message: Message | Partial<Message>) => ({
   auteur: message.auteur ? toPublicUser(message.auteur) : null,
 });
 
-export const toNotification = (notification: Notification | Partial<Notification>) => ({
+export const toNotification = (
+  notification: Notification | Partial<Notification>,
+) => ({
   id: notification.id,
   userId: notification.utilisateur?.id ?? (notification as any).userId ?? null,
   cibleType: (notification as any).cibleType ?? null,
@@ -272,7 +329,8 @@ export const toNotification = (notification: Notification | Partial<Notification
   type: normalizeNotificationType(notification.type),
   titre: notification.titre ?? null,
   message: notification.corps ?? null,
-  missionId: notification.mission?.id ?? (notification as any).missionId ?? null,
+  missionId:
+    notification.mission?.id ?? (notification as any).missionId ?? null,
   lu: !!notification.estLue,
   createdAt: toIso(notification.envoyeeLe),
 });
@@ -321,8 +379,13 @@ export const toMission = (
     vehiculeRequis: mission.typeVehiculeRequis ?? null,
     client: mission.client ? toPublicUser(mission.client) : null,
     livreur: mission.livreur ? toPublicUser(mission.livreur) : null,
-    messages: Array.isArray(mission.messages) ? mission.messages.map(toMessage) : [],
+    messages: Array.isArray(mission.messages)
+      ? mission.messages.map(toMessage)
+      : [],
     notation: mission.notation ?? null,
-    notifications: filterNotificationsForViewer(mission.notifications as any, viewer).map(toNotification),
+    notifications: filterNotificationsForViewer(
+      mission.notifications as any,
+      viewer,
+    ).map(toNotification),
   };
 };

@@ -13,7 +13,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
     UsersModule,
     PassportModule,
     ConfigModule,
-     JwtModule.registerAsync({
+    JwtModule.registerAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
       useFactory: (config: ConfigService) => ({

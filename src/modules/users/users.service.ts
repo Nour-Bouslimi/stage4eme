@@ -1,4 +1,13 @@
-import { BadRequestException, Inject, Injectable, InternalServerErrorException, Logger, NotFoundException, UnauthorizedException, forwardRef } from '@nestjs/common';
+import {
+  BadRequestException,
+  Inject,
+  Injectable,
+  InternalServerErrorException,
+  Logger,
+  NotFoundException,
+  UnauthorizedException,
+  forwardRef,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
 import * as bcrypt from 'bcrypt';
@@ -38,15 +47,21 @@ export class UsersService {
     private readonly geolocationService: GeolocationService,
   ) {}
 
-  private normalizeVehicle(input: Partial<CreateLivreurDto> | Partial<Utilisateur>) {
+  private normalizeVehicle(
+    input: Partial<CreateLivreurDto> | Partial<Utilisateur>,
+  ) {
     const vehicule = (input as any).vehicule ?? {};
     return {
       typeVehicule: (input as any).typeVehicule ?? vehicule.type ?? null,
-      immatriculationVehicule: (input as any).immatriculationVehicule ?? vehicule.immatriculation ?? null,
+      immatriculationVehicule:
+        (input as any).immatriculationVehicule ??
+        vehicule.immatriculation ??
+        null,
       photoVehicule: (input as any).photoVehicule ?? vehicule.photo ?? null,
       poidsMaxKg: (input as any).poidsMaxKg ?? vehicule.poidsMax ?? null,
       volumeMaxM3: (input as any).volumeMaxM3 ?? vehicule.volumeMax ?? null,
-      rayonServiceKm: (input as any).rayonServiceKm ?? vehicule.rayonService ?? null,
+      rayonServiceKm:
+        (input as any).rayonServiceKm ?? vehicule.rayonService ?? null,
     };
   }
 
@@ -61,7 +76,8 @@ export class UsersService {
   }
 
   private generateTemporaryPassword(length = 12) {
-    const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789!@#$%^&*';
+    const alphabet =
+      'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789!@#$%^&*';
     const specials = '!@#$%^&*';
 
     while (true) {
@@ -74,7 +90,9 @@ export class UsersService {
       const hasUpper = /[A-Z]/.test(password);
       const hasLower = /[a-z]/.test(password);
       const hasNumber = /\d/.test(password);
-      const hasSpecial = new RegExp(`[${specials.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}]`).test(password);
+      const hasSpecial = new RegExp(
+        `[${specials.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}]`,
+      ).test(password);
 
       if (hasUpper && hasLower && hasNumber && hasSpecial) {
         return password;
@@ -84,15 +102,25 @@ export class UsersService {
 
   private validateTemporaryPassword(password: string) {
     if (!password || password.length < 10) {
-      throw new BadRequestException('Le mot de passe temporaire doit contenir au moins 10 caracteres');
+      throw new BadRequestException(
+        'Le mot de passe temporaire doit contenir au moins 10 caracteres',
+      );
     }
-    if (!/[A-Z]/.test(password) || !/[a-z]/.test(password) || !/\d/.test(password) || !/[^A-Za-z0-9]/.test(password)) {
-      throw new BadRequestException('Le mot de passe temporaire doit contenir une majuscule, une minuscule, un chiffre et un caractere special');
+    if (
+      !/[A-Z]/.test(password) ||
+      !/[a-z]/.test(password) ||
+      !/\d/.test(password) ||
+      !/[^A-Za-z0-9]/.test(password)
+    ) {
+      throw new BadRequestException(
+        'Le mot de passe temporaire doit contenir une majuscule, une minuscule, un chiffre et un caractere special',
+      );
     }
   }
 
   private getFrontendLoginUrl() {
-    const frontendUrl = this.configService.get<string>('FRONTEND_URL') || 'http://localhost:4200';
+    const frontendUrl =
+      this.configService.get<string>('FRONTEND_URL') || 'http://localhost:4200';
     return new URL('/login', frontendUrl).toString();
   }
 
@@ -116,13 +144,17 @@ export class UsersService {
         resetPasswordTokenExpiresAt: null,
         resetPasswordRequestedAt: null,
         mustChangePassword: false,
-      } as any,
+      },
     );
 
     return this.findById(userId);
   }
 
-  async changePassword(userId: string, currentPassword: string, newPassword: string) {
+  async changePassword(
+    userId: string,
+    currentPassword: string,
+    newPassword: string,
+  ) {
     const user = await this.findById(userId);
     if (!user) throw new NotFoundException('Utilisateur non trouve');
 
@@ -162,7 +194,7 @@ export class UsersService {
       where: { resetPasswordTokenHash },
       relations: {
         disponibilites: true,
-      } as any,
+      },
     });
   }
 
@@ -176,7 +208,7 @@ export class UsersService {
         notesDonnees: true,
         messages: true,
         notifications: true,
-      } as any,
+      },
     });
   }
 
@@ -184,7 +216,10 @@ export class UsersService {
     return this.usersRepository.find({
       where: { role: RoleUtilisateur.CLIENT },
       order: { createdAt: 'DESC' },
-      relations: { disponibilites: true } as any,
+      relations: {
+        disponibilites: true,
+        missionsCreees: true,
+      },
     });
   }
 
@@ -192,7 +227,10 @@ export class UsersService {
     return this.usersRepository.find({
       where: { role: RoleUtilisateur.LIVREUR },
       order: { createdAt: 'DESC' },
-      relations: { disponibilites: true } as any,
+      relations: {
+        disponibilites: true,
+        missionsAcceptees: true,
+      },
     });
   }
 
@@ -207,18 +245,20 @@ export class UsersService {
     const users = await this.usersRepository.find({
       where,
       order: { updatedAt: 'DESC' },
-      relations: { disponibilites: true } as any,
+      relations: { disponibilites: true },
     });
 
     const availableUsers = users.filter(isUserAvailableNow);
 
     this.logger.log(
-      `[GET /users/livreurs-disponibles] matched=${availableUsers.length} returned=${availableUsers.length} criteria=${JSON.stringify({
-        role: where.role,
-        estActif: where.estActif,
-        statutDisponibilite: where.statutDisponibilite,
-        estEnLigne: where.estEnLigne,
-      })}`,
+      `[GET /users/livreurs-disponibles] matched=${availableUsers.length} returned=${availableUsers.length} criteria=${JSON.stringify(
+        {
+          role: where.role,
+          estActif: where.estActif,
+          statutDisponibilite: where.statutDisponibilite,
+          estEnLigne: where.estEnLigne,
+        },
+      )}`,
     );
 
     return availableUsers;
@@ -232,11 +272,20 @@ export class UsersService {
     return user;
   }
 
+  async findClientById(id: string) {
+    const user = await this.findById(id);
+    if (!user || user.role !== RoleUtilisateur.CLIENT) {
+      throw new NotFoundException('Client non trouvé');
+    }
+    return user;
+  }
+
   async createLivreur(dto: CreateLivreurDto) {
     const existing = await this.findByEmail(dto.email);
     if (existing) throw new BadRequestException('Email déjà utilisé');
 
-    const temporaryPassword = dto.motDePasse?.trim() || this.generateTemporaryPassword();
+    const temporaryPassword =
+      dto.motDePasse?.trim() || this.generateTemporaryPassword();
     this.validateTemporaryPassword(temporaryPassword);
     const vehicle = this.normalizeVehicle(dto);
 
@@ -245,60 +294,70 @@ export class UsersService {
     let longitude: number | undefined;
     if (dto.adresseParDefaut?.trim()) {
       try {
-        const coords = await this.geolocationService.geocodeAddress(dto.adresseParDefaut);
+        const coords = await this.geolocationService.geocodeAddress(
+          dto.adresseParDefaut,
+        );
         latitude = coords.latitude;
         longitude = coords.longitude;
-        this.logger.log(`createLivreur: geocoded address "${dto.adresseParDefaut}" to lat=${latitude}, lng=${longitude}`);
+        this.logger.log(
+          `createLivreur: geocoded address "${dto.adresseParDefaut}" to lat=${latitude}, lng=${longitude}`,
+        );
       } catch (error) {
-        this.logger.warn(`createLivreur: geocoding failed for address "${dto.adresseParDefaut}": ${error}`);
+        this.logger.warn(
+          `createLivreur: geocoding failed for address "${dto.adresseParDefaut}": ${error}`,
+        );
       }
     }
 
-    const created = await this.usersRepository.manager.transaction(async (manager) => {
-      const usersRepo = manager.getRepository(Utilisateur);
-      const disponibiliteRepo = manager.getRepository(DisponibiliteLivreur);
-      const hash = await bcrypt.hash(temporaryPassword, 10);
+    const created = await this.usersRepository.manager.transaction(
+      async (manager) => {
+        const usersRepo = manager.getRepository(Utilisateur);
+        const disponibiliteRepo = manager.getRepository(DisponibiliteLivreur);
+        const hash = await bcrypt.hash(temporaryPassword, 10);
 
-      const user = usersRepo.create({
-        email: dto.email.trim().toLowerCase(),
-        motDePasseHash: hash,
-        prenom: dto.prenom,
-        nom: dto.nom,
-        telephone: dto.telephone,
-        adresseParDefaut: dto.adresseParDefaut,
-        typeVehicule: vehicle.typeVehicule as TypeVehicule,
-        immatriculationVehicule: vehicle.immatriculationVehicule,
-        poidsMaxKg: vehicle.poidsMaxKg,
-        volumeMaxM3: vehicle.volumeMaxM3,
-        rayonServiceKm: vehicle.rayonServiceKm,
-        latitudeActuelle: latitude,
-        longitudeActuelle: longitude,
-        statutDisponibilite: StatutDisponibilite.DISPONIBLE,
-        noteMoyenne: 0,
-        totalNotes: 0,
-        estEnLigne: true,
-        role: RoleUtilisateur.LIVREUR,
-        mustChangePassword: true,
-      } as DeepPartial<Utilisateur>);
+        const user = usersRepo.create({
+          email: dto.email.trim().toLowerCase(),
+          motDePasseHash: hash,
+          prenom: dto.prenom,
+          nom: dto.nom,
+          telephone: dto.telephone,
+          adresseParDefaut: dto.adresseParDefaut,
+          typeVehicule: vehicle.typeVehicule as TypeVehicule,
+          immatriculationVehicule: vehicle.immatriculationVehicule,
+          poidsMaxKg: vehicle.poidsMaxKg,
+          volumeMaxM3: vehicle.volumeMaxM3,
+          rayonServiceKm: vehicle.rayonServiceKm,
+          latitudeActuelle: latitude,
+          longitudeActuelle: longitude,
+          statutDisponibilite: StatutDisponibilite.DISPONIBLE,
+          noteMoyenne: 0,
+          totalNotes: 0,
+          estEnLigne: true,
+          role: RoleUtilisateur.LIVREUR,
+          mustChangePassword: true,
+        } as DeepPartial<Utilisateur>);
 
-      const savedUser = await usersRepo.save(user);
-      this.logger.log(`createLivreur: savedUser.id=${savedUser.id}`);
+        const savedUser = await usersRepo.save(user);
+        this.logger.log(`createLivreur: savedUser.id=${savedUser.id}`);
 
-      return usersRepo.findOne({
-        where: { id: savedUser.id },
-        relations: {
-          disponibilites: true,
-          missionsCreees: true,
-          missionsAcceptees: true,
-          notesDonnees: true,
-          messages: true,
-          notifications: true,
-        } as any,
-      });
-    });
+        return usersRepo.findOne({
+          where: { id: savedUser.id },
+          relations: {
+            disponibilites: true,
+            missionsCreees: true,
+            missionsAcceptees: true,
+            notesDonnees: true,
+            messages: true,
+            notifications: true,
+          },
+        });
+      },
+    );
 
     if (!created) {
-      throw new InternalServerErrorException('Impossible de creer le compte livreur');
+      throw new InternalServerErrorException(
+        'Impossible de creer le compte livreur',
+      );
     }
 
     try {
@@ -312,7 +371,9 @@ export class UsersService {
       });
     } catch (error) {
       await this.usersRepository.delete(created.id);
-      throw new InternalServerErrorException("Le compte a ete annule car l'email de creation n'a pas pu etre envoye");
+      throw new InternalServerErrorException(
+        "Le compte a ete annule car l'email de creation n'a pas pu etre envoye",
+      );
     }
 
     return {
@@ -325,7 +386,7 @@ export class UsersService {
   async updateProfile(id: string, dto: UpdateUserDto) {
     const user = await this.findById(id);
     if (!user) throw new NotFoundException('Utilisateur non trouve');
-    const disponibilites = dto.disponibilites as AvailabilityInput[] | undefined;
+    const disponibilites = dto.disponibilites;
 
     if (typeof dto.motDePasse === 'string' && dto.motDePasse.trim()) {
       user.motDePasseHash = await bcrypt.hash(dto.motDePasse, 10);
@@ -341,36 +402,54 @@ export class UsersService {
       user.adresseParDefaut = dto.adresseParDefaut;
       if (dto.adresseParDefaut.trim()) {
         try {
-          const coords = await this.geolocationService.geocodeAddress(dto.adresseParDefaut);
+          const coords = await this.geolocationService.geocodeAddress(
+            dto.adresseParDefaut,
+          );
           user.latitudeActuelle = coords.latitude;
           user.longitudeActuelle = coords.longitude;
-          this.logger.log(`updateProfile: geocoded address "${dto.adresseParDefaut}" to lat=${coords.latitude}, lng=${coords.longitude}`);
+          this.logger.log(
+            `updateProfile: geocoded address "${dto.adresseParDefaut}" to lat=${coords.latitude}, lng=${coords.longitude}`,
+          );
         } catch (error) {
-          this.logger.warn(`updateProfile: geocoding failed for address "${dto.adresseParDefaut}": ${error}`);
+          this.logger.warn(
+            `updateProfile: geocoding failed for address "${dto.adresseParDefaut}": ${error}`,
+          );
           // Continue with update even if geocoding fails - address will be saved without coordinates
         }
       }
     }
     if (typeof dto.photo === 'string') user.photo = dto.photo;
     if (typeof dto.avatar === 'string') user.photo = dto.avatar;
-    if (typeof dto.typeVehicule !== 'undefined') user.typeVehicule = dto.typeVehicule as TypeVehicule;
-    if (typeof dto.immatriculationVehicule === 'string') user.immatriculationVehicule = dto.immatriculationVehicule;
-    if (typeof dto.photoVehicule === 'string') user.photoVehicule = dto.photoVehicule;
+    if (typeof dto.typeVehicule !== 'undefined')
+      user.typeVehicule = dto.typeVehicule;
+    if (typeof dto.immatriculationVehicule === 'string')
+      user.immatriculationVehicule = dto.immatriculationVehicule;
+    if (typeof dto.photoVehicule === 'string')
+      user.photoVehicule = dto.photoVehicule;
     if (typeof dto.poidsMaxKg === 'number') user.poidsMaxKg = dto.poidsMaxKg;
     if (typeof dto.volumeMaxM3 === 'number') user.volumeMaxM3 = dto.volumeMaxM3;
-    if (typeof dto.rayonServiceKm === 'number') user.rayonServiceKm = dto.rayonServiceKm;
-    if (typeof dto.statutDisponibilite !== 'undefined') user.statutDisponibilite = dto.statutDisponibilite as StatutDisponibilite;
+    if (typeof dto.rayonServiceKm === 'number')
+      user.rayonServiceKm = dto.rayonServiceKm;
+    if (typeof dto.statutDisponibilite !== 'undefined')
+      user.statutDisponibilite = dto.statutDisponibilite;
     if (typeof dto.noteMoyenne === 'number') user.noteMoyenne = dto.noteMoyenne;
     if (typeof dto.totalNotes === 'number') user.totalNotes = dto.totalNotes;
     // Coordonnées directes: ne pas surcharger si l'adresse a été géocodée
-    const addressWasGeocoded = typeof dto.adresseParDefaut === 'string' && dto.adresseParDefaut.trim();
-    if (typeof dto.latitudeActuelle === 'number' && !addressWasGeocoded) user.latitudeActuelle = dto.latitudeActuelle;
-    if (typeof dto.longitudeActuelle === 'number' && !addressWasGeocoded) user.longitudeActuelle = dto.longitudeActuelle;
+    const addressWasGeocoded =
+      typeof dto.adresseParDefaut === 'string' && dto.adresseParDefaut.trim();
+    if (typeof dto.latitudeActuelle === 'number' && !addressWasGeocoded)
+      user.latitudeActuelle = dto.latitudeActuelle;
+    if (typeof dto.longitudeActuelle === 'number' && !addressWasGeocoded)
+      user.longitudeActuelle = dto.longitudeActuelle;
     if (typeof dto.estEnLigne === 'boolean') user.estEnLigne = dto.estEnLigne;
-    if (typeof dto.totalMissions === 'number') user.totalMissions = dto.totalMissions;
-    if (typeof dto.missionsAnnulees === 'number') user.missionsAnnulees = dto.missionsAnnulees;
-    if (typeof dto.derniereActivite === 'string') user.derniereActivite = new Date(dto.derniereActivite);
-    if (typeof dto.derniereMiseAJourPosition === 'string') user.derniereMiseAJourPosition = new Date(dto.derniereMiseAJourPosition);
+    if (typeof dto.totalMissions === 'number')
+      user.totalMissions = dto.totalMissions;
+    if (typeof dto.missionsAnnulees === 'number')
+      user.missionsAnnulees = dto.missionsAnnulees;
+    if (typeof dto.derniereActivite === 'string')
+      user.derniereActivite = new Date(dto.derniereActivite);
+    if (typeof dto.derniereMiseAJourPosition === 'string')
+      user.derniereMiseAJourPosition = new Date(dto.derniereMiseAJourPosition);
 
     const userToSave = { ...user } as DeepPartial<Utilisateur>;
     delete (userToSave as any).disponibilites;
@@ -420,7 +499,9 @@ export class UsersService {
 
     this.logger.log(`Saved: ${JSON.stringify(saved)}`);
     if (saved.some((row) => !row?.livreurId)) {
-      this.logger.error(`setDisponibilites returned rows with null livreurId for userId=${userId}`);
+      this.logger.error(
+        `setDisponibilites returned rows with null livreurId for userId=${userId}`,
+      );
     }
     return saved;
   }
@@ -431,13 +512,25 @@ export class UsersService {
     return this.usersRepository.save(user);
   }
 
+  async reactivateUser(id: string) {
+    const user = await this.findById(id);
+    if (!user) throw new NotFoundException('Utilisateur non trouve');
+    user.estActif = true;
+    return this.usersRepository.save(user);
+  }
+
   async removeUser(id: string) {
     const user = await this.findById(id);
     if (!user) throw new NotFoundException('Utilisateur non trouve');
     await this.usersRepository.remove(user);
   }
 
-  async updateLocation(id: string, latitude?: number, longitude?: number, estEnLigne?: boolean) {
+  async updateLocation(
+    id: string,
+    latitude?: number,
+    longitude?: number,
+    estEnLigne?: boolean,
+  ) {
     const user = await this.findById(id);
     if (!user) throw new NotFoundException('Utilisateur non trouve');
 
@@ -453,7 +546,9 @@ export class UsersService {
 
     if (typeof estEnLigne === 'boolean') {
       user.estEnLigne = estEnLigne;
-      user.statutDisponibilite = user.estEnLigne ? StatutDisponibilite.DISPONIBLE : StatutDisponibilite.HORS_LIGNE;
+      user.statutDisponibilite = user.estEnLigne
+        ? StatutDisponibilite.DISPONIBLE
+        : StatutDisponibilite.HORS_LIGNE;
     }
 
     return this.usersRepository.save(user);

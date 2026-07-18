@@ -26,9 +26,7 @@ export class ChatService {
 
   async saveMessage(payload: Partial<Message>) {
     const m = this.msgRepo.create(payload as any);
-    return (await this.msgRepo.save(
-      m as unknown as Message,
-    )) as unknown as Message;
+    return await this.msgRepo.save(m as unknown as Message);
   }
 
   private async resolveMessageContext(senderId: string, missionId: string) {
@@ -61,7 +59,7 @@ export class ChatService {
     }
     const messages = await this.msgRepo.find({
       where: { mission: { id: missionId } },
-      relations: { auteur: true, mission: true } as any,
+      relations: { auteur: true, mission: true },
       order: { envoyeLe: 'ASC' },
     });
     return messages.map((message) => toMessage(message));
@@ -98,7 +96,7 @@ export class ChatService {
       type: TypeNotification.NOUVEAU_MESSAGE,
       mission,
       donnees: { missionId: mission.id, messageId: message.id },
-    } as any);
+    });
 
     return toMessage(message);
   }
@@ -144,7 +142,7 @@ export class ChatService {
       type: TypeNotification.NOUVEAU_MESSAGE,
       mission,
       donnees: { missionId: mission.id, messageId: message.id },
-    } as any);
+    });
 
     return toMessage(message);
   }
@@ -154,8 +152,8 @@ export class ChatService {
       where: { id: messageId },
       relations: {
         auteur: true,
-        mission: { client: true, livreur: true } as any,
-      } as any,
+        mission: { client: true, livreur: true },
+      },
     });
     if (!message) throw new NotFoundException('Message introuvable');
     if (message.destinataireId && message.destinataireId !== userId) {
@@ -163,7 +161,7 @@ export class ChatService {
     }
     message.estLu = true;
     message.luLe = new Date();
-    const saved = (await this.msgRepo.save(message as Message)) as Message;
+    const saved = await this.msgRepo.save(message);
     return toMessage(saved);
   }
 
@@ -174,7 +172,7 @@ export class ChatService {
   ) {
     const message = await this.msgRepo.findOne({
       where: { id: messageId },
-      relations: { auteur: true, mission: true } as any,
+      relations: { auteur: true, mission: true },
     });
 
     if (!message) throw new NotFoundException('Message introuvable');
@@ -189,7 +187,7 @@ export class ChatService {
       message.urlMedia = payload.urlMedia;
     }
 
-    const saved = (await this.msgRepo.save(message as Message)) as Message;
+    const saved = await this.msgRepo.save(message);
     return toMessage(saved);
   }
 
@@ -200,7 +198,7 @@ export class ChatService {
   ) {
     const message = await this.msgRepo.findOne({
       where: { id: messageId },
-      relations: { auteur: true, mission: true } as any,
+      relations: { auteur: true, mission: true },
     });
 
     if (!message) throw new NotFoundException('Message introuvable');
@@ -208,7 +206,7 @@ export class ChatService {
       throw new BadRequestException('AccÃ¨s refusÃ©');
     }
 
-    await this.msgRepo.remove(message as Message);
+    await this.msgRepo.remove(message);
     return {
       deleted: true,
       id: messageId,
@@ -222,8 +220,8 @@ export class ChatService {
     const messages = await this.msgRepo.find({
       relations: {
         auteur: true,
-        mission: { client: true, livreur: true } as any,
-      } as any,
+        mission: { client: true, livreur: true },
+      },
       order: { envoyeLe: 'DESC' },
     });
 
@@ -254,4 +252,3 @@ export class ChatService {
     return Array.from(grouped.values());
   }
 }
-

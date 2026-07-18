@@ -39,7 +39,7 @@ Format JSON attendu (respecte exactement les noms des clés) :
   "confidence": "HIGH|MEDIUM|LOW"
 }`; */
 
-const prompt = `Tu es un assistant logistique tunisien. Analyse ce besoin et retourne UNIQUEMENT un JSON valide, aucun texte autour.
+    const prompt = `Tu es un assistant logistique tunisien. Analyse ce besoin et retourne UNIQUEMENT un JSON valide, aucun texte autour.
 
 Besoin : "${description}"
 
@@ -89,38 +89,41 @@ Format JSON attendu :
 
       const result = JSON.parse(jsonMatch[0]);
 
-     // Après JSON.parse(jsonMatch[0])
-const DEFAULTS: Record<string, { poids: number; volume: number }> = {
-  BICYCLETTE  : { poids: 2,    volume: 0.02 },
-  SCOOTER     : { poids: 10,   volume: 0.05 },
-  MOTO        : { poids: 20,   volume: 0.10 },
-  VOITURE     : { poids: 50,   volume: 0.40 },
-  PICKUP      : { poids: 150,  volume: 1.50 },
-  FOURGONNETTE: { poids: 150,  volume: 3.50 },
-  PETIT_CAMION: { poids: 500,  volume: 10.0 },
-  GROS_CAMION : { poids: 2000, volume: 20.0 },
-};
+      // Après JSON.parse(jsonMatch[0])
+      const DEFAULTS: Record<string, { poids: number; volume: number }> = {
+        BICYCLETTE: { poids: 2, volume: 0.02 },
+        SCOOTER: { poids: 10, volume: 0.05 },
+        MOTO: { poids: 20, volume: 0.1 },
+        VOITURE: { poids: 50, volume: 0.4 },
+        PICKUP: { poids: 150, volume: 1.5 },
+        FOURGONNETTE: { poids: 150, volume: 3.5 },
+        PETIT_CAMION: { poids: 500, volume: 10.0 },
+        GROS_CAMION: { poids: 2000, volume: 20.0 },
+      };
 
-const defaults = DEFAULTS[result.typeVehicule] ?? DEFAULTS['VOITURE'];
+      const defaults = DEFAULTS[result.typeVehicule] ?? DEFAULTS['VOITURE'];
 
-// Corriger les valeurs nulles ou zéro
-if (!result.poidsMinKg || result.poidsMinKg <= 0) {
-  result.poidsMinKg = defaults.poids;
-}
-if (!result.volumeMinM3 || result.volumeMinM3 <= 0) {
-  result.volumeMinM3 = defaults.volume;
-} 
+      // Corriger les valeurs nulles ou zéro
+      if (!result.poidsMinKg || result.poidsMinKg <= 0) {
+        result.poidsMinKg = defaults.poids;
+      }
+      if (!result.volumeMinM3 || result.volumeMinM3 <= 0) {
+        result.volumeMinM3 = defaults.volume;
+      }
 
       // Valider que le typeVehicule retourné est bien dans l'enum
       const validTypes = Object.values(TypeVehicule);
       if (!validTypes.includes(result.typeVehicule)) {
-        this.logger.warn(`Type invalide reçu: ${result.typeVehicule} → fallback VOITURE`);
+        this.logger.warn(
+          `Type invalide reçu: ${result.typeVehicule} → fallback VOITURE`,
+        );
         result.typeVehicule = TypeVehicule.VOITURE;
       }
 
-      this.logger.log(`Suggestion: ${result.typeVehicule} pour "${description}"`);
+      this.logger.log(
+        `Suggestion: ${result.typeVehicule} pour "${description}"`,
+      );
       return result as VehicleSuggestion;
-
     } catch (error) {
       this.logger.error(`Erreur suggestion véhicule: ${error.message}`);
       return {

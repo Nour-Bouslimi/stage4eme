@@ -1,7 +1,13 @@
-import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, CreateDateColumn, JoinColumn } from 'typeorm';
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  ManyToOne,
+  CreateDateColumn,
+  JoinColumn,
+} from 'typeorm';
 import { Utilisateur } from './user.entity';
 
-// eslint-disable-next-line @typescript-eslint/no-unsafe-call
 @Entity('disponibilites_livreur')
 export class DisponibiliteLivreur {
   @PrimaryGeneratedColumn('uuid')
@@ -28,7 +34,10 @@ export class DisponibiliteLivreur {
   @Column('uuid', { name: 'livreurId', nullable: true })
   livreurId: string;
 
-  @ManyToOne(() => Utilisateur, (u) => u.disponibilites, { onDelete: 'CASCADE', nullable: true })
+  @ManyToOne(() => Utilisateur, (u) => u.disponibilites, {
+    onDelete: 'CASCADE',
+    nullable: true,
+  })
   @JoinColumn({ name: 'livreurId' })
   livreur: Utilisateur;
 }

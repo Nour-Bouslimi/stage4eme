@@ -23,7 +23,10 @@ export class CreateLivreurDto {
   @IsOptional()
   @IsString()
   @MinLength(10)
-  @Transform(({ value, obj }) => obj.password ?? obj.temporaryPassword ?? obj.tempPassword ?? value)
+  @Transform(
+    ({ value, obj }) =>
+      obj.password ?? obj.temporaryPassword ?? obj.tempPassword ?? value,
+  )
   motDePasse?: string;
 
   @IsOptional()

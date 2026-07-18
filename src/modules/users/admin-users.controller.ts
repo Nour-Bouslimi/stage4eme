@@ -1,4 +1,11 @@
-import { Controller, Delete, Get, Param, Patch, UseGuards } from '@nestjs/common';
+import {
+  Controller,
+  Delete,
+  Get,
+  Param,
+  Patch,
+  UseGuards,
+} from '@nestjs/common';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { RolesGuard } from '../../common/guards/roles.guard';
@@ -15,6 +22,14 @@ export class AdminUsersController {
   async getClients() {
     const users = await this.usersService.findAllClients();
     return users.map((user) => toPublicUser(user));
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('ADMIN')
+  @Get('clients/:id')
+  async getClientById(@Param('id') id: string) {
+    const user = await this.usersService.findClientById(id);
+    return toPublicUser(user);
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)
@@ -38,6 +53,14 @@ export class AdminUsersController {
   @Patch('users/:id/desactiver')
   async deactivate(@Param('id') id: string) {
     const user = await this.usersService.deactivateUser(id);
+    return toPublicUser(user);
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('ADMIN')
+  @Patch('users/:id/reactiver')
+  async reactivate(@Param('id') id: string) {
+    const user = await this.usersService.reactivateUser(id);
     return toPublicUser(user);
   }
 

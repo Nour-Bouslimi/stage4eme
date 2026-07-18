@@ -32,13 +32,22 @@ export class GeolocationGateway {
   @SubscribeMessage('update')
   handleLegacyUpdate(
     @MessageBody()
-    data: { userId: string; missionId: string; latitude: number; longitude: number; estEnLigne?: boolean },
+    data: {
+      userId: string;
+      missionId: string;
+      latitude: number;
+      longitude: number;
+      estEnLigne?: boolean;
+    },
   ) {
     return this.handleLocationUpdate(data);
   }
 
   @SubscribeMessage('joinRoom')
-  handleJoinRoom(@MessageBody() data: { missionId: string }, @ConnectedSocket() client: Socket) {
+  handleJoinRoom(
+    @MessageBody() data: { missionId: string },
+    @ConnectedSocket() client: Socket,
+  ) {
     if (!data?.missionId) {
       throw new WsException('Identifiant de mission manquant');
     }
@@ -49,7 +58,13 @@ export class GeolocationGateway {
   @SubscribeMessage('location:update')
   async handleLocationUpdate(
     @MessageBody()
-    data: { userId: string; missionId: string; latitude: number; longitude: number; estEnLigne?: boolean },
+    data: {
+      userId: string;
+      missionId: string;
+      latitude: number;
+      longitude: number;
+      estEnLigne?: boolean;
+    },
   ) {
     if (!data?.userId) {
       throw new WsException('Identifiant utilisateur manquant');
@@ -58,7 +73,12 @@ export class GeolocationGateway {
       throw new WsException('Identifiant de mission manquant');
     }
 
-    await this.geo.updateLocation(data.userId, data.latitude, data.longitude, data.estEnLigne);
+    await this.geo.updateLocation(
+      data.userId,
+      data.latitude,
+      data.longitude,
+      data.estEnLigne,
+    );
 
     const payload = {
       lat: data.latitude,
@@ -67,14 +87,20 @@ export class GeolocationGateway {
       timestamp: new Date().toISOString(),
     };
 
-    this.server.to(`mission:${data.missionId}`).emit('location:receive', payload);
+    this.server
+      .to(`mission:${data.missionId}`)
+      .emit('location:receive', payload);
     return { ok: true };
   }
 
   @SubscribeMessage('mission:updateStatus')
   async handleMissionUpdateStatus(
     @MessageBody()
-    data: { missionId: string; statut: string; userId?: string },
+    data: {
+      missionId: string;
+      statut: string;
+      userId?: string;
+    },
   ) {
     if (!data?.missionId) {
       throw new WsException('Identifiant de mission manquant');
@@ -106,7 +132,10 @@ export class GeolocationGateway {
   }
 
   @SubscribeMessage('leaveRoom')
-  handleLeaveRoom(@MessageBody() data: { missionId: string }, @ConnectedSocket() client: Socket) {
+  handleLeaveRoom(
+    @MessageBody() data: { missionId: string },
+    @ConnectedSocket() client: Socket,
+  ) {
     if (!data?.missionId) {
       throw new WsException('Identifiant de mission manquant');
     }

@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Notation } from './entities/notation.entity';
@@ -38,7 +42,7 @@ export class RatingsService {
 
     // Récupère la liste détaillée des notations pour le livreur
     const reviewsEntities = await this.notationRepo.find({
-      where: { livreur: { id: livreurId } } as any,
+      where: { livreur: { id: livreurId } },
       order: { creeLe: 'DESC' },
     });
 
@@ -75,7 +79,10 @@ export class RatingsService {
       throw new BadRequestException('L’utilisateur n’est pas un livreur');
     }
 
-    const totalNotes = await this.notationRepo.createQueryBuilder('notation').where('notation.livreurId = :livreurId', { livreurId }).getCount();
+    const totalNotes = await this.notationRepo
+      .createQueryBuilder('notation')
+      .where('notation.livreurId = :livreurId', { livreurId })
+      .getCount();
 
     return {
       livreurId,
@@ -87,7 +94,9 @@ export class RatingsService {
     const mission = await this.missionsService.findEntityById(dto.missionId);
     if (!mission) throw new NotFoundException('Mission introuvable');
     if (!mission.livreur) throw new BadRequestException('Mission sans livreur');
-    const existing = await this.notationRepo.findOne({ where: { mission: { id: dto.missionId } } });
+    const existing = await this.notationRepo.findOne({
+      where: { mission: { id: dto.missionId } },
+    });
     if (existing) throw new BadRequestException('Mission déjà notée');
     const rating = this.notationRepo.create({
       etoiles: dto.etoiles,
@@ -103,7 +112,9 @@ export class RatingsService {
     if (!livreur) throw new NotFoundException('Livreur introuvable');
 
     const totalNotes = (livreur.totalNotes || 0) + 1;
-    const noteMoyenne = ((Number(livreur.noteMoyenne || 0) * (totalNotes - 1)) + dto.etoiles) / totalNotes;
+    const noteMoyenne =
+      (Number(livreur.noteMoyenne || 0) * (totalNotes - 1) + dto.etoiles) /
+      totalNotes;
     livreur.totalNotes = totalNotes;
     livreur.noteMoyenne = Number(noteMoyenne.toFixed(2));
     await this.usersService.save(livreur);
@@ -111,15 +122,16 @@ export class RatingsService {
     const notifications = await this.notificationsService.create({
       cibleUserId: livreur.id,
       titre: 'Nouvelle évaluation',
-      corps: 'Vous avez reçu une nouvelle évaluation pour votre dernière mission.',
+      corps:
+        'Vous avez reçu une nouvelle évaluation pour votre dernière mission.',
       type: TypeNotification.NOUVELLE_EVALUATION,
-      mission: mission as any,
+      mission: mission,
       donnees: {
         missionId: mission.id,
         notationId: saved.id,
         etoiles: dto.etoiles,
       },
-    } as any);
+    });
 
     for (const notification of notifications) {
       if (!notification?.userId) continue;

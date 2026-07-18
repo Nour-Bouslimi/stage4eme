@@ -20,7 +20,7 @@ describe('ChatService', () => {
       { findById: jest.fn() },
       { create: jest.fn() },
       { uploadBuffer: jest.fn() },
-    ) as any;
+    );
   });
 
   it('edits a message when the author is the current user', async () => {

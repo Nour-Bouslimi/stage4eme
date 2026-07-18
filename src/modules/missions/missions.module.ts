@@ -10,7 +10,12 @@ import { NotificationsModule } from '../notifications/notifications.module';
 import { GeolocationModule } from '../geolocation/geolocation.module';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Mission, Utilisateur]), forwardRef(() => UsersModule), NotificationsModule, forwardRef(() => GeolocationModule)],
+  imports: [
+    TypeOrmModule.forFeature([Mission, Utilisateur]),
+    forwardRef(() => UsersModule),
+    NotificationsModule,
+    forwardRef(() => GeolocationModule),
+  ],
   providers: [MissionsService, MatchingService],
   controllers: [MissionsController],
   exports: [MissionsService],

@@ -1,4 +1,12 @@
-import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, CreateDateColumn, Unique, OneToOne } from 'typeorm';
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  ManyToOne,
+  CreateDateColumn,
+  Unique,
+  OneToOne,
+} from 'typeorm';
 import { Utilisateur } from '../../users/entities/user.entity';
 import { Mission } from '../../missions/entities/mission.entity';
 import { Appreciation } from '../enums/appreciation.enum';

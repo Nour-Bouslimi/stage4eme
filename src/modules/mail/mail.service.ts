@@ -11,12 +11,16 @@ export class MailService {
   private useSendGrid = false;
 
   constructor(private configService: ConfigService) {
-    const host = this.configService.get<string>('SMTP_HOST') || 'smtp.gmail.com';
+    const host =
+      this.configService.get<string>('SMTP_HOST') || 'smtp.gmail.com';
     const port = Number(this.configService.get<number>('SMTP_PORT') || 587);
     const secure = port === 465;
     const user = this.configService.get<string>('SMTP_USER');
     const pass = this.configService.get<string>('SMTP_PASS');
-    this.from = this.configService.get<string>('EMAIL_FROM') || user || 'no-reply@example.com';
+    this.from =
+      this.configService.get<string>('EMAIL_FROM') ||
+      user ||
+      'no-reply@example.com';
 
     const transportOptions: any = {
       host,
@@ -64,7 +68,11 @@ export class MailService {
         const res = await sgMail.send(msg);
         return res;
       } catch (err) {
-        console.error('Failed to send email via SendGrid', { to, subject, error: err });
+        console.error('Failed to send email via SendGrid', {
+          to,
+          subject,
+          error: err,
+        });
         throw err;
       }
     }
@@ -92,7 +100,8 @@ export class MailService {
   }
 
   generateTemporaryPassword(length = 12) {
-    const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789!@#$%^&*';
+    const alphabet =
+      'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789!@#$%^&*';
     const specials = '!@#$%^&*';
 
     while (true) {
@@ -105,7 +114,9 @@ export class MailService {
       const hasUpper = /[A-Z]/.test(password);
       const hasLower = /[a-z]/.test(password);
       const hasNumber = /\d/.test(password);
-      const hasSpecial = new RegExp(`[${specials.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}]`).test(password);
+      const hasSpecial = new RegExp(
+        `[${specials.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}]`,
+      ).test(password);
 
       if (hasUpper && hasLower && hasNumber && hasSpecial) {
         return password;
@@ -122,7 +133,8 @@ export class MailService {
     loginUrl: string;
   }) {
     const subject = 'Votre compte livreur a été créé';
-    const displayName = [params.prenom, params.nom].filter(Boolean).join(' ').trim() || 'Livreur';
+    const displayName =
+      [params.prenom, params.nom].filter(Boolean).join(' ').trim() || 'Livreur';
     const text = [
       `Bonjour ${displayName},`,
       '',

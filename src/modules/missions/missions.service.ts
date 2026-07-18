@@ -1,4 +1,11 @@
-import { BadRequestException, ConflictException, Inject, Injectable, NotFoundException, forwardRef } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  Inject,
+  Injectable,
+  NotFoundException,
+  forwardRef,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { In, Repository } from 'typeorm';
 import { RoleUtilisateur } from '../../common/enums/role-utilisateur.enum';
@@ -6,7 +13,11 @@ import { StatutDisponibilite } from '../../common/enums/statut-disponibilite.enu
 import { StatutMission } from '../../common/enums/statut-mission.enum';
 import { TypeNotification } from '../../common/enums/type-notification.enum';
 import { TypeVehicule } from '../../common/enums/type-vehicule.enum';
-import { NotificationViewer, toMission, toPublicUser } from '../../common/utils/api-mappers';
+import {
+  NotificationViewer,
+  toMission,
+  toPublicUser,
+} from '../../common/utils/api-mappers';
 import { GeolocationService } from '../geolocation/geolocation.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { NotificationsGateway } from '../notifications/notifications.gateway';
@@ -78,12 +89,12 @@ export class MissionsService {
       statut: StatutMission.EN_ATTENTE,
     } as any);
 
-    const saved = (await this.missionRepo.save(mission as unknown as Mission)) as unknown as Mission;
+    const saved = await this.missionRepo.save(mission as unknown as Mission);
 
     const candidates = await this.matching.findCandidates({
       latitudeRamassage: quote.start.latitude,
       longitudeRamassage: quote.start.longitude,
-      typeVehiculeRequis: payload.typeVehiculeRequis as TypeVehicule,
+      typeVehiculeRequis: payload.typeVehiculeRequis,
       poidsEstime: payload.poidsEstime,
       volumeEstime: payload.volumeEstime,
     });
@@ -95,7 +106,7 @@ export class MissionsService {
       type: TypeNotification.NOUVELLE_MISSION,
       mission: saved,
       donnees: { missionId: saved.id },
-    } as any);
+    });
 
     for (const notification of notifications) {
       if (!notification.userId) continue;
@@ -109,22 +120,33 @@ export class MissionsService {
     return toMission(saved, { userId: client.id, role: client.role });
   }
 
-  private async buildQuote(dto: {
-    adresseRamassage?: string;
-    adresseLivraison?: string;
-    latitudeRamassage?: number;
-    longitudeRamassage?: number;
-    latitudeLivraison?: number;
-    longitudeLivraison?: number;
-    poidsEstime?: number | null;
-    volumeEstime?: number | null;
-    typeVehiculeRequis?: TypeVehicule | null;
-    dateDemandee?: string | null;
-    heureDemandee?: string | null;
-    prixEstime?: number | null;
-  }, options: { allowManualPrice: boolean }) {
-    const ramassage = await this.resolveCoordinates(dto.adresseRamassage, dto.latitudeRamassage, dto.longitudeRamassage);
-    const livraison = await this.resolveCoordinates(dto.adresseLivraison, dto.latitudeLivraison, dto.longitudeLivraison);
+  private async buildQuote(
+    dto: {
+      adresseRamassage?: string;
+      adresseLivraison?: string;
+      latitudeRamassage?: number;
+      longitudeRamassage?: number;
+      latitudeLivraison?: number;
+      longitudeLivraison?: number;
+      poidsEstime?: number | null;
+      volumeEstime?: number | null;
+      typeVehiculeRequis?: TypeVehicule | null;
+      dateDemandee?: string | null;
+      heureDemandee?: string | null;
+      prixEstime?: number | null;
+    },
+    options: { allowManualPrice: boolean },
+  ) {
+    const ramassage = await this.resolveCoordinates(
+      dto.adresseRamassage,
+      dto.latitudeRamassage,
+      dto.longitudeRamassage,
+    );
+    const livraison = await this.resolveCoordinates(
+      dto.adresseLivraison,
+      dto.latitudeLivraison,
+      dto.longitudeLivraison,
+    );
     const route = await this.geolocationService.route({
       start: { lat: ramassage.latitude, lng: ramassage.longitude },
       end: { lat: livraison.latitude, lng: livraison.longitude },
@@ -141,7 +163,10 @@ export class MissionsService {
       dto.dateDemandee,
       dto.heureDemandee,
     );
-    const prixEstime = options.allowManualPrice && typeof dto.prixEstime === 'number' ? dto.prixEstime : pricing.total;
+    const prixEstime =
+      options.allowManualPrice && typeof dto.prixEstime === 'number'
+        ? dto.prixEstime
+        : pricing.total;
 
     return {
       start: ramassage,
@@ -157,35 +182,71 @@ export class MissionsService {
   async updateMission(missionId: string, dto: UpdateMissionDto) {
     const mission = await this.findEntityById(missionId);
 
-    const nextAdresseRamassage = dto.adresseRamassage ?? dto.depart ?? mission.adresseRamassage;
-    const nextAdresseLivraison = dto.adresseLivraison ?? dto.destination ?? mission.adresseLivraison;
+    const nextAdresseRamassage =
+      dto.adresseRamassage ?? dto.depart ?? mission.adresseRamassage;
+    const nextAdresseLivraison =
+      dto.adresseLivraison ?? dto.destination ?? mission.adresseLivraison;
     const nextLatitudeRamassage =
-      typeof dto.latitudeRamassage === 'number' ? dto.latitudeRamassage : Number(mission.latitudeRamassage);
+      typeof dto.latitudeRamassage === 'number'
+        ? dto.latitudeRamassage
+        : Number(mission.latitudeRamassage);
     const nextLongitudeRamassage =
-      typeof dto.longitudeRamassage === 'number' ? dto.longitudeRamassage : Number(mission.longitudeRamassage);
+      typeof dto.longitudeRamassage === 'number'
+        ? dto.longitudeRamassage
+        : Number(mission.longitudeRamassage);
     const nextLatitudeLivraison =
-      typeof dto.latitudeLivraison === 'number' ? dto.latitudeLivraison : Number(mission.latitudeLivraison);
+      typeof dto.latitudeLivraison === 'number'
+        ? dto.latitudeLivraison
+        : Number(mission.latitudeLivraison);
     const nextLongitudeLivraison =
-      typeof dto.longitudeLivraison === 'number' ? dto.longitudeLivraison : Number(mission.longitudeLivraison);
+      typeof dto.longitudeLivraison === 'number'
+        ? dto.longitudeLivraison
+        : Number(mission.longitudeLivraison);
 
     const ramassage =
-      dto.adresseRamassage || dto.depart || typeof dto.latitudeRamassage === 'number' || typeof dto.longitudeRamassage === 'number'
-        ? await this.resolveCoordinates(nextAdresseRamassage, dto.latitudeRamassage, dto.longitudeRamassage)
-        : { latitude: nextLatitudeRamassage, longitude: nextLongitudeRamassage };
+      dto.adresseRamassage ||
+      dto.depart ||
+      typeof dto.latitudeRamassage === 'number' ||
+      typeof dto.longitudeRamassage === 'number'
+        ? await this.resolveCoordinates(
+            nextAdresseRamassage,
+            dto.latitudeRamassage,
+            dto.longitudeRamassage,
+          )
+        : {
+            latitude: nextLatitudeRamassage,
+            longitude: nextLongitudeRamassage,
+          };
     const livraison =
-      dto.adresseLivraison || dto.destination || typeof dto.latitudeLivraison === 'number' || typeof dto.longitudeLivraison === 'number'
-        ? await this.resolveCoordinates(nextAdresseLivraison, dto.latitudeLivraison, dto.longitudeLivraison)
-        : { latitude: nextLatitudeLivraison, longitude: nextLongitudeLivraison };
+      dto.adresseLivraison ||
+      dto.destination ||
+      typeof dto.latitudeLivraison === 'number' ||
+      typeof dto.longitudeLivraison === 'number'
+        ? await this.resolveCoordinates(
+            nextAdresseLivraison,
+            dto.latitudeLivraison,
+            dto.longitudeLivraison,
+          )
+        : {
+            latitude: nextLatitudeLivraison,
+            longitude: nextLongitudeLivraison,
+          };
 
     mission.adresseRamassage = nextAdresseRamassage;
     mission.adresseLivraison = nextAdresseLivraison;
     mission.description = dto.description ?? mission.description;
-    mission.instructionsSpeciales = dto.instructionsSpeciales ?? mission.instructionsSpeciales;
+    mission.instructionsSpeciales =
+      dto.instructionsSpeciales ?? mission.instructionsSpeciales;
     mission.categorie = dto.categorie ?? mission.categorie;
-    mission.typeVehiculeRequis = dto.typeVehiculeRequis ?? dto.vehiculeRequis ?? mission.typeVehiculeRequis;
+    mission.typeVehiculeRequis =
+      dto.typeVehiculeRequis ??
+      dto.vehiculeRequis ??
+      mission.typeVehiculeRequis;
     mission.poidsEstime = dto.poidsEstime ?? dto.poids ?? mission.poidsEstime;
-    mission.volumeEstime = dto.volumeEstime ?? dto.volume ?? mission.volumeEstime;
-    mission.dateDemandee = dto.dateDemandee ?? dto.dateLivraison ?? mission.dateDemandee;
+    mission.volumeEstime =
+      dto.volumeEstime ?? dto.volume ?? mission.volumeEstime;
+    mission.dateDemandee =
+      dto.dateDemandee ?? dto.dateLivraison ?? mission.dateDemandee;
     mission.heureDemandee = dto.heureDemandee ?? mission.heureDemandee;
 
     const coordinatesChanged =
@@ -204,20 +265,23 @@ export class MissionsService {
     mission.longitudeLivraison = livraison.longitude;
 
     if (coordinatesChanged) {
-      const quote = await this.buildQuote({
-        adresseRamassage: nextAdresseRamassage,
-        adresseLivraison: nextAdresseLivraison,
-        latitudeRamassage: ramassage.latitude,
-        longitudeRamassage: ramassage.longitude,
-        latitudeLivraison: livraison.latitude,
-        longitudeLivraison: livraison.longitude,
-        poidsEstime: mission.poidsEstime,
-        volumeEstime: mission.volumeEstime,
-        typeVehiculeRequis: mission.typeVehiculeRequis,
-        dateDemandee: mission.dateDemandee,
-        heureDemandee: mission.heureDemandee,
-        prixEstime: mission.prixEstime,
-      }, { allowManualPrice: true });
+      const quote = await this.buildQuote(
+        {
+          adresseRamassage: nextAdresseRamassage,
+          adresseLivraison: nextAdresseLivraison,
+          latitudeRamassage: ramassage.latitude,
+          longitudeRamassage: ramassage.longitude,
+          latitudeLivraison: livraison.latitude,
+          longitudeLivraison: livraison.longitude,
+          poidsEstime: mission.poidsEstime,
+          volumeEstime: mission.volumeEstime,
+          typeVehiculeRequis: mission.typeVehiculeRequis,
+          dateDemandee: mission.dateDemandee,
+          heureDemandee: mission.heureDemandee,
+          prixEstime: mission.prixEstime,
+        },
+        { allowManualPrice: true },
+      );
       mission.distanceKm = quote.distanceKm;
       mission.dureeEstimee = quote.dureeEstimee;
       mission.prixEstime = quote.prixEstime;
@@ -225,7 +289,9 @@ export class MissionsService {
       mission.distanceKm = dto.distanceKm ?? mission.distanceKm;
       mission.dureeEstimee = dto.dureeEstimee ?? mission.dureeEstimee;
       mission.prixEstime =
-        dto.prixEstime ?? dto.prix ?? this.calculatePriceBreakdown(
+        dto.prixEstime ??
+        dto.prix ??
+        this.calculatePriceBreakdown(
           Number(mission.distanceKm ?? 0),
           Number(mission.dureeEstimee ?? 0),
           mission.poidsEstime,
@@ -236,7 +302,7 @@ export class MissionsService {
         ).total;
     }
 
-    const saved = (await this.missionRepo.save(mission as unknown as Mission)) as unknown as Mission;
+    const saved = await this.missionRepo.save(mission);
     return toMission(saved);
   }
 
@@ -254,18 +320,26 @@ export class MissionsService {
     return this.geocodeAddress(address);
   }
 
-  private async geocodeAddress(address: string): Promise<{ latitude: number; longitude: number }> {
+  private async geocodeAddress(
+    address: string,
+  ): Promise<{ latitude: number; longitude: number }> {
     const query = encodeURIComponent(address);
     try {
-      const response = await fetch(`https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&q=${query}`, {
-        headers: {
-          'User-Agent': 'backend-stage/1.0',
-          Accept: 'application/json',
+      const response = await fetch(
+        `https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&q=${query}`,
+        {
+          headers: {
+            'User-Agent': 'backend-stage/1.0',
+            Accept: 'application/json',
+          },
         },
-      });
+      );
 
       if (response.ok) {
-        const results = (await response.json()) as Array<{ lat: string; lon: string }>;
+        const results = (await response.json()) as Array<{
+          lat: string;
+          lon: string;
+        }>;
         const firstResult = results[0];
         if (firstResult) {
           return {
@@ -303,8 +377,14 @@ export class MissionsService {
     const baseFare = 6;
     const distanceFare = Math.max(0, distanceKm) * 0.95;
     const timeFare = Math.max(0, durationMinutes) * 0.05;
-    const weightFare = Math.max(0, Number(poidsEstime ?? 0)) > 5 ? (Number(poidsEstime) - 5) * 0.45 : 0;
-    const volumeFare = Math.max(0, Number(volumeEstime ?? 0)) > 0.5 ? (Number(volumeEstime) - 0.5) * 2.5 : 0;
+    const weightFare =
+      Math.max(0, Number(poidsEstime ?? 0)) > 5
+        ? (Number(poidsEstime) - 5) * 0.45
+        : 0;
+    const volumeFare =
+      Math.max(0, Number(volumeEstime ?? 0)) > 0.5
+        ? (Number(volumeEstime) - 0.5) * 2.5
+        : 0;
     const zoneFare = distanceKm <= 12 ? 2 : distanceKm <= 35 ? 4 : 7;
     const vehicleFare =
       typeVehiculeRequis === TypeVehicule.GROS_CAMION
@@ -317,12 +397,22 @@ export class MissionsService {
               ? 3.5
               : typeVehiculeRequis === TypeVehicule.VOITURE
                 ? 1.5
-                : typeVehiculeRequis === TypeVehicule.MOTO || typeVehiculeRequis === TypeVehicule.SCOOTER
+                : typeVehiculeRequis === TypeVehicule.MOTO ||
+                    typeVehiculeRequis === TypeVehicule.SCOOTER
                   ? 0.5
                   : 0;
     const nightFare = this.isNightDelivery(heureDemandee) ? 3 : 0;
     const weekendFare = this.isWeekendDelivery(dateDemandee) ? 2.5 : 0;
-    const subtotal = baseFare + distanceFare + timeFare + weightFare + volumeFare + zoneFare + vehicleFare + nightFare + weekendFare;
+    const subtotal =
+      baseFare +
+      distanceFare +
+      timeFare +
+      weightFare +
+      volumeFare +
+      zoneFare +
+      vehicleFare +
+      nightFare +
+      weekendFare;
     const minimumFare = 8;
     const rounded = Math.max(minimumFare, subtotal);
     return {
@@ -368,10 +458,10 @@ export class MissionsService {
       relations: {
         client: true,
         livreur: true,
-        messages: { auteur: true } as any,
+        messages: { auteur: true },
         notifications: true,
         notation: true,
-      } as any,
+      },
     });
     if (!mission) throw new NotFoundException('Mission non trouvée');
     return toMission(mission, viewer);
@@ -383,10 +473,10 @@ export class MissionsService {
       relations: {
         client: true,
         livreur: true,
-        messages: { auteur: true } as any,
+        messages: { auteur: true },
         notifications: true,
         notation: true,
-      } as any,
+      },
     });
     if (!mission) throw new NotFoundException('Mission non trouvée');
     return mission;
@@ -400,10 +490,10 @@ export class MissionsService {
       relations: {
         client: true,
         livreur: true,
-        messages: { auteur: true } as any,
+        messages: { auteur: true },
         notifications: true,
         notation: true,
-      } as any,
+      },
       order: {
         createdAt: 'DESC',
       },
@@ -411,7 +501,10 @@ export class MissionsService {
     return missions.map((mission) => toMission(mission, viewer));
   }
 
-  async findByLivreurId(livreurId: string, options?: { activeOnly?: boolean; viewer?: NotificationViewer }) {
+  async findByLivreurId(
+    livreurId: string,
+    options?: { activeOnly?: boolean; viewer?: NotificationViewer },
+  ) {
     const where: Record<string, unknown> = {
       livreur: { id: livreurId },
     };
@@ -426,14 +519,14 @@ export class MissionsService {
     }
 
     const missions = await this.missionRepo.find({
-      where: where as any,
+      where: where,
       relations: {
         client: true,
         livreur: true,
-        messages: { auteur: true } as any,
+        messages: { auteur: true },
         notifications: true,
         notation: true,
-      } as any,
+      },
       order: {
         updatedAt: 'DESC',
       },
@@ -442,7 +535,10 @@ export class MissionsService {
     return missions.map((mission) => toMission(mission, options?.viewer));
   }
 
-  async findMissions(options?: { statut?: string; viewer?: NotificationViewer }) {
+  async findMissions(options?: {
+    statut?: string;
+    viewer?: NotificationViewer;
+  }) {
     const where: Record<string, unknown> = {};
 
     if (typeof options?.statut === 'string' && options.statut.trim()) {
@@ -450,14 +546,14 @@ export class MissionsService {
     }
 
     const missions = await this.missionRepo.find({
-      where: where as any,
+      where: where,
       relations: {
         client: true,
         livreur: true,
-        messages: { auteur: true } as any,
+        messages: { auteur: true },
         notifications: true,
         notation: true,
-      } as any,
+      },
       order: {
         createdAt: 'DESC',
       },
@@ -517,7 +613,10 @@ export class MissionsService {
     if (livreur.role !== 'LIVREUR') {
       throw new ConflictException('Seul un livreur peut accepter une mission');
     }
-    if (livreur.statutDisponibilite !== StatutDisponibilite.DISPONIBLE || !livreur.estEnLigne) {
+    if (
+      livreur.statutDisponibilite !== StatutDisponibilite.DISPONIBLE ||
+      !livreur.estEnLigne
+    ) {
       throw new ConflictException('Livreur indisponible');
     }
 
@@ -554,7 +653,12 @@ export class MissionsService {
     return toMission(saved);
   }
 
-  async updateStatus(missionId: string, statut: string, reason?: string, viewer?: NotificationViewer) {
+  async updateStatus(
+    missionId: string,
+    statut: string,
+    reason?: string,
+    viewer?: NotificationViewer,
+  ) {
     const mission = await this.findEntityById(missionId);
     const normalizedStatut = this.normalizeStatus(statut);
     mission.statut = normalizedStatut;
@@ -588,7 +692,7 @@ export class MissionsService {
       }
     }
 
-    const saved = (await this.missionRepo.save(mission as unknown as Mission)) as unknown as Mission;
+    const saved = await this.missionRepo.save(mission);
 
     if (mission.client) {
       const notificationType =
@@ -596,7 +700,8 @@ export class MissionsService {
           ? TypeNotification.MISSION_ANNULEE
           : normalizedStatut === StatutMission.ARRIVEE
             ? TypeNotification.LIVREUR_ARRIVE
-            : normalizedStatut === StatutMission.TERMINEE || normalizedStatut === StatutMission.LIVREE
+            : normalizedStatut === StatutMission.TERMINEE ||
+                normalizedStatut === StatutMission.LIVREE
               ? TypeNotification.MISSION_TERMINEE
               : TypeNotification.STATUT_CHANGE;
       const statusNotifications = await this.notificationsService.create({
@@ -613,7 +718,7 @@ export class MissionsService {
         type: notificationType,
         mission: saved,
         donnees: { missionId: saved.id, statut: normalizedStatut },
-      } as any);
+      });
       for (const notification of statusNotifications) {
         if (!notification.userId) continue;
         this.notificationsGateway.broadcastNotification(notification.userId, {
@@ -632,7 +737,7 @@ export class MissionsService {
     const candidates = await this.matching.findCandidates({
       latitudeRamassage: Number(mission.latitudeRamassage),
       longitudeRamassage: Number(mission.longitudeRamassage),
-      typeVehiculeRequis: mission.typeVehiculeRequis as TypeVehicule,
+      typeVehiculeRequis: mission.typeVehiculeRequis,
       poidsEstime: Number(mission.poidsEstime ?? 0),
       volumeEstime: Number(mission.volumeEstime ?? 0),
     });
@@ -662,5 +767,3 @@ export class MissionsService {
     return normalized;
   }
 }
-
-

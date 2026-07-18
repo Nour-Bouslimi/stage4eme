@@ -24,20 +24,30 @@ export class ChatGateway implements OnGatewayConnection {
   }
 
   @SubscribeMessage('joinRoom')
-  async handleJoinRoom(@MessageBody() data: { missionId: string }, @ConnectedSocket() client: Socket) {
+  async handleJoinRoom(
+    @MessageBody() data: { missionId: string },
+    @ConnectedSocket() client: Socket,
+  ) {
     client.join(`mission:${data.missionId}`);
     return { joined: true };
   }
 
   @SubscribeMessage('leaveRoom')
-  async handleLeaveRoom(@MessageBody() data: { missionId: string }, @ConnectedSocket() client: Socket) {
+  async handleLeaveRoom(
+    @MessageBody() data: { missionId: string },
+    @ConnectedSocket() client: Socket,
+  ) {
     client.leave(`mission:${data.missionId}`);
     return { left: true };
   }
 
   @SubscribeMessage('sendMessage')
-  async handleSendMessage(@MessageBody() data: any, @ConnectedSocket() client: Socket) {
-    const senderId = data.senderId ?? data.userId ?? client.handshake.query.userId;
+  async handleSendMessage(
+    @MessageBody() data: any,
+    @ConnectedSocket() client: Socket,
+  ) {
+    const senderId =
+      data.senderId ?? data.userId ?? client.handshake.query.userId;
     const saved = await this.chatService.sendMessage(String(senderId), data);
     this.broadcastNewMessage(saved);
     return saved;
@@ -57,17 +67,31 @@ export class ChatGateway implements OnGatewayConnection {
 
   @SubscribeMessage('editMessage')
   @SubscribeMessage('updateMessage')
-  async handleUpdateMessage(@MessageBody() data: any, @ConnectedSocket() client: Socket) {
+  async handleUpdateMessage(
+    @MessageBody() data: any,
+    @ConnectedSocket() client: Socket,
+  ) {
     const userId = data.userId ?? client.handshake.query.userId;
-    const updated = await this.chatService.updateMessage(String(data.messageId), String(userId), data);
+    const updated = await this.chatService.updateMessage(
+      String(data.messageId),
+      String(userId),
+      data,
+    );
     this.broadcastMessageUpdated(updated);
     return updated;
   }
 
   @SubscribeMessage('deleteMessage')
-  async handleDeleteMessage(@MessageBody() data: any, @ConnectedSocket() client: Socket) {
+  async handleDeleteMessage(
+    @MessageBody() data: any,
+    @ConnectedSocket() client: Socket,
+  ) {
     const userId = data.userId ?? client.handshake.query.userId;
-    const deleted = await this.chatService.deleteMessage(String(data.messageId), String(userId), data.clientMessageId);
+    const deleted = await this.chatService.deleteMessage(
+      String(data.messageId),
+      String(userId),
+      data.clientMessageId,
+    );
     this.broadcastMessageDeleted(deleted);
     return deleted;
   }

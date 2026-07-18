@@ -31,7 +31,10 @@ describe('RatingsService', () => {
   });
 
   it('returns the rating summary for a driver', async () => {
-    usersService.findById.mockResolvedValue({ id: 'driver-1', role: 'LIVREUR' });
+    usersService.findById.mockResolvedValue({
+      id: 'driver-1',
+      role: 'LIVREUR',
+    });
     const queryBuilder = {
       where: jest.fn().mockReturnThis(),
       select: jest.fn().mockReturnThis(),
@@ -69,7 +72,12 @@ describe('RatingsService', () => {
           appreciations: [],
           commentaire: 'Parfait',
           creeLe: new Date('2026-01-01T00:00:00Z'),
-          client: { id: 'client-1', prenom: 'Jean', nom: 'Dupont', photo: null },
+          client: {
+            id: 'client-1',
+            prenom: 'Jean',
+            nom: 'Dupont',
+            photo: null,
+          },
           missionId: 'm1',
         },
       ],
@@ -77,7 +85,10 @@ describe('RatingsService', () => {
   });
 
   it('returns the total number of ratings for a driver', async () => {
-    usersService.findById.mockResolvedValue({ id: 'driver-1', role: 'LIVREUR' });
+    usersService.findById.mockResolvedValue({
+      id: 'driver-1',
+      role: 'LIVREUR',
+    });
     const queryBuilder = {
       where: jest.fn().mockReturnThis(),
       select: jest.fn().mockReturnThis(),

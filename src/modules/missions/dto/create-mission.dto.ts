@@ -1,4 +1,10 @@
-import { IsEnum, IsNotEmpty, IsNumber, IsOptional, IsString } from 'class-validator';
+import {
+  IsEnum,
+  IsNotEmpty,
+  IsNumber,
+  IsOptional,
+  IsString,
+} from 'class-validator';
 import { Type } from 'class-transformer';
 import { CategorieMission } from '../../../common/enums/categorie-mission.enum';
 import { TypeVehicule } from '../../../common/enums/type-vehicule.enum';

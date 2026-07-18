@@ -1,4 +1,8 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { In, Repository } from 'typeorm';
 import { RoleUtilisateur } from '../../common/enums/role-utilisateur.enum';
@@ -13,8 +17,14 @@ export class NotificationsService {
     @InjectRepository(Utilisateur) private usersRepo: Repository<Utilisateur>,
   ) {}
 
-  async create(notification: Partial<Notification> & { cibleUserId?: string; cibleRole?: RoleUtilisateur }) {
-    const { cibleUserId, cibleRole, utilisateur, ...payload } = notification as any;
+  async create(
+    notification: Partial<Notification> & {
+      cibleUserId?: string;
+      cibleRole?: RoleUtilisateur;
+    },
+  ) {
+    const { cibleUserId, cibleRole, utilisateur, ...payload } =
+      notification as any;
     const targetUserId = cibleUserId ?? utilisateur?.id ?? null;
 
     const targetUsers = targetUserId
@@ -22,7 +32,7 @@ export class NotificationsService {
       : cibleRole
         ? await this.usersRepo.find({
             where: { role: cibleRole },
-            select: { id: true } as any,
+            select: { id: true },
           })
         : [];
 
@@ -39,8 +49,8 @@ export class NotificationsService {
         cibleType: cibleUserId || utilisateur?.id ? 'USER' : 'ROLE',
         cibleRole: cibleRole ?? null,
         cibleUtilisateurId: cibleUserId ?? utilisateur?.id ?? null,
-      } as any);
-      const row = (await this.notifRepo.save(n as unknown as Notification)) as unknown as Notification;
+      });
+      const row = await this.notifRepo.save(n as unknown as Notification);
       saved.push(row);
     }
 
@@ -87,7 +97,7 @@ export class NotificationsService {
     if (!notification) throw new NotFoundException('Notification introuvable');
     notification.estLue = true;
     notification.lueLe = new Date();
-    const saved = (await this.notifRepo.save(notification as unknown as Notification)) as unknown as Notification;
+    const saved = await this.notifRepo.save(notification);
     return toNotification(saved);
   }
 }

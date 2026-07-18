@@ -5,6 +5,7 @@ import {
   CreateDateColumn,
   UpdateDateColumn,
   OneToMany,
+  Index,
 } from 'typeorm';
 import { RoleUtilisateur } from '../../../common/enums/role-utilisateur.enum';
 import { TypeVehicule } from '../../../common/enums/type-vehicule.enum';
@@ -15,6 +16,9 @@ import { Notation } from '../../ratings/entities/notation.entity';
 import { Message } from '../../chat/entities/message.entity';
 import { Notification } from '../../notifications/entities/notification.entity';
 
+@Index('idx_users_role', ['role'])
+@Index('idx_users_role_online', ['role', 'estActif', 'estEnLigne'])
+@Index('idx_users_role_disponibilite', ['role', 'statutDisponibilite'])
 @Entity('utilisateurs')
 export class Utilisateur {
   @PrimaryGeneratedColumn('uuid')
@@ -47,7 +51,11 @@ export class Utilisateur {
   @Column({ nullable: true })
   photo: string;
 
-  @Column({ type: 'enum', enum: RoleUtilisateur, default: RoleUtilisateur.CLIENT })
+  @Column({
+    type: 'enum',
+    enum: RoleUtilisateur,
+    default: RoleUtilisateur.CLIENT,
+  })
   role: RoleUtilisateur;
 
   @Column({ default: true })
@@ -81,12 +89,16 @@ export class Utilisateur {
   @Column({ type: 'numeric', nullable: true })
   rayonServiceKm: number;
 
-  @Column({ type: 'enum', enum: StatutDisponibilite, default: StatutDisponibilite.DISPONIBLE })
+  @Column({
+    type: 'enum',
+    enum: StatutDisponibilite,
+    default: StatutDisponibilite.DISPONIBLE,
+  })
   statutDisponibilite: StatutDisponibilite;
 
   @Column({ type: 'numeric', default: 0 })
   noteMoyenne: number;
-//Nombre d'évaluations reçues
+  //Nombre d'évaluations reçues
   @Column({ default: 0 })
   totalNotes: number;
 
@@ -95,7 +107,7 @@ export class Utilisateur {
 
   @Column({ type: 'numeric', nullable: true })
   longitudeActuelle: number;
-//Indique si le livreur est en ligne ou hors ligne
+  //Indique si le livreur est en ligne ou hors ligne
   @Column({ default: true })
   estEnLigne: boolean;
 
@@ -110,7 +122,7 @@ export class Utilisateur {
 
   @Column({ nullable: true })
   derniereActivite: Date;
-//Timestamp dernière position
+  //Timestamp dernière position
   @Column({ nullable: true })
   derniereMiseAJourPosition: Date;
 

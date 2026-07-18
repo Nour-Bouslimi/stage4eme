@@ -1,4 +1,14 @@
-import { Body, Controller, Get, Param, Patch, Post, Query, Req, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Param,
+  Patch,
+  Post,
+  Query,
+  Req,
+  UseGuards,
+} from '@nestjs/common';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { RolesGuard } from '../../common/guards/roles.guard';
@@ -29,22 +39,31 @@ export class MissionsController {
     return this.missionsService.acceptMission(id, req.user.id);
   } */
 
-    @UseGuards(JwtAuthGuard)
-@Patch(':id/accept')
-async accept(@Param('id') id: string, @Req() req: any) {
-  console.log('[ACCEPT] missionId =', id);
-  console.log('[ACCEPT] req.user =', req.user);
-  console.log('[ACCEPT] req.user.id =', req.user?.id);
+  @UseGuards(JwtAuthGuard)
+  @Patch(':id/accept')
+  async accept(@Param('id') id: string, @Req() req: any) {
+    console.log('[ACCEPT] missionId =', id);
+    console.log('[ACCEPT] req.user =', req.user);
+    console.log('[ACCEPT] req.user.id =', req.user?.id);
 
     return this.missionsService.acceptMission(id, req.user.id);
-}
+  }
   @UseGuards(JwtAuthGuard)
   @Patch(':id/status')
-  async updateStatus(@Param('id') id: string, @Body() body: any, @Req() req: any) {
-    return this.missionsService.updateStatus(id, body.statut ?? body.status, body.raisonAnnulation ?? body.reason, {
-      userId: req.user?.id,
-      role: req.user?.role,
-    });
+  async updateStatus(
+    @Param('id') id: string,
+    @Body() body: any,
+    @Req() req: any,
+  ) {
+    return this.missionsService.updateStatus(
+      id,
+      body.statut ?? body.status,
+      body.raisonAnnulation ?? body.reason,
+      {
+        userId: req.user?.id,
+        role: req.user?.role,
+      },
+    );
   }
 
   @UseGuards(JwtAuthGuard)
@@ -57,7 +76,9 @@ async accept(@Param('id') id: string, @Req() req: any) {
   @Roles(RoleUtilisateur.LIVREUR)
   @Get('livreur/me')
   async getMyLivreurMissions(@Req() req: any) {
-    return this.missionsService.findByLivreurId(req.user.id, { viewer: { userId: req.user.id, role: req.user.role } });
+    return this.missionsService.findByLivreurId(req.user.id, {
+      viewer: { userId: req.user.id, role: req.user.role },
+    });
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)
@@ -71,22 +92,31 @@ async accept(@Param('id') id: string, @Req() req: any) {
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(RoleUtilisateur.LIVREUR)
+  @Roles(RoleUtilisateur.LIVREUR, RoleUtilisateur.ADMIN)
   @Get()
   async listMissions(@Query('statut') statut?: string, @Req() req?: any) {
-    return this.missionsService.findMissions({ statut, viewer: { userId: req?.user?.id, role: req?.user?.role } });
+    return this.missionsService.findMissions({
+      statut,
+      viewer: { userId: req?.user?.id, role: req?.user?.role },
+    });
   }
 
   @UseGuards(JwtAuthGuard)
   @Get('client/me')
   async getMyMissions(@Req() req: any) {
-    return this.missionsService.findByClientId(req.user.id, { userId: req.user.id, role: req.user.role });
+    return this.missionsService.findByClientId(req.user.id, {
+      userId: req.user.id,
+      role: req.user.role,
+    });
   }
 
   @UseGuards(JwtAuthGuard)
   @Get(':id')
   async get(@Param('id') id: string, @Req() req: any) {
-    return this.missionsService.findById(id, { userId: req.user?.id, role: req.user?.role });
+    return this.missionsService.findById(id, {
+      userId: req.user?.id,
+      role: req.user?.role,
+    });
   }
 
   @UseGuards(JwtAuthGuard)

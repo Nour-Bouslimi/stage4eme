@@ -21,10 +21,13 @@ export class CloudinaryController {
     if (!file?.buffer) throw new BadRequestException('No file provided');
 
     const safeName = (file.originalname ?? 'upload').replace(/\s+/g, '-');
-    const result = await this.cloudinaryService.uploadBuffer(Buffer.from(file.buffer), {
-      folder: 'stage4eme/tests',
-      publicId: `test-${Date.now()}-${safeName}`,
-    });
+    const result = await this.cloudinaryService.uploadBuffer(
+      Buffer.from(file.buffer),
+      {
+        folder: 'stage4eme/tests',
+        publicId: `test-${Date.now()}-${safeName}`,
+      },
+    );
 
     return {
       ok: true,
