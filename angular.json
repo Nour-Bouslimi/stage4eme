@@ -23,7 +23,8 @@
         "build": {
           "builder": "@angular-devkit/build-angular:browser",
           "options": {
-            "outputPath": "C:/Users/nour-/AppData/Local/Temp/frontendstage-build",
+            "outputPath": "dist/frontendstage",
+
             "index": "src/index.html",
             "main": "./src/main.ts",
             "deleteOutputPath": false,

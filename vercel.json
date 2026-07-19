@@ -1,6 +1,6 @@
 {
   "buildCommand": "npm run vercel-build",
-  "outputDirectory": "dist/frontendstage/browser",
+  "outputDirectory": "dist/frontendstage",
   "rewrites": [
     { "source": "/(.*)", "destination": "/index.html" }
   ]
