@@ -11,7 +11,15 @@ async function bootstrap() {
       transformOptions: { enableImplicitConversion: true },
     }),
   );
-  app.enableCors();
+  //app.enableCors();
+  //pour hebergement sur render
+  app.enableCors({
+    origin: [
+      'http://localhost:4200',
+      'https://ton-app.vercel.app', // ← à remplacer après
+    ],
+    credentials: true,
+  });
   await app.listen(process.env.PORT || 3000);
   console.log('Server started');
 }
