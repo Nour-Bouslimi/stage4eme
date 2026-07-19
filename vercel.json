@@ -1,5 +1,5 @@
 {
-  "buildCommand": "npm run build -- --configuration production",
+  "buildCommand": "npm run vercel-build",
   "outputDirectory": "dist/frontendstage",
   "rewrites": [
     { "source": "/(.*)", "destination": "/index.html" }
