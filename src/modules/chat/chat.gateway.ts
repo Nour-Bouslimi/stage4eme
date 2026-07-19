@@ -12,7 +12,7 @@ import { ChatService } from './chat.service';
 
 @WebSocketGateway({ namespace: '/chat', cors: {
     origin: [
-      'https://stage4eme-frontendstage.vercel.app',
+      'https://delivereasee.vercel.app',
       /\.vercel\.app$/
     ],
     credentials: true,

@@ -16,7 +16,7 @@ async function bootstrap() {
   //pour hebergement sur render
   app.enableCors({
     origin: [
-    'https://stage4eme-frontendstage.vercel.app', // ton domaine de prod stable
+    'https://delivereasee.vercel.app', //  domaine de prod stable
     /\.vercel\.app$/                                // autorise tous les previews Vercel
   ],
     credentials: true,

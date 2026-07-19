@@ -17,7 +17,7 @@ import { MissionsService } from '../missions/missions.service';
   namespace: '/',
   cors: {
     origin: [
-      'https://stage4eme-frontendstage.vercel.app',
+      'https://delivereasee.vercel.app',
       /\.vercel\.app$/
     ],
     credentials: true,
