@@ -1,4 +1,5 @@
 {
+  "buildCommand": "npm run build -- --configuration production",
   "outputDirectory": "dist/frontendstage",
   "rewrites": [
     { "source": "/(.*)", "destination": "/index.html" }
