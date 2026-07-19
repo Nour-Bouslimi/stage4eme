@@ -1,7 +1,16 @@
+/* eslint-disable prettier/prettier */
 import { WebSocketGateway, WebSocketServer } from '@nestjs/websockets';
 import { Server } from 'socket.io';
 
-@WebSocketGateway({ namespace: '/notifications', cors: true })
+@WebSocketGateway({ namespace: '/notifications', cors: {
+    origin: [
+      'https://stage4eme-frontendstage.vercel.app',
+      /\.vercel\.app$/
+    ],
+    credentials: true,
+  },
+    
+ })
 export class NotificationsGateway {
   @WebSocketServer()
   server: Server;

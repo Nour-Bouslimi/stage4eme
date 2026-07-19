@@ -1,3 +1,4 @@
+/* eslint-disable prettier/prettier */
 import {
   ConnectedSocket,
   MessageBody,
@@ -15,7 +16,10 @@ import { MissionsService } from '../missions/missions.service';
 @WebSocketGateway({
   namespace: '/',
   cors: {
-    origin: ['http://localhost:4200'],
+    origin: [
+      'https://stage4eme-frontendstage.vercel.app',
+      /\.vercel\.app$/
+    ],
     credentials: true,
   },
 })

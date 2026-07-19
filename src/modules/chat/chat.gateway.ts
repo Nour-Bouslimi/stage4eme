@@ -1,3 +1,4 @@
+/* eslint-disable prettier/prettier */
 import {
   ConnectedSocket,
   MessageBody,
@@ -9,7 +10,13 @@ import {
 import { Server, Socket } from 'socket.io';
 import { ChatService } from './chat.service';
 
-@WebSocketGateway({ namespace: '/chat', cors: true })
+@WebSocketGateway({ namespace: '/chat', cors: {
+    origin: [
+      'https://stage4eme-frontendstage.vercel.app',
+      /\.vercel\.app$/
+    ],
+    credentials: true,
+  }, })
 export class ChatGateway implements OnGatewayConnection {
   @WebSocketServer()
   server: Server;
