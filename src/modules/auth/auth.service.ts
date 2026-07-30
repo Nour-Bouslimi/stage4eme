@@ -153,7 +153,7 @@ export class AuthService {
 
       const frontendUrl =
         this.configService.get<string>('FRONTEND_URL') ||
-        'https://delivereasee.vercel.app';
+        'http://localhost:4200';
       const resetLink = `${frontendUrl}/reset-password?token=${encodeURIComponent(token)}&email=${encodeURIComponent(user.email)}`;
       try {
         await this.mailService.sendResetPasswordEmail(user.email, resetLink);
