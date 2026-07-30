@@ -1,19 +1,17 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { randomBytes } from 'crypto';
-import * as brevo from '@getbrevo/brevo';
+import { BrevoClient } from '@getbrevo/brevo';
 
 @Injectable()
 export class MailService {
-  private apiInstance: brevo.TransactionalEmailsApi;
+  private client: BrevoClient;
   private from: string;
 
   constructor(private configService: ConfigService) {
-    this.apiInstance = new brevo.TransactionalEmailsApi();
-    this.apiInstance.setApiKey(
-      brevo.TransactionalEmailsApiApiKeys.apiKey,
-      this.configService.get<string>('BREVO_API_KEY'),
-    );
+    this.client = new BrevoClient({
+  apiKey: this.configService.get<string>('BREVO_API_KEY') || '',
+});
     this.from =
       this.configService.get<string>('EMAIL_FROM') ||
       'bousliminour70@gmail.com';
@@ -21,13 +19,12 @@ export class MailService {
 
   async sendMail(to: string, subject: string, text: string, html?: string) {
     try {
-      const sendSmtpEmail = new brevo.SendSmtpEmail();
-      sendSmtpEmail.subject = subject;
-      sendSmtpEmail.htmlContent = html || `<p>${text}</p>`;
-      sendSmtpEmail.sender = { email: this.from, name: 'DeliverEase' };
-      sendSmtpEmail.to = [{ email: to }];
-
-      const res = await this.apiInstance.sendTransacEmail(sendSmtpEmail);
+      const res = await this.client.transactionalEmails.sendTransacEmail({
+        sender: { email: this.from, name: 'DeliverEase' },
+        to: [{ email: to }],
+        subject,
+        htmlContent: html || `<p>${text}</p>`,
+      });
       return res;
     } catch (err) {
       console.error('Failed to send email via Brevo', { to, subject, error: err });
