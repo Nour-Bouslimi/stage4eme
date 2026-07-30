@@ -57,7 +57,7 @@ export class MissionHistoryComponent implements OnInit {
   editForm: MissionEditForm = this.getEmptyEditForm();
   savingMission = false;
   actionMission: Mission | null = null;
-  actionMode: 'cancel' | 'restore' | null = null;
+  actionMode: 'cancel' | 'restore' | 'delete' | null = null;
   submittingAction = false;
 
   constructor(
@@ -266,6 +266,21 @@ export class MissionHistoryComponent implements OnInit {
     this.submittingAction = true;
     const mission = this.actionMission;
     const action = this.actionMode;
+    if (action === 'delete') {
+      this.missionService.deleteMission(mission.id).subscribe({
+        next: () => {
+          this.submittingAction = false;
+          this.closeActionModal();
+          this.loadMissions();
+          this.toastService.success('Mission supprimée définitivement');
+        },
+        error: () => {
+          this.submittingAction = false;
+          this.toastService.error('Impossible de supprimer la mission');
+        }
+      });
+      return;
+    }
 
     const request$ = action === 'cancel'
       ? this.missionService.annulerMission(mission.id)
@@ -286,6 +301,15 @@ export class MissionHistoryComponent implements OnInit {
         this.toastService.error('Impossible de modifier le statut de la mission');
       }
     });
+  }
+
+  canDeleteMission(mission: Mission): boolean {
+    return mission.statut === MissionStatus.ANNULEE || mission.statut === MissionStatus.TERMINEE;
+  }
+
+  askDeleteMission(mission: Mission): void {
+    this.actionMission = mission;
+    this.actionMode = 'delete';
   }
 
   canModifyMission(mission: Mission): boolean {

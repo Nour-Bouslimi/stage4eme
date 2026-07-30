@@ -188,6 +188,10 @@ export class MissionService {
     return this.remettreMissionEnCours(id);
   }
 
+  deleteMission(id: string): Observable<void> {
+    return this.http.delete<void>(`${this.apiUrl}/missions/${id}`);
+  }
+
   private notifyMissionEvent(
     mission: Mission,
     type: NotificationType,

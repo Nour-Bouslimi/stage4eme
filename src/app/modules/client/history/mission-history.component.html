@@ -116,6 +116,16 @@
               >
                 <mat-icon>star_outline</mat-icon>
               </button>
+                     <button
+                       class="action-btn delete"
+                       *ngIf="canDeleteMission(mission)"
+                       type="button"
+                       (click)="askDeleteMission(mission)"
+                       mat-icon-button
+                       aria-label="Supprimer définitivement"
+                     >
+                       <mat-icon>delete</mat-icon>
+                     </button>
             </div>
           </td>
         </tr>
@@ -171,7 +181,9 @@
       <div class="modal-actions">
         <button type="button" class="modal-btn secondary" (click)="closeActionModal()">Non</button>
         <button type="button" class="modal-btn primary" (click)="confirmAction()" [disabled]="submittingAction">
-          <span *ngIf="!submittingAction">{{ actionMode === 'restore' ? 'Remettre en cours' : 'Oui, annuler' }}</span>
+          <span *ngIf="!submittingAction">
+            {{ actionMode === 'restore' ? 'Remettre en cours' : (actionMode === 'delete' ? 'Oui, supprimer' : 'Oui, annuler') }}
+          </span>
           <span *ngIf="submittingAction">Traitement...</span>
         </button>
       </div>
