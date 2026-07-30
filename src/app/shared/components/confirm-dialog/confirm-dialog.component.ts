@@ -25,17 +25,20 @@ export interface ConfirmDialogData {
   styles: [`
     .confirm-dialog {
       padding: 20px;
+      background: var(--surface);
+      color: var(--text-1);
     }
     h2 {
       margin: 0 0 16px 0;
       font-size: 20px;
       font-weight: 600;
+      color: var(--text-1);
     }
     p {
       margin: 0;
       font-size: 14px;
       line-height: 1.5;
-      color: rgba(0, 0, 0, 0.87);
+      color: var(--text-2);
     }
   `]
 })

@@ -1,7 +1,7 @@
 .header {
   height: var(--header-height);
   background: var(--surface);
-  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+  border-bottom: 1px solid var(--border-color);
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -35,7 +35,7 @@
 }
 
 .menu-btn:hover {
-  background: var(--background);
+  background: var(--surface-2);
 }
 
 .breadcrumb {
@@ -68,7 +68,7 @@
 .search-bar {
   display: flex;
   align-items: center;
-  background: var(--background);
+  background: var(--surface-2);
   border-radius: 0.5rem;
   padding: 0.5rem 1rem;
   gap: 8px;
@@ -110,7 +110,7 @@
 }
 
 .icon-btn:hover {
-  background: var(--background);
+  background: var(--surface-2);
 }
 
 .badge {
@@ -144,7 +144,7 @@
 }
 
 .user-btn:hover {
-  background: var(--background);
+  background: var(--surface-2);
 }
 
 .user-avatar {
@@ -178,6 +178,7 @@
   background: var(--surface);
   border-radius: 8px;
   box-shadow: var(--shadow);
+  border: 1px solid var(--border-color);
   min-width: 12.5rem;
   overflow: hidden;
 }
@@ -223,7 +224,7 @@
   align-items: center;
   justify-content: space-between;
   padding: 16px;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+  border-bottom: 1px solid var(--border-color);
 }
 
 .notification-header h3 {
@@ -256,7 +257,7 @@
   display: flex;
   gap: 12px;
   padding: 16px;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.04);
+  border-bottom: 1px solid var(--border-color);
   cursor: pointer;
   transition: background 0.2s;
   min-width: 0;
@@ -267,7 +268,7 @@
 }
 
 .notification-item.unread {
-  background: rgba(255, 107, 44, 0.05);
+  background: rgba(255, 107, 44, 0.08);
 }
 
 .notification-icon {

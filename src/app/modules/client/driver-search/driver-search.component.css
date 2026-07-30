@@ -987,6 +987,171 @@
   box-shadow: 0 20px 50px rgba(15, 23, 42, 0.08);
 }
 
+:host-context(body[data-theme='dark']) .mission-summary,
+:host-context(body[data-theme='dark']) .all-drivers-summary,
+:host-context(body[data-theme='dark']) .drivers-panel,
+:host-context(body[data-theme='dark']) .map-panel,
+:host-context(body[data-theme='dark']) .selected-driver-card,
+:host-context(body[data-theme='dark']) .driver-card,
+:host-context(body[data-theme='dark']) .detail-modal,
+:host-context(body[data-theme='dark']) .detail-profile,
+:host-context(body[data-theme='dark']) .detail-card,
+:host-context(body[data-theme='dark']) .mission-route-details,
+:host-context(body[data-theme='dark']) .drivers-search-box,
+:host-context(body[data-theme='dark']) .filter-pill,
+:host-context(body[data-theme='dark']) .page-btn,
+:host-context(body[data-theme='dark']) .detail-btn,
+:host-context(body[data-theme='dark']) .btn-secondary,
+:host-context(body[data-theme='dark']) .map-credit {
+  background: var(--surface);
+  border-color: var(--border-color);
+  box-shadow: var(--shadow);
+}
+
+:host-context(body[data-theme='dark']) .mission-summary,
+:host-context(body[data-theme='dark']) .all-drivers-summary,
+:host-context(body[data-theme='dark']) .drivers-panel,
+:host-context(body[data-theme='dark']) .map-panel,
+:host-context(body[data-theme='dark']) .detail-modal {
+  box-shadow: var(--shadow-lg);
+}
+
+:host-context(body[data-theme='dark']) .map-surface {
+  background:
+    linear-gradient(rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.06)),
+    linear-gradient(90deg, rgba(148, 163, 184, 0.08) 1px, transparent 1px),
+    linear-gradient(rgba(148, 163, 184, 0.08) 1px, transparent 1px),
+    #0e1727;
+}
+
+:host-context(body[data-theme='dark']) .map-road {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+:host-context(body[data-theme='dark']) .map-credit {
+  color: var(--text-2);
+}
+
+:host-context(body[data-theme='dark']) .search-breadcrumb,
+:host-context(body[data-theme='dark']) .crumb-separator,
+:host-context(body[data-theme='dark']) .summary-text,
+:host-context(body[data-theme='dark']) .summary-meta,
+:host-context(body[data-theme='dark']) .route-row,
+:host-context(body[data-theme='dark']) .driver-subtitle,
+:host-context(body[data-theme='dark']) .driver-stats,
+:host-context(body[data-theme='dark']) .availability,
+:host-context(body[data-theme='dark']) .placeholder-text,
+:host-context(body[data-theme='dark']) .detail-subtitle,
+:host-context(body[data-theme='dark']) .detail-meta,
+:host-context(body[data-theme='dark']) .results-count,
+:host-context(body[data-theme='dark']) .pagination-label,
+:host-context(body[data-theme='dark']) .empty-state p,
+:host-context(body[data-theme='dark']) .loading-state p {
+  color: var(--text-2);
+}
+
+:host-context(body[data-theme='dark']) .crumb.active,
+:host-context(body[data-theme='dark']) .summary-title,
+:host-context(body[data-theme='dark']) .summary-count,
+:host-context(body[data-theme='dark']) .summary-route,
+:host-context(body[data-theme='dark']) .summary-route strong,
+:host-context(body[data-theme='dark']) .selected-driver-top h3,
+:host-context(body[data-theme='dark']) .selected-driver-info,
+:host-context(body[data-theme='dark']) .driver-name-row h3,
+:host-context(body[data-theme='dark']) .rating,
+:host-context(body[data-theme='dark']) .route-row strong,
+:host-context(body[data-theme='dark']) .detail-summary,
+:host-context(body[data-theme='dark']) .detail-card strong,
+:host-context(body[data-theme='dark']) .detail-card span,
+:host-context(body[data-theme='dark']) .modal-kicker,
+:host-context(body[data-theme='dark']) .selected-driver-title {
+  color: var(--text-1);
+}
+
+:host-context(body[data-theme='dark']) .selected-driver-card {
+  background: linear-gradient(180deg, rgba(15, 23, 42, 0.96), rgba(17, 24, 39, 0.98));
+  border: 1px solid var(--border-color);
+}
+
+:host-context(body[data-theme='dark']) .driver-card {
+  background: linear-gradient(180deg, rgba(15, 23, 42, 0.96), rgba(17, 24, 39, 0.98));
+  border: 1px solid var(--border-color);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+
+:host-context(body[data-theme='dark']) .selected-driver-card.placeholder,
+:host-context(body[data-theme='dark']) .detail-profile,
+:host-context(body[data-theme='dark']) .detail-card,
+:host-context(body[data-theme='dark']) .mission-route-details {
+  background: var(--surface-2);
+}
+
+:host-context(body[data-theme='dark']) .detail-modal-backdrop {
+  background: rgba(2, 6, 23, 0.72);
+}
+
+:host-context(body[data-theme='dark']) .modal-close-btn {
+  background: var(--surface-2);
+  color: var(--text-1);
+}
+
+:host-context(body[data-theme='dark']) .filter-pill {
+  color: var(--text-2);
+}
+
+:host-context(body[data-theme='dark']) .filter-pill.active {
+  background: var(--primary);
+  color: #fff;
+}
+
+:host-context(body[data-theme='dark']) .page-btn {
+  color: var(--text-1);
+}
+
+:host-context(body[data-theme='dark']) .page-btn.number.active {
+  color: #fff;
+}
+
+:host-context(body[data-theme='dark']) .detail-btn {
+  background: var(--surface-2);
+  color: var(--text-1);
+}
+
+:host-context(body[data-theme='dark']) .detail-btn:hover {
+  background: var(--surface-3);
+}
+
+:host-context(body[data-theme='dark']) .btn-secondary {
+  background: var(--surface-2);
+  color: var(--text-1);
+}
+
+:host-context(body[data-theme='dark']) .selected-driver-badges .badge {
+  background: rgba(255, 107, 44, 0.12);
+  color: var(--secondary);
+}
+
+:host-context(body[data-theme='dark']) .rank-badge {
+  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.35);
+}
+
+:host-context(body[data-theme='dark']) .online-dot {
+  border-color: var(--surface);
+}
+
+:host-context(body[data-theme='dark']) .drivers-search-box input {
+  color: var(--text-1);
+}
+
+:host-context(body[data-theme='dark']) .mission-route-details .route-row {
+  border-bottom-color: var(--border-color);
+}
+
+:host-context(body[data-theme='dark']) .score-bar,
+:host-context(body[data-theme='dark']) .mini-bar {
+  background: var(--surface-3);
+}
+
 @media (max-width: 1200px) {
   .search-grid {
     grid-template-columns: 1fr;

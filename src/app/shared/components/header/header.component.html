@@ -18,7 +18,7 @@
   </div>
 
   <div class="header-right">
-    <button class="icon-btn" (click)="toggleDarkMode()">
+    <button class="icon-btn" (click)="toggleDarkMode()" [attr.aria-label]="darkMode ? 'Passer en mode clair' : 'Passer en mode sombre'">
       <mat-icon>{{ darkMode ? 'light_mode' : 'dark_mode' }}</mat-icon>
     </button>
 
