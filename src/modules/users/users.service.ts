@@ -1,3 +1,4 @@
+/* eslint-disable prettier/prettier */
 import {
   BadRequestException,
   Inject,
@@ -120,7 +121,7 @@ export class UsersService {
 
   private getFrontendLoginUrl() {
     const frontendUrl =
-      this.configService.get<string>('FRONTEND_URL') || 'http://localhost:4200';
+      this.configService.get<string>('FRONTEND_URL') || 'https://delivereasee.vercel.app';
     return new URL('/login', frontendUrl).toString();
   }
 
