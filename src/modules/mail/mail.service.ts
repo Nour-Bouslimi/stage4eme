@@ -1,33 +1,36 @@
-/* eslint-disable prettier/prettier */
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { randomBytes } from 'crypto';
-import { Resend } from 'resend';
+import * as brevo from '@getbrevo/brevo';
 
 @Injectable()
 export class MailService {
-  private resend: Resend;
+  private apiInstance: brevo.TransactionalEmailsApi;
   private from: string;
 
   constructor(private configService: ConfigService) {
-    const apiKey = this.configService.get<string>('RESEND_API_KEY');
-    this.resend = new Resend(apiKey);
+    this.apiInstance = new brevo.TransactionalEmailsApi();
+    this.apiInstance.setApiKey(
+      brevo.TransactionalEmailsApiApiKeys.apiKey,
+      this.configService.get<string>('BREVO_API_KEY'),
+    );
     this.from =
-      this.configService.get<string>('EMAIL_FROM') || 'onboarding@resend.dev';
+      this.configService.get<string>('EMAIL_FROM') ||
+      'bousliminour70@gmail.com';
   }
 
   async sendMail(to: string, subject: string, text: string, html?: string) {
     try {
-      const res = await this.resend.emails.send({
-        from: this.from,
-        to,
-        subject,
-        text,
-        html,
-      });
+      const sendSmtpEmail = new brevo.SendSmtpEmail();
+      sendSmtpEmail.subject = subject;
+      sendSmtpEmail.htmlContent = html || `<p>${text}</p>`;
+      sendSmtpEmail.sender = { email: this.from, name: 'DeliverEase' };
+      sendSmtpEmail.to = [{ email: to }];
+
+      const res = await this.apiInstance.sendTransacEmail(sendSmtpEmail);
       return res;
     } catch (err) {
-      console.error('Failed to send email via Resend', { to, subject, error: err });
+      console.error('Failed to send email via Brevo', { to, subject, error: err });
       throw err;
     }
   }
@@ -73,7 +76,7 @@ export class MailService {
     const text = [
       `Bonjour ${displayName},`,
       '',
-      'Votre compte livreur a été créé par l\'administrateur.',
+      "Votre compte livreur a été créé par l'administrateur.",
       `Email: ${params.email}`,
       `Mot de passe temporaire: ${params.temporaryPassword}`,
       'Vous devez modifier votre mot de passe dès votre première connexion.',
