@@ -215,16 +215,20 @@
               <h2>Date & heure</h2>
             </div>
             <div class="date-grid">
-              <label class="field-shell compact">
-                <mat-icon>event</mat-icon>
-                <input type="date" formControlName="dateDemandee" />
-              </label>
-              <p class="field-error" *ngIf="isFieldInvalid('dateDemandee')">La date demandee est obligatoire.</p>
-              <label class="field-shell compact">
-                <mat-icon>schedule</mat-icon>
-                <input type="time" formControlName="heureDemandee" />
-              </label>
-              <p class="field-error" *ngIf="isFieldInvalid('heureDemandee')">L'heure demandee est obligatoire.</p>
+              <div class="date-field">
+                <label class="field-shell compact">
+                  <mat-icon>event</mat-icon>
+                  <input type="date" formControlName="dateDemandee" />
+                </label>
+                <p class="field-error" *ngIf="isFieldInvalid('dateDemandee')">La date demandee est obligatoire.</p>
+              </div>
+              <div class="date-field">
+                <label class="field-shell compact">
+                  <mat-icon>schedule</mat-icon>
+                  <input type="time" formControlName="heureDemandee" />
+                </label>
+                <p class="field-error" *ngIf="isFieldInvalid('heureDemandee')">L'heure demandee est obligatoire.</p>
+              </div>
             </div>
           </article>
         </div>

@@ -1,11 +1,11 @@
 .header {
-  height: 64px;
+  height: var(--header-height);
   background: var(--surface);
   border-bottom: 1px solid rgba(0, 0, 0, 0.08);
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 24px;
+  padding: 0 clamp(0.875rem, 2vw, 1.5rem);
   position: fixed;
   top: 0;
   right: 0;
@@ -61,16 +61,16 @@
 
 .header-center {
   flex: 1;
-  max-width: 400px;
-  margin: 0 24px;
+  max-width: 28rem;
+  margin: 0 clamp(0.75rem, 2vw, 1.5rem);
 }
 
 .search-bar {
   display: flex;
   align-items: center;
   background: var(--background);
-  border-radius: 8px;
-  padding: 8px 16px;
+  border-radius: 0.5rem;
+  padding: 0.5rem 1rem;
   gap: 8px;
 }
 
@@ -178,7 +178,7 @@
   background: var(--surface);
   border-radius: 8px;
   box-shadow: var(--shadow);
-  min-width: 200px;
+  min-width: 12.5rem;
   overflow: hidden;
 }
 
@@ -212,7 +212,7 @@
   background: var(--surface);
   border-radius: 12px;
   box-shadow: var(--shadow);
-  width: 350px;
+  width: min(22rem, calc(100vw - 2rem));
   max-height: 400px;
   overflow: hidden;
   z-index: 1000;
@@ -259,6 +259,7 @@
   border-bottom: 1px solid rgba(0, 0, 0, 0.04);
   cursor: pointer;
   transition: background 0.2s;
+  min-width: 0;
 }
 
 .notification-item:hover {
@@ -289,9 +290,71 @@
   margin: 0 0 4px 0;
   font-size: 12px;
   color: var(--text-2);
+  overflow-wrap: anywhere;
 }
 
 .notification-time {
   font-size: 11px;
   color: var(--text-2);
+}
+
+@media (max-width: 1024px) {
+  .header {
+    left: 0;
+    width: 100%;
+  }
+
+  .header-center {
+    max-width: 22rem;
+  }
+}
+
+@media (max-width: 768px) {
+  .header {
+    gap: 0.75rem;
+  }
+
+  .header-center {
+    display: none;
+  }
+
+  .breadcrumb {
+    display: none;
+  }
+
+  .user-name {
+    display: none;
+  }
+
+  .notification-panel {
+    right: 0.5rem;
+    left: 0.5rem;
+    width: auto;
+  }
+}
+
+@media (max-width: 480px) {
+  .header {
+    padding-inline: 0.625rem;
+  }
+
+  .header-left {
+    gap: 0.25rem;
+  }
+
+  .menu-btn,
+  .icon-btn,
+  .user-btn {
+    padding: 0.5rem;
+  }
+
+  .user-avatar {
+    width: 2rem;
+    height: 2rem;
+  }
+
+  .notification-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
 }

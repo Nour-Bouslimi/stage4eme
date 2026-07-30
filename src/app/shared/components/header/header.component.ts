@@ -63,6 +63,10 @@ export class HeaderComponent implements OnInit, OnDestroy {
   }
 
   toggleSidebarClick(): void {
+    if (typeof document !== 'undefined' && window.innerWidth <= 1024) {
+      document.body.classList.toggle('sidebar-open');
+    }
+
     this.toggleSidebar.emit();
   }
 
@@ -89,6 +93,7 @@ export class HeaderComponent implements OnInit, OnDestroy {
   }
 
   logout(): void {
+    this.closeMobileDrawer();
     this.authService.logout();
     this.router.navigate(['/auth/login']);
   }
@@ -191,5 +196,11 @@ export class HeaderComponent implements OnInit, OnDestroy {
     }
 
     return 'Tableau de bord';
+  }
+
+  private closeMobileDrawer(): void {
+    if (typeof document !== 'undefined') {
+      document.body.classList.remove('sidebar-open');
+    }
   }
 }

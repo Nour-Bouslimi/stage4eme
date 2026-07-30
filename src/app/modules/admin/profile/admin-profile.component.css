@@ -1,5 +1,8 @@
 .profil-page {
   padding: 0;
+  width: 100%;
+  max-width: 72rem;
+  margin: 0 auto;
 }
 
 .page-header {
@@ -28,6 +31,7 @@
   grid-template-columns: minmax(0, 1.65fr) minmax(320px, 0.85fr);
   gap: 28px;
   align-items: start;
+  width: 100%;
 }
 
 .profil-card {
@@ -463,6 +467,15 @@
 }
 
 @media (max-width: 768px) {
+  .profil-page {
+    max-width: 100%;
+  }
+
+  .page-header {
+    text-align: center;
+    justify-content: center;
+  }
+
   .profil-card {
     padding: 24px 20px;
   }
@@ -485,5 +498,23 @@
 
   .form-grid {
     grid-template-columns: 1fr;
+  }
+
+  .header-edit {
+    width: 100%;
+    justify-content: center;
+  }
+}
+
+@media (max-width: 480px) {
+  .profil-page {
+    padding-inline: 0.25rem;
+  }
+
+  .profil-card,
+  .summary-card,
+  .info-card,
+  .quick-actions-card {
+    border-radius: 1rem;
   }
 }

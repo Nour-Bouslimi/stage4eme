@@ -53,7 +53,7 @@
 
 .map-panel {
   position: relative;
-  min-height: 640px;
+  min-height: clamp(26rem, 72vh, 40rem);
   border-radius: 24px;
   overflow: hidden;
   box-shadow: 0 20px 50px rgba(15, 23, 42, 0.08);
@@ -63,7 +63,7 @@
 .tracking-map {
   width: 100%;
   height: 100%;
-  min-height: 640px;
+  min-height: clamp(26rem, 72vh, 40rem);
 }
 
 .map-eta {
@@ -533,7 +533,7 @@
 
   .map-panel,
   .tracking-map {
-    min-height: 540px;
+    min-height: 34rem;
   }
 }
 
@@ -544,11 +544,13 @@
 
   .tracking-header {
     align-items: flex-start;
+    flex-direction: column;
+    gap: 0.75rem;
   }
 
   .map-panel,
   .tracking-map {
-    min-height: 440px;
+    min-height: 26rem;
   }
 
   .map-eta {
@@ -569,5 +571,46 @@
     flex-direction: column;
     align-items: flex-start;
     gap: 2px;
+  }
+
+  .contact-driver-btn,
+  .view-mission-btn {
+    min-height: 3.25rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .tracking-breadcrumb {
+    font-size: 0.875rem;
+    margin-bottom: 1rem;
+  }
+
+  .page-title {
+    font-size: clamp(1.75rem, 8vw, 2.4rem);
+  }
+
+  .page-subtitle {
+    font-size: 1rem;
+  }
+
+  .map-panel,
+  .tracking-map {
+    min-height: 21rem;
+  }
+
+  .map-eta,
+  .map-footer {
+    padding-inline: 0.75rem;
+  }
+
+  .driver-card,
+  .eta-card,
+  .timeline-card,
+  .details-card {
+    border-radius: 1.25rem;
+  }
+
+  .contact-driver-btn {
+    width: 100%;
   }
 }

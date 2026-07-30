@@ -73,6 +73,8 @@ export class SidebarComponent implements OnInit {
   }
 
   onMenuItemClick(item: { route?: string; action?: 'tracking' | 'driver-search' | 'active-mission' }): void {
+    this.closeMobileDrawer();
+
     if (item.route) {
       this.navigate(item.route);
       return;
@@ -118,6 +120,7 @@ export class SidebarComponent implements OnInit {
   }
 
   logout(): void {
+    this.closeMobileDrawer();
     this.authService.logout();
     this.router.navigate(['/auth/login']);
   }
@@ -182,5 +185,11 @@ export class SidebarComponent implements OnInit {
       .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
     return trackableMissions[0] ?? null;
+  }
+
+  private closeMobileDrawer(): void {
+    if (typeof document !== 'undefined') {
+      document.body.classList.remove('sidebar-open');
+    }
   }
 }

@@ -244,6 +244,7 @@
 .map-shell app-map {
   display: block;
   width: 100%;
+  min-height: 470px;
 }
 
 .map-overlay {
@@ -584,8 +585,15 @@
 }
 
 .date-grid {
-  display: flex;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 12px;
+}
+
+.date-field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 
 .confirmation-grid {
@@ -912,6 +920,7 @@
   }
 
   .address-grid,
+  .date-grid,
   .map-stats,
   .category-grid,
   .vehicle-grid {
@@ -948,5 +957,42 @@
 
   .glass-card {
     padding: 18px;
+  }
+
+  .map-shell app-map {
+    min-height: 320px !important;
+    height: clamp(20rem, 52vw, 24rem) !important;
+  }
+
+  .map-legend,
+  .map-badge {
+    left: 12px;
+    right: 12px;
+    max-width: calc(100% - 24px);
+    white-space: normal;
+  }
+}
+
+@media (max-width: 480px) {
+  .create-mission-page {
+    padding-top: 1rem;
+    padding-bottom: 2rem;
+  }
+
+  .stepper {
+    gap: 0.875rem;
+  }
+
+  .step-line {
+    width: 2rem;
+  }
+
+  .choice-card {
+    padding: 0.875rem;
+  }
+
+  .map-shell app-map {
+    min-height: 280px !important;
+    height: clamp(17rem, 64vw, 22rem) !important;
   }
 }

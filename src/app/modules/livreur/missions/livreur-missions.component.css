@@ -551,6 +551,9 @@
 
 .modal-card {
   width: min(760px, calc(100vw - 48px));
+  max-height: calc(100vh - 48px);
+  display: flex;
+  flex-direction: column;
   border-radius: 24px;
   background: var(--surface);
   box-shadow: 0 24px 60px rgba(15, 23, 42, 0.28);
@@ -612,6 +615,8 @@
 
 .modal-body {
   padding: 22px 24px;
+  overflow-y: auto;
+  min-height: 0;
 }
 
 .details-modal .modal-body {

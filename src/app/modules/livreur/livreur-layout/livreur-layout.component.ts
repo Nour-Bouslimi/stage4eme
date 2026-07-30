@@ -7,4 +7,10 @@ import { Component } from '@angular/core';
 })
 export class LivreurLayoutComponent {
   collapsed = false;
+
+  closeMobileSidebar(): void {
+    if (typeof document !== 'undefined') {
+      document.body.classList.remove('sidebar-open');
+    }
+  }
 }

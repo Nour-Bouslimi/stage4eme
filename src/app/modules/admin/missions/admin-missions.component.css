@@ -376,6 +376,9 @@
 
 .modal-card {
   width: min(760px, calc(100vw - 48px));
+  max-height: calc(100vh - 48px);
+  display: flex;
+  flex-direction: column;
   border-radius: 24px;
   background: var(--surface);
   box-shadow: 0 24px 60px rgba(15, 23, 42, 0.28);
@@ -433,6 +436,8 @@
 
 .modal-body {
   padding: 22px 24px;
+  overflow-y: auto;
+  min-height: 0;
 }
 
 .details-modal .modal-body {
@@ -539,5 +544,31 @@
 
   .modal-header h2 {
     white-space: normal;
+  }
+
+  .page-header {
+    margin-bottom: 24px;
+  }
+
+  .missions-table-container {
+    overflow-x: auto;
+  }
+}
+
+@media (max-width: 480px) {
+  .page-title {
+    font-size: 1.75rem;
+  }
+
+  .filters-section {
+    padding: 16px;
+  }
+
+  .missions-table {
+    min-width: 52rem;
+  }
+
+  .modal-backdrop {
+    padding-inline: 10px;
   }
 }

@@ -17,6 +17,9 @@
   --radius-card: 12px;
   --radius-btn: 8px;
   --shadow: 0 2px 8px rgba(0,0,0,0.08);
+  --sidebar-width: 260px;
+  --sidebar-width-collapsed: 72px;
+  --header-height: 64px;
 }
 
 * {
@@ -26,9 +29,42 @@
   padding: 0;
 }
 
+html,
+body {
+  width: 100%;
+  min-height: 100%;
+}
+
 body {
   background: var(--background);
   color: var(--text-1);
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+img,
+svg,
+video,
+canvas {
+  max-width: 100%;
+  height: auto;
+}
+
+button,
+input,
+textarea,
+select {
+  font: inherit;
+}
+
+table {
+  width: 100%;
+}
+
+.main-content,
+.content {
+  min-width: 0;
 }
 
 .btn-primary {
@@ -56,7 +92,7 @@ body {
 }
 
 .sidebar {
-  width: 260px;
+  width: var(--sidebar-width);
   height: 100vh;
   background: var(--primary);
   position: fixed;
@@ -67,17 +103,17 @@ body {
 }
 
 .sidebar.collapsed {
-  width: 72px;
+  width: var(--sidebar-width-collapsed);
 }
 
 .main-content {
-  margin-left: 260px;
+  margin-left: var(--sidebar-width);
   min-height: 100vh;
   transition: margin-left 0.3s;
 }
 
 .main-content.expanded {
-  margin-left: 72px;
+  margin-left: var(--sidebar-width-collapsed);
 }
 
 /* Leaflet Map Styles */
@@ -125,4 +161,122 @@ body {
 .mat-mdc-option.mat-mdc-selected {
   background: var(--secondary);
   color: white;
+}
+
+/* Modal / popup scrolling */
+.modal-backdrop,
+.detail-modal-backdrop,
+.mission-modal-backdrop {
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.modal-card,
+.detail-modal,
+.mission-modal,
+.details-modal,
+.confirm-modal {
+  max-height: calc(100vh - 2rem);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.modal-body,
+.detail-modal-body,
+.details-modal .modal-body,
+.mission-modal-body,
+.modal-content {
+  overflow-y: auto;
+  min-height: 0;
+}
+
+.modal-body::-webkit-scrollbar,
+.detail-modal-body::-webkit-scrollbar,
+.details-modal .modal-body::-webkit-scrollbar,
+.mission-modal-body::-webkit-scrollbar,
+.modal-content::-webkit-scrollbar {
+  width: 0.5rem;
+}
+
+.modal-body::-webkit-scrollbar-track,
+.detail-modal-body::-webkit-scrollbar-track,
+.details-modal .modal-body::-webkit-scrollbar-track,
+.mission-modal-body::-webkit-scrollbar-track,
+.modal-content::-webkit-scrollbar-track {
+  background: rgba(148, 163, 184, 0.12);
+}
+
+.modal-body::-webkit-scrollbar-thumb,
+.detail-modal-body::-webkit-scrollbar-thumb,
+.details-modal .modal-body::-webkit-scrollbar-thumb,
+.mission-modal-body::-webkit-scrollbar-thumb,
+.modal-content::-webkit-scrollbar-thumb {
+  background: rgba(100, 116, 139, 0.5);
+  border-radius: 999px;
+}
+
+.modal-body::-webkit-scrollbar-thumb:hover,
+.detail-modal-body::-webkit-scrollbar-thumb:hover,
+.details-modal .modal-body::-webkit-scrollbar-thumb:hover,
+.mission-modal-body::-webkit-scrollbar-thumb:hover,
+.modal-content::-webkit-scrollbar-thumb:hover {
+  background: rgba(71, 85, 105, 0.7);
+}
+
+body.sidebar-open {
+  overflow: hidden;
+}
+
+.mobile-sidebar-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.52);
+  backdrop-filter: blur(2px);
+  z-index: 950;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease;
+}
+
+body.sidebar-open .mobile-sidebar-backdrop {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+@media (max-width: 1024px) {
+  .sidebar {
+    width: min(84vw, 320px);
+    transform: translateX(-100%);
+    transition: transform 0.25s ease;
+  }
+
+  body.sidebar-open .sidebar {
+    transform: translateX(0);
+  }
+
+  .sidebar.collapsed {
+    width: min(84vw, 320px);
+  }
+
+  .main-content,
+  .main-content.expanded {
+    margin-left: 0;
+  }
+}
+
+@media (max-width: 768px) {
+  .card {
+    padding: 1rem;
+  }
+}
+
+@media (max-width: 480px) {
+  :root {
+    --header-height: 56px;
+  }
+
+  .card {
+    padding: 0.875rem;
+    border-radius: 0.875rem;
+  }
 }
