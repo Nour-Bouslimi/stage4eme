@@ -18,7 +18,9 @@ export class LivreurDashboardComponent implements OnInit {
   user: User | null = null;
   available = true;
   missions: Mission[] = [];
+  visibleMissions: Mission[] = [];
   activeMission: Mission | null = null;
+  readonly ratingStars = [1, 2, 3, 4, 5];
 
   stats = {
     today: 0,
@@ -167,6 +169,7 @@ export class LivreurDashboardComponent implements OnInit {
     this.missionService.getMyLivreurMissions().subscribe({
       next: (missions: Mission[]) => {
         this.missions = missions;
+        this.visibleMissions = missions.slice(0, 5);
         this.calculateStats(missions);
 
         // Find active mission
@@ -259,7 +262,7 @@ export class LivreurDashboardComponent implements OnInit {
   }
 
   getRatingStars(): number[] {
-    return Array.from({ length: 5 }, (_, i) => i + 1);
+    return this.ratingStars;
   }
 
   isRatingFilled(star: number): boolean {
@@ -271,7 +274,7 @@ export class LivreurDashboardComponent implements OnInit {
   }
 
   getRatingStarsForReview(rating: number): number[] {
-    return Array.from({ length: 5 }, (_, i) => i + 1);
+    return this.ratingStars;
   }
 
   isReviewRatingFilled(rating: number, star: number): boolean {
@@ -296,5 +299,13 @@ export class LivreurDashboardComponent implements OnInit {
       const cleaned = String(addressValue).trim();
       return cleaned ? [cleaned] : [];
     }
+  }
+
+  trackByMissionId(_: number, mission: Mission): string {
+    return mission.id;
+  }
+
+  trackByRatingId(_: number, rating: RatingResponse): string {
+    return rating.id;
   }
 }

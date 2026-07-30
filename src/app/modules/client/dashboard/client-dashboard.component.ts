@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { ChangeDetectionStrategy, ChangeDetectorRef, Component, OnInit } from '@angular/core';
 import { Router } from '@angular/router';
 import { AuthService } from '../../../core/services/auth.service';
 import { MissionService } from '../../../core/services/mission.service';
@@ -9,14 +9,17 @@ import { User } from '../../../core/models/user.model';
 @Component({
   selector: 'app-client-dashboard',
   templateUrl: './client-dashboard.component.html',
-  styleUrls: ['./client-dashboard.component.css']
+  styleUrls: ['./client-dashboard.component.css'],
+  changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class ClientDashboardComponent implements OnInit {
   userName = '';
   currentDate = '';
   missions: Mission[] = [];
   activeMissions: Mission[] = [];
+  visibleActiveMissions: Mission[] = [];
   availableDrivers: User[] = [];
+  selectedMissionDetailsView: Array<{ label: string; value: string }> = [];
   stats = {
     active: 0,
     completed: 0,
@@ -31,7 +34,8 @@ export class ClientDashboardComponent implements OnInit {
     private authService: AuthService,
     private missionService: MissionService,
     private router: Router,
-    private userService: UserService
+    private userService: UserService,
+    private cdr: ChangeDetectorRef
   ) {}
 
   ngOnInit(): void {
@@ -62,17 +66,24 @@ export class ClientDashboardComponent implements OnInit {
           mission.statut === MissionStatus.EN_ROUTE ||
           mission.statut === MissionStatus.EN_LIVRAISON
         );
+        this.visibleActiveMissions = this.activeMissions.slice(0, 5);
         this.calculateStats(missions);
         this.loading = false;
+        this.cdr.markForCheck();
       },
       error: () => {
         this.loading = false;
+        this.cdr.markForCheck();
       }
     });
 
     this.userService.getLivreursDisponibles().subscribe({
       next: (drivers) => {
         this.availableDrivers = drivers.slice(0, 3);
+        this.cdr.markForCheck();
+      },
+      error: () => {
+        this.cdr.markForCheck();
       }
     });
   }
@@ -99,11 +110,25 @@ export class ClientDashboardComponent implements OnInit {
   viewMission(mission: Mission): void {
     this.selectedMission = mission;
     this.isMissionModalOpen = true;
+    this.selectedMissionDetailsView = this.getMissionDetails(mission);
+  }
+
+  trackByMissionId(_: number, mission: Mission): string {
+    return mission.id;
+  }
+
+  trackByDriverId(_: number, driver: User): string {
+    return driver.id;
+  }
+
+  trackByDetailLabel(_: number, detail: { label: string }): string {
+    return detail.label;
   }
 
   closeMissionModal(): void {
     this.isMissionModalOpen = false;
     this.selectedMission = null;
+    this.selectedMissionDetailsView = [];
   }
 
   contactDriver(driverId: string): void {

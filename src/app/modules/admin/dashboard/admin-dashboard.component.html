@@ -280,7 +280,7 @@
 
       <div class="leaderboard" *ngIf="topLivreurs.length > 0; else emptyTopLivreurs">
         <article class="leaderboard-item" *ngFor="let item of topLivreurs; trackBy: trackByParticipant">
-          <img class="leaderboard-avatar" [src]="item.avatar" [alt]="item.name" />
+          <img class="leaderboard-avatar" [src]="item.avatar" [alt]="item.name" loading="lazy" decoding="async" />
           <div class="leaderboard-copy">
             <h3>{{ item.name }}</h3>
             <p>{{ item.email || 'Livreur' }}</p>
@@ -307,7 +307,7 @@
 
       <div class="leaderboard" *ngIf="topClients.length > 0; else emptyTopClients">
         <article class="leaderboard-item" *ngFor="let item of topClients; trackBy: trackByParticipant">
-          <img class="leaderboard-avatar" [src]="item.avatar" [alt]="item.name" />
+          <img class="leaderboard-avatar" [src]="item.avatar" [alt]="item.name" loading="lazy" decoding="async" />
           <div class="leaderboard-copy">
             <h3>{{ item.name }}</h3>
             <p>{{ item.email || 'Client' }}</p>
@@ -332,13 +332,13 @@
         <h2 class="panel-title">Missions récentes</h2>
       </div>
       <div class="panel-header-actions">
-        <span class="panel-badge">{{ getVisibleRecentMissions().length }} dernières missions</span>
+        <span class="panel-badge">{{ recentMissionsVisible.length }} dernières missions</span>
         <button type="button" class="text-link" (click)="goToMissions()">Voir tout</button>
       </div>
     </div>
 
-    <div class="recent-list" *ngIf="getVisibleRecentMissions().length > 0; else emptyRecent">
-      <article class="recent-item" *ngFor="let mission of getVisibleRecentMissions(); trackBy: trackByMissionId">
+    <div class="recent-list" *ngIf="recentMissionsVisible.length > 0; else emptyRecent">
+      <article class="recent-item" *ngFor="let mission of recentMissionsVisible; trackBy: trackByMissionId">
         <div class="recent-icon">
           <mat-icon>local_shipping</mat-icon>
         </div>

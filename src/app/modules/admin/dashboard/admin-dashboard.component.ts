@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { ChangeDetectionStrategy, ChangeDetectorRef, Component, OnInit } from '@angular/core';
 import { Router } from '@angular/router';
 import {
   AdminDashboardData,
@@ -20,11 +20,13 @@ type TrendPoint = {
 @Component({
   selector: 'app-admin-dashboard',
   templateUrl: './admin-dashboard.component.html',
-  styleUrls: ['./admin-dashboard.component.css']
+  styleUrls: ['./admin-dashboard.component.css'],
+  changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class AdminDashboardComponent implements OnInit {
   loading = true;
   errorMessage = '';
+  recentMissionsVisible: Mission[] = [];
 
   stats = {
     totalMissions: 0,
@@ -58,7 +60,8 @@ export class AdminDashboardComponent implements OnInit {
 
   constructor(
     private adminDashboardService: AdminDashboardService,
-    private router: Router
+    private router: Router,
+    private cdr: ChangeDetectorRef
   ) {}
 
   ngOnInit(): void {
@@ -74,6 +77,7 @@ export class AdminDashboardComponent implements OnInit {
       error: () => {
         this.loading = false;
         this.errorMessage = 'Impossible de charger les données du tableau de bord.';
+        this.cdr.markForCheck();
       }
     });
   }
@@ -181,7 +185,7 @@ export class AdminDashboardComponent implements OnInit {
   }
 
   getVisibleRecentMissions(): Mission[] {
-    return this.recentMissions.slice(0, 4);
+    return this.recentMissionsVisible;
   }
 
   getTrendSubtitle(): string {
@@ -257,6 +261,7 @@ export class AdminDashboardComponent implements OnInit {
     };
 
     this.recentMissions = dashboard.recentMissions ?? [];
+    this.recentMissionsVisible = this.recentMissions.slice(0, 4);
     this.dailyMissionSeries = dashboard.dailyMissionSeries ?? [];
     this.buildTrendChart();
     this.statusBreakdown = dashboard.statusBreakdown ?? [];
@@ -265,6 +270,7 @@ export class AdminDashboardComponent implements OnInit {
     this.topClients = dashboard.topClients ?? [];
     this.lastUpdated = dashboard.lastUpdated ?? null;
     this.loading = false;
+    this.cdr.markForCheck();
   }
 
   private parseAddressParts(addressValue: string | null | undefined): string[] {

@@ -187,7 +187,7 @@ export class TrackingComponent implements OnInit, OnDestroy {
     this.geolocationService.getRoute(departure, destination).pipe(takeUntil(this.destroy$)).subscribe({
       next: (route) => {
         this.routePolyline = route.polyline;
-        this.eta = Math.max(1, Math.round(route.durationMinutes));
+        this.eta = this.normalizeEtaMinutes(route.durationMinutes, this.getDirectDistanceKm(mission));
         this.updateRouteMetrics();
       },
       error: () => {
@@ -430,7 +430,7 @@ export class TrackingComponent implements OnInit, OnDestroy {
   }
 
   getRemainingDistanceLabel(): string {
-    const routeDistance = this.getRouteDistanceKm();
+    const routeDistance = this.getEffectiveRouteDistanceKm();
     if (routeDistance != null) {
       return `${routeDistance.toFixed(1)} km`;
     }
@@ -449,10 +449,89 @@ export class TrackingComponent implements OnInit, OnDestroy {
     return '—';
   }
 
-  private updateRouteMetrics(): void {
-    const routeDistance = this.getRouteDistanceKm();
+  getTotalRouteDistanceLabel(): string {
+    const routeDistance = this.getEffectiveRouteDistanceKm();
     if (routeDistance != null) {
-      this.eta = Math.max(1, Math.round(routeDistance * 2));
+      return `${routeDistance.toFixed(1)} km`;
+    }
+
+    if (this.mission?.distanceKm != null) {
+      return `${Number(this.mission.distanceKm).toFixed(1)} km`;
+    }
+
+    return '—';
+  }
+
+  getRouteSummaryLabel(): string {
+    if (!this.mission) {
+      return 'Trajet';
+    }
+
+    return `${this.getRouteDepartureLabel()} → ${this.getRouteDestinationLabel()}`;
+  }
+
+  getRouteDepartureLabel(): string {
+    if (!this.mission) {
+      return 'Départ';
+    }
+
+    return this.getCompactAddressLabel(this.mission.adresseRamassage);
+  }
+
+  getRouteDestinationLabel(): string {
+    if (!this.mission) {
+      return 'Destination';
+    }
+
+    return this.getCompactAddressLabel(this.mission.adresseLivraison);
+  }
+
+  getRouteContextLabel(): string {
+    if (!this.mission) {
+      return 'Suivi du trajet entre les deux adresses.';
+    }
+
+    const status = this.mission.statut;
+
+    if (status === MissionStatus.EN_ATTENTE) {
+      return 'Le trajet est préparé à partir du départ et de la destination.';
+    }
+
+    if (status === MissionStatus.ACCEPTEE) {
+      return 'Le livreur a accepté le trajet entre ces deux adresses.';
+    }
+
+    if (status === MissionStatus.EN_ROUTE) {
+      return this.driverLocation
+        ? 'Le livreur se rapproche du point de départ.'
+        : 'Le trajet est suivi en temps réel entre départ et destination.';
+    }
+
+    if (status === MissionStatus.ARRIVEE) {
+      return 'Le livreur est au point de départ et prépare le départ vers la destination.';
+    }
+
+    if (status === MissionStatus.EN_LIVRAISON) {
+      return this.driverLocation
+        ? 'Le livreur avance vers la destination.'
+        : 'La livraison suit l’axe entre les deux adresses.';
+    }
+
+    if (status === MissionStatus.TERMINEE || status === MissionStatus.LIVREE) {
+      return 'Le trajet entre les deux adresses a été terminé.';
+    }
+
+    if (status === MissionStatus.ANNULEE) {
+      return 'Le trajet entre les deux adresses a été annulé.';
+    }
+
+    return 'Trajet suivi entre les deux adresses.';
+  }
+
+  private updateRouteMetrics(): void {
+    const routeDistance = this.getEffectiveRouteDistanceKm();
+    if (routeDistance != null) {
+      this.eta = this.estimateDurationFromDistance(routeDistance);
       return;
     }
 
@@ -460,7 +539,7 @@ export class TrackingComponent implements OnInit, OnDestroy {
       const destination = this.getDestinationPoint(this.mission);
       if (destination) {
         const remainingDistance = this.haversineDistance(this.driverLocation.lat, this.driverLocation.lng, destination.lat, destination.lng);
-        this.eta = Math.max(1, Math.round(remainingDistance * 2));
+        this.eta = this.estimateDurationFromDistance(remainingDistance);
       }
     }
   }
@@ -564,7 +643,7 @@ export class TrackingComponent implements OnInit, OnDestroy {
     this.geolocationService.getRoute(this.driverLocation, destination).pipe(takeUntil(this.destroy$)).subscribe({
       next: (route) => {
         this.routePolyline = route.polyline;
-        this.eta = Math.max(1, Math.round(route.durationMinutes));
+        this.eta = this.normalizeEtaMinutes(route.durationMinutes, this.haversineDistance(this.driverLocation!.lat, this.driverLocation!.lng, destination.lat, destination.lng));
         this.updateRouteMetrics();
       },
       error: () => {
@@ -580,7 +659,7 @@ export class TrackingComponent implements OnInit, OnDestroy {
 
   private computeEtaFromPoints(start: { lat: number; lng: number }, end: { lat: number; lng: number }): number {
     const distance = this.haversineDistance(start.lat, start.lng, end.lat, end.lng);
-    return Math.max(1, Math.round(distance * 2));
+    return this.estimateDurationFromDistance(distance);
   }
 
   private getMapCenter(mission: Mission): [number, number] {
@@ -620,6 +699,15 @@ export class TrackingComponent implements OnInit, OnDestroy {
     return parts.length > 0 ? parts.join(', ') : 'Adresse';
   }
 
+  private getCompactAddressLabel(value: string | null | undefined): string {
+    const fullLabel = this.getAddressLabel(value);
+    if (fullLabel === '—') {
+      return 'Adresse';
+    }
+
+    return fullLabel.length > 34 ? `${fullLabel.slice(0, 31).trimEnd()}…` : fullLabel;
+  }
+
   private getCategoryLabel(category: string): string {
     const labels: Record<string, string> = {
       COLIS: 'Colis Express',
@@ -638,8 +726,13 @@ export class TrackingComponent implements OnInit, OnDestroy {
       return Math.max(1, Math.round(mission.dureeEstimee));
     }
 
+    const directDistance = this.getDirectDistanceKm(mission);
+    if (directDistance != null) {
+      return this.estimateDurationFromDistance(directDistance);
+    }
+
     if (mission.distanceKm) {
-      return Math.max(5, Math.round(mission.distanceKm * 2));
+      return this.estimateDurationFromDistance(mission.distanceKm);
     }
 
     return 12;
@@ -697,6 +790,72 @@ export class TrackingComponent implements OnInit, OnDestroy {
 
   private toRad(degrees: number): number {
     return degrees * (Math.PI / 180);
+  }
+
+  private getEffectiveRouteDistanceKm(): number | null {
+    const routeDistance = this.getRouteDistanceKm();
+    const directDistance = this.mission ? this.getDirectDistanceKm(this.mission) : null;
+    const missionDistance = this.mission?.distanceKm != null ? Number(this.mission.distanceKm) : null;
+
+    if (routeDistance != null && directDistance != null && routeDistance > directDistance * 1.75) {
+      return directDistance;
+    }
+
+    if (routeDistance != null) {
+      return routeDistance;
+    }
+
+    if (directDistance != null) {
+      return directDistance;
+    }
+
+    if (missionDistance != null && Number.isFinite(missionDistance)) {
+      return missionDistance;
+    }
+
+    return null;
+  }
+
+  private getDirectDistanceKm(mission: Mission): number | null {
+    const departure = this.getDeparturePoint(mission);
+    const destination = this.getDestinationPoint(mission);
+
+    if (!departure || !destination) {
+      return mission.distanceKm != null && Number.isFinite(Number(mission.distanceKm)) ? Number(mission.distanceKm) : null;
+    }
+
+    return this.haversineDistance(departure.lat, departure.lng, destination.lat, destination.lng);
+  }
+
+  private estimateDurationFromDistance(distanceKm: number): number {
+    if (!Number.isFinite(distanceKm) || distanceKm <= 0) {
+      return 12;
+    }
+
+    const speedKmh = distanceKm < 20 ? 35 : distanceKm < 80 ? 50 : distanceKm < 200 ? 65 : 75;
+    const estimatedMinutes = (distanceKm / speedKmh) * 60;
+    return Math.max(5, Math.round(estimatedMinutes));
+  }
+
+  private normalizeEtaMinutes(rawMinutes: number | null | undefined, distanceKm: number | null): number {
+    const estimatedMinutes = distanceKm != null ? this.estimateDurationFromDistance(distanceKm) : null;
+
+    if (!Number.isFinite(rawMinutes as number) || (rawMinutes as number) <= 0) {
+      return estimatedMinutes ?? 12;
+    }
+
+    const normalizedRawMinutes = Math.round(rawMinutes as number);
+
+    if (estimatedMinutes != null) {
+      const tooHigh = normalizedRawMinutes > estimatedMinutes * 1.75;
+      const tooLow = normalizedRawMinutes < estimatedMinutes * 0.5;
+
+      if (tooHigh || tooLow) {
+        return estimatedMinutes;
+      }
+    }
+
+    return Math.max(1, normalizedRawMinutes);
   }
 
   private toNumber(value: unknown): number | null {

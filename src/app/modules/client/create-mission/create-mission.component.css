@@ -244,6 +244,7 @@
 .map-shell app-map {
   display: block;
   width: 100%;
+  height: 470px;
   min-height: 470px;
 }
 

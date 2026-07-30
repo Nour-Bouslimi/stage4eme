@@ -112,7 +112,9 @@
           <div class="selected-driver-title">Livreur sélectionné</div>
           <div class="selected-driver-top">
             <img [src]="selectedDriver.avatar || selectedDriver.photo || 'assets/default-avatar.svg'"
-                 [alt]="selectedDriver.prenom + ' ' + selectedDriver.nom" />
+                 [alt]="selectedDriver.prenom + ' ' + selectedDriver.nom"
+                 loading="lazy"
+                 decoding="async" />
             <div>
               <h3>{{ selectedDriver.prenom }} {{ selectedDriver.nom }}</h3>
               <p>{{ getDriverVehicleLabel(selectedDriver) }}</p>
@@ -149,7 +151,7 @@
       <div class="drivers-list" *ngIf="paginatedDrivers.length > 0">
         <article
           class="driver-card"
-          *ngFor="let driver of paginatedDrivers"
+          *ngFor="let driver of paginatedDrivers; trackBy: trackByDriverId"
           [class.selected]="selectedDriver?.id === driver.id"
           (click)="selectDriver(driver)"
           (mouseenter)="highlightDriverOnMap(driver)"
@@ -164,7 +166,9 @@
           <div class="driver-top">
             <div class="driver-avatar">
               <img [src]="driver.avatar || driver.photo || 'assets/default-avatar.svg'"
-                   [alt]="driver.prenom + ' ' + driver.nom" />
+                   [alt]="driver.prenom + ' ' + driver.nom"
+                   loading="lazy"
+                   decoding="async" />
               <span class="online-dot" [class.online]="driver.estEnLigne"></span>
             </div>
             <div class="driver-main">
@@ -253,7 +257,7 @@
             <mat-icon>chevron_left</mat-icon>
           </button>
           <button class="page-btn number" type="button"
-                  *ngFor="let page of visiblePages"
+                  *ngFor="let page of pageNumbers; trackBy: trackByPageNumber"
                   [class.active]="page === currentPage"
                   (click)="onPageChange(page)">
             {{ page }}
@@ -300,7 +304,9 @@
       <div class="detail-modal-body">
         <div class="detail-profile">
           <img [src]="selectedDriver.avatar || selectedDriver.photo || 'assets/default-avatar.svg'"
-               [alt]="selectedDriver.prenom" />
+               [alt]="selectedDriver.prenom"
+               loading="lazy"
+               decoding="async" />
           <div>
             <p class="detail-subtitle">{{ getDriverVehicleLabel(selectedDriver) }}</p>
             <p class="detail-summary">{{ getDriverSubtitle(selectedDriver) }}</p>
@@ -312,7 +318,7 @@
           </div>
         </div>
         <div class="detail-grid">
-          <div class="detail-card" *ngFor="let detail of getDriverDetails(selectedDriver)">
+          <div class="detail-card" *ngFor="let detail of selectedDriverDetailsView; trackBy: trackByDetailLabel">
             <span>{{ detail.label }}</span>
             <strong>{{ detail.value }}</strong>
           </div>

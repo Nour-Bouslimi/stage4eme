@@ -124,7 +124,7 @@ getRoute(start: { lat: number; lng: number }, end: { lat: number; lng: number })
 }> {
   return this.http.post<unknown>(
     `${this.apiUrl}/route`,
-    { start, end }  // ← correction ici
+    { depart: start, destination: end }
   ).pipe(
     map((response) => this.normalizeRouteResponse(response, start, end)),
     catchError(() => of(this.buildFallbackRoute(start, end)))

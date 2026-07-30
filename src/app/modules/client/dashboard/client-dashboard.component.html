@@ -91,7 +91,7 @@
           <div class="table-cell">Actions</div>
         </div>
 
-        <div class="table-row" *ngFor="let mission of activeMissions.slice(0, 5)">
+        <div class="table-row" *ngFor="let mission of visibleActiveMissions; trackBy: trackByMissionId">
           <div class="table-cell">
             <div class="route-info stacked">
               <span class="route-point">{{ getAddressLabel(mission.adresseRamassage) }}</span>
@@ -110,7 +110,7 @@
           <div class="table-cell">
             <div class="driver-info" *ngIf="mission.livreur">
               <div class="driver-avatar">
-                <img [src]="mission.livreur.avatar || 'assets/default-avatar.svg'" alt="Livreur" />
+                <img [src]="mission.livreur.avatar || 'assets/default-avatar.svg'" alt="Livreur" loading="lazy" decoding="async" />
               </div>
               <span>{{ getDriverLabel(mission) }}</span>
             </div>
@@ -144,9 +144,9 @@
       </div>
 
       <div class="drivers-list">
-        <div class="driver-card" *ngFor="let driver of availableDrivers">
+        <div class="driver-card" *ngFor="let driver of availableDrivers; trackBy: trackByDriverId">
           <div class="driver-avatar">
-            <img [src]="driver.avatar || 'assets/default-avatar.svg'" alt="Livreur" />
+            <img [src]="driver.avatar || 'assets/default-avatar.svg'" alt="Livreur" loading="lazy" decoding="async" />
           </div>
           <div class="driver-details">
             <p class="driver-name">{{ driver.prenom }} {{ driver.nom }}</p>
@@ -188,7 +188,7 @@
       </div>
 
       <div class="mission-details-grid">
-        <div class="detail-item" *ngFor="let detail of getMissionDetails(selectedMission)">
+        <div class="detail-item" *ngFor="let detail of selectedMissionDetailsView; trackBy: trackByDetailLabel">
           <span class="detail-label">{{ detail.label }}</span>
           <span class="detail-value">{{ detail.value }}</span>
         </div>

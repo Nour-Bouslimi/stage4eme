@@ -70,15 +70,30 @@
 
       <section class="eta-card">
         <div class="eta-icon">
-          <mat-icon>schedule</mat-icon>
+          <mat-icon>route</mat-icon>
         </div>
+
         <div class="eta-content">
+          <span class="eta-caption">Trajet dynamique</span>
+          <strong class="eta-route">{{ getRouteSummaryLabel() }}</strong>
+          <p class="eta-context">{{ getRouteContextLabel() }}</p>
+          <div class="eta-addresses">
+            <span class="eta-address eta-address--departure">
+              <mat-icon>radio_button_checked</mat-icon>
+              <span>{{ getRouteDepartureLabel() }}</span>
+            </span>
+            <span class="eta-address eta-address--destination">
+              <mat-icon>location_on</mat-icon>
+              <span>{{ getRouteDestinationLabel() }}</span>
+            </span>
+          </div>
+        </div>
+
+        <div class="eta-distance">
           <span>Arrivée estimée</span>
           <strong>~{{ eta }} min</strong>
-        </div>
-        <div class="eta-distance">
-          <span>Distance restante</span>
-          <strong>{{ getRemainingDistanceLabel() }}</strong>
+          <small>Distance restante {{ getRemainingDistanceLabel() }}</small>
+          <small *ngIf="getTotalRouteDistanceLabel() !== '—'">Distance totale {{ getTotalRouteDistanceLabel() }}</small>
         </div>
       </section>
 

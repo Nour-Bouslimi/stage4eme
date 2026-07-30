@@ -21,7 +21,7 @@
       </div>
       <div class="rating-right">
         <div class="stars">
-          <span *ngFor="let star of getRatingStars()" class="star" [class.filled]="isRatingFilled(star)" [class.half]="isRatingHalf(star)">★</span>
+          <span *ngFor="let star of ratingStars" class="star" [class.filled]="isRatingFilled(star)" [class.half]="isRatingHalf(star)">★</span>
         </div>
         <div class="count">{{ totalRatings }} avis</div>
       </div>
@@ -127,7 +127,7 @@
       </div>
 
       <div class="missions-list">
-        <div class="mission-item" *ngFor="let mission of missions.slice(0, 5)">
+        <div class="mission-item" *ngFor="let mission of visibleMissions; trackBy: trackByMissionId">
           <div class="mission-icon">
             <mat-icon>local_shipping</mat-icon>
           </div>
@@ -154,9 +154,9 @@
       </div>
 
       <div class="ratings-list">
-        <div class="rating-item" *ngFor="let rating of recentRatings">
+        <div class="rating-item" *ngFor="let rating of recentRatings; trackBy: trackByRatingId">
           <div class="rating-stars">
-            <span *ngFor="let star of getRatingStarsForReview(rating.etoiles)" class="star" [class.filled]="isReviewRatingFilled(rating.etoiles, star)" [class.half]="isReviewRatingHalf(rating.etoiles, star)">★</span>
+            <span *ngFor="let star of ratingStars" class="star" [class.filled]="isReviewRatingFilled(rating.etoiles, star)" [class.half]="isReviewRatingHalf(rating.etoiles, star)">★</span>
           </div>
           <div class="rating-content">
             <p class="rating-comment">{{ rating.commentaire || 'Pas de commentaire' }}</p>

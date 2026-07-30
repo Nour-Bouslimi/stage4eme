@@ -39,10 +39,16 @@ export class MapComponent implements AfterViewInit, OnChanges, OnDestroy {
   private map: L.Map | null = null;
   private markerLayer: L.LayerGroup | null = null;
   private polylineLayer: L.LayerGroup | null = null;
+  private resizeObserver: ResizeObserver | null = null;
 
   ngAfterViewInit(): void {
     this.initMap();
     this.refreshMap();
+
+    if (typeof ResizeObserver !== 'undefined' && this.mapContainer?.nativeElement) {
+      this.resizeObserver = new ResizeObserver(() => this.scheduleResize());
+      this.resizeObserver.observe(this.mapContainer.nativeElement);
+    }
   }
 
   ngOnChanges(changes: SimpleChanges): void {
@@ -62,6 +68,11 @@ export class MapComponent implements AfterViewInit, OnChanges, OnDestroy {
   }
 
   ngOnDestroy(): void {
+    if (this.resizeObserver) {
+      this.resizeObserver.disconnect();
+      this.resizeObserver = null;
+    }
+
     if (this.map) {
       this.map.remove();
       this.map = null;
@@ -210,15 +221,14 @@ export class MapComponent implements AfterViewInit, OnChanges, OnDestroy {
       return;
     }
 
-    const refresh = () => {
-      if (!this.map) {
-        return;
-      }
+    const refresh = () => this.map?.invalidateSize(true);
 
-      this.map.invalidateSize(true);
-    };
+    requestAnimationFrame(() => {
+      refresh();
+      requestAnimationFrame(refresh);
+    });
 
-    setTimeout(refresh, 0);
-    setTimeout(refresh, 200);
+    setTimeout(refresh, 60);
+    setTimeout(refresh, 220);
   }
 }

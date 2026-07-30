@@ -36,6 +36,7 @@ export class DriverSearchComponent implements OnInit {
   drivers: DriverItem[] = [];
   filteredDrivers: DriverItem[] = [];
   paginatedDrivers: DriverItem[] = [];
+  pageNumbers: number[] = [];
   recommendations: DriverRecommendation[] = []; // ← nouveau
   totalDrivers = 0;
   availableDriversCount = 0;
@@ -48,6 +49,7 @@ export class DriverSearchComponent implements OnInit {
   pageSize = 4;
   selectedDriver: DriverItem | null = null;
   selectedDriverDetails: User | null = null;
+  selectedDriverDetailsView: Array<{ label: string; value: string }> = [];
   detailModalOpen = false;
 
   // Carte ← nouveau
@@ -167,6 +169,7 @@ export class DriverSearchComponent implements OnInit {
         this.buildDriverMarkers(recommendations);
         this.applyFilters();
         this.selectedDriver = this.filteredDrivers[0] ?? null;
+        this.refreshSelectedDriverDetails();
         this.loading = false;
       },
       error: () => {
@@ -193,6 +196,7 @@ export class DriverSearchComponent implements OnInit {
         this.totalDrivers = totalDrivers.length || availableDrivers.length;
         this.applyFilters();
         this.selectedDriver = this.filteredDrivers[0] ?? null;
+        this.refreshSelectedDriverDetails();
         this.loading = false;
       },
       error: () => {
@@ -289,11 +293,14 @@ export class DriverSearchComponent implements OnInit {
   viewDriverProfile(driverId: string): void {
     this.selectedDriver = this.drivers.find((driver) => driver.id === driverId) ?? this.selectedDriver;
     this.selectedDriverDetails = this.selectedDriver ? { ...this.selectedDriver } : null;
+    this.refreshSelectedDriverDetails();
     this.detailModalOpen = !!this.selectedDriver;
   }
 
   selectDriver(driver: DriverItem): void {
     this.selectedDriver = driver;
+    this.selectedDriverDetails = { ...driver };
+    this.refreshSelectedDriverDetails();
   }
 
   closeDriverDetail(): void {
@@ -316,10 +323,6 @@ export class DriverSearchComponent implements OnInit {
 
   get totalPages(): number {
     return Math.max(1, Math.ceil(this.filteredDrivers.length / this.pageSize));
-  }
-
-  get visiblePages(): number[] {
-    return Array.from({ length: this.totalPages }, (_, i) => i + 1);
   }
 
   getPaginationLabel(): string {
@@ -673,11 +676,14 @@ export class DriverSearchComponent implements OnInit {
     if (!this.selectedDriver || !this.filteredDrivers.some((driver) => driver.id === this.selectedDriver?.id)) {
       this.selectedDriver = this.filteredDrivers[0] ?? null;
     }
+
+    this.refreshSelectedDriverDetails();
   }
 
   private updatePagination(): void {
     const start = (this.currentPage - 1) * this.pageSize;
     this.paginatedDrivers = this.filteredDrivers.slice(start, start + this.pageSize);
+    this.pageNumbers = Array.from({ length: this.totalPages }, (_, i) => i + 1);
   }
 
   private hashToRange(seed: string, min: number, max: number): number {
@@ -687,5 +693,26 @@ export class DriverSearchComponent implements OnInit {
       hash |= 0;
     }
     return min + (max - min) * (Math.abs(hash) / 2147483647);
+  }
+
+  trackByDriverId(_: number, driver: DriverItem): string {
+    return driver.id;
+  }
+
+  trackByPageNumber(_: number, page: number): number {
+    return page;
+  }
+
+  trackByDetailLabel(_: number, detail: { label: string }): string {
+    return detail.label;
+  }
+
+  private refreshSelectedDriverDetails(): void {
+    if (!this.selectedDriver) {
+      this.selectedDriverDetailsView = [];
+      return;
+    }
+
+    this.selectedDriverDetailsView = this.getDriverDetails(this.selectedDriver);
   }
 }
