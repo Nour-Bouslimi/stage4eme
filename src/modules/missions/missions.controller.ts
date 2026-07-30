@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   Param,
   Patch,
@@ -70,6 +71,12 @@ export class MissionsController {
   @Patch(':id')
   async update(@Param('id') id: string, @Body() dto: UpdateMissionDto) {
     return this.missionsService.updateMission(id, dto);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Delete(':id')
+  async delete(@Param('id') id: string) {
+    return this.missionsService.deleteMission(id);
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)

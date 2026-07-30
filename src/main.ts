@@ -16,6 +16,7 @@ async function bootstrap() {
   //pour hebergement sur render
   app.enableCors({
     origin: [
+      'http://localhost:4200',
     'https://delivereasee.vercel.app', //  domaine de prod stable
     /\.vercel\.app$/                                // autorise tous les previews Vercel
   ],

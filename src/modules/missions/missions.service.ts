@@ -18,9 +18,12 @@ import {
   toMission,
   toPublicUser,
 } from '../../common/utils/api-mappers';
+import { Message } from '../chat/entities/message.entity';
 import { GeolocationService } from '../geolocation/geolocation.service';
+import { Notification } from '../notifications/entities/notification.entity';
 import { NotificationsService } from '../notifications/notifications.service';
 import { NotificationsGateway } from '../notifications/notifications.gateway';
+import { Notation } from '../ratings/entities/notation.entity';
 import { Utilisateur } from '../users/entities/user.entity';
 import { UsersService } from '../users/users.service';
 import { CreateMissionDto } from './dto/create-mission.dto';
@@ -480,6 +483,23 @@ export class MissionsService {
     });
     if (!mission) throw new NotFoundException('Mission non trouvée');
     return mission;
+  }
+
+  async deleteMission(id: string) {
+    await this.findEntityById(id);
+
+    await this.missionRepo.manager.transaction(async (manager) => {
+      const notificationRepo = manager.getRepository(Notification);
+      const messageRepo = manager.getRepository(Message);
+      const notationRepo = manager.getRepository(Notation);
+
+      await notificationRepo.delete({ mission: { id } } as any);
+      await messageRepo.delete({ mission: { id } } as any);
+      await notationRepo.delete({ mission: { id } } as any);
+      await manager.getRepository(Mission).delete(id);
+    });
+
+    return { deleted: true, id };
   }
 
   async findByClientId(clientId: string, viewer?: NotificationViewer) {
