@@ -1,98 +1,250 @@
+# 🚚 DeliverEase
+
+Application web de livraison/transport à la demande, mettant en relation clients et livreurs avec suivi en temps réel, chat intégré, et un moteur de compatibilité véhicule/mission.
+
+---
+
+## 📸 Aperçu de l'application
+
+### Authentification
 <p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
+  <img src="public/assets/screenshot-login.png" width="45%" alt="Page de connexion" />
+  <img src="public/assets/screenshot-register.png" width="45%" alt="Page d'inscription" />
 </p>
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
-
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
+### Espace client
+<p align="center">
+  <img src="public/assets/screenshot-client-dashboard.png" width="45%" alt="Dashboard client" />
+  <img src="public/assets/screenshot-create-mission.png" width="45%" alt="Création de mission" />
 </p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
 
-## Description
+### Suivi en temps réel & chat
+<p align="center">
+  <img src="public/assets/screenshot-tracking.png" width="45%" alt="Suivi temps réel" />
+  <img src="public/assets/screenshot-chat.png" width="45%" alt="Chat client-livreur" />
+</p>
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+### Espace livreur
+<p align="center">
+  <img src="public/assets/screenshot-livreur-dashboard.png" width="45%" alt="Dashboard livreur" />
+  <img src="public/assets/screenshot-livreur-missions.png" width="45%" alt="Missions du livreur" />
+</p>
 
-## Project setup
+### Espace administrateur
+<p align="center">
+  <img src="public/assets/screenshot-admin-dashboard.png" width="45%" alt="Dashboard admin" />
+  <img src="public/assets/screenshot-admin-livreurs.png" width="45%" alt="Gestion des livreurs" />
+</p>
 
-```bash
-$ npm install
+
+---
+
+## ✨ Fonctionnalités
+
+### 🔐 Authentification & Sécurité
+- Connexion / Inscription
+- Réinitialisation du mot de passe (avec token de redirection)
+- Intercepteur JWT pour les routes protégées
+- Contrôle d'accès par rôle (client / livreur / admin)
+
+### 👤 Espace Client
+- Dashboard et profil client
+- Création de mission avec estimation du prix
+- Recherche de livreurs disponibles selon la compatibilité (type de véhicule, poids, volume, rayon de service)
+- Suivi en temps réel d'une mission (géolocalisation live)
+- Chat en temps réel avec le livreur
+- Historique des missions
+- Notation du livreur après la mission
+
+### 🛵 Espace Livreur
+- Dashboard et profil livreur
+- Liste des missions assignées
+- Vue dédiée à la mission active
+- Chat en temps réel avec le client
+
+### 🛠️ Espace Administrateur
+- Dashboard avec indicateurs clés (missions, clients, livreurs, statuts)
+- Gestion des clients (consultation, désactivation/réactivation)
+- Gestion des livreurs (création de compte avec envoi automatique des identifiants par email)
+- Gestion des missions (attribution, suivi, statuts)
+- Notifications en temps réel
+
+### 🤖 Intelligence & recommandation
+- Suggestion intelligente du type de véhicule requis selon les caractéristiques du colis (via l'API Groq)
+- Système de recommandation de livreur pour une mission donnée
+
+---
+
+## 🏗️ Stack technique
+
+| Côté | Technologies |
+|---|---|
+| **Backend** | NestJS · PostgreSQL · TypeORM · Socket.IO |
+| **Frontend** | Angular 18 (NgModule) |
+| **Temps réel** | Socket.IO (tracking, chat, notifications) |
+| **Cartographie** | Leaflet + OpenStreetMap |
+| **Stockage images** | Cloudinary |
+| **Emails transactionnels** | Brevo (API) |
+| **IA / Suggestion** | Groq API |
+| **Déploiement** | Backend → Render · Frontend → Vercel |
+
+---
+
+## 📂 Architecture du projet
+
+```
+stage4eme/
+├── main (branche)          → Backend NestJS
+│   └── src/
+│       └── modules/
+│           ├── auth/
+│           ├── users/
+│           ├── missions/
+│           ├── chat/
+│           ├── ratings/
+│           ├── notifications/
+│           ├── geolocation/
+│           ├── vehicle-suggestion/
+│           ├── driver-recommendation/
+│           ├── admin-dashboard/
+│           ├── cloudinary/
+│           └── mail/
+└── frontend (branche)      → Frontend Angular
+    └── src/
+        └── app/
+            └── modules/
+                ├── auth/
+                ├── client/
+                ├── livreur/
+                ├── admin/
+                └── shared/
 ```
 
-## Compile and run the project
+---
+
+## ⚙️ Prérequis
+
+- Node.js ≥ 18
+- PostgreSQL ≥ 14
+- Un compte [Cloudinary](https://cloudinary.com) (stockage d'images)
+- Un compte [Brevo](https://www.brevo.com) (envoi d'emails, avec expéditeur vérifié)
+- Une clé API [Groq](https://console.groq.com) (suggestion intelligente)
+
+---
+
+## 🚀 Installation en local
+
+### 1. Cloner le repo
 
 ```bash
-# development
-$ npm run start
-
-# watch mode
-$ npm run start:dev
-
-# production mode
-$ npm run start:prod
+git clone https://github.com/Nour-Bouslimi/stage4eme.git
+cd stage4eme
 ```
 
-## Run tests
+### 2. Backend
 
 ```bash
-# unit tests
-$ npm run test
-
-# e2e tests
-$ npm run test:e2e
-
-# test coverage
-$ npm run test:cov
+git checkout main
+npm install
 ```
 
-## Deployment
+Crée un fichier `.env` à la racine du backend en te basant sur `.env.example` :
 
-When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
+```env
+PORT=3000
+JWT_SECRET=ton_secret
 
-If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
+# Base de données locale
+DB_HOST=localhost
+DB_PORT=5432
+DB_USER=postgres
+DB_PASS=ton_mot_de_passe
+DB_NAME=stage4eme
+
+# Cloudinary
+CLOUDINARY_CLOUD_NAME=...
+CLOUDINARY_API_KEY=...
+CLOUDINARY_API_SECRET=...
+
+# Email (Brevo)
+BREVO_API_KEY=xkeysib-...
+EMAIL_FROM=ton_email_verifie@example.com
+FRONTEND_URL=http://localhost:4200
+
+# IA (Groq)
+GROQ_API_KEY=...
+```
+
+Lance le backend :
 
 ```bash
-$ npm install -g @nestjs/mau
-$ mau deploy
+npm run start:dev
 ```
 
-With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
+Le backend démarre sur `http://localhost:3000`.
 
-## Resources
+### 3. Frontend
 
-Check out a few resources that may come in handy when working with NestJS:
+```bash
+git checkout frontend
+npm install
+npm start
+```
 
-- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
-- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
-- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
-- Deploy your application to AWS with the help of [NestJS Mau](https://mau.nestjs.com) in just a few clicks.
-- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
-- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
-- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
-- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
+Le frontend démarre sur `http://localhost:4200`.
 
-## Support
+> ⚠️ Vérifie que `src/environments/environment.ts` pointe bien vers `http://localhost:3000` pour le développement local.
 
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
+---
 
-## Stay in touch
+## ☁️ Déploiement en production
 
-- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
+### Backend → Render
 
-## License
+1. Crée un **Web Service** sur [Render](https://render.com), connecté à la branche `main` du repo
+2. Build Command : `npm install && npm run build`
+3. Start Command : `npm run start:prod`
+4. Ajoute toutes les variables d'environnement listées ci-dessus dans **Environment** (avec les vraies valeurs de production, notamment `FRONTEND_URL` pointant vers ton domaine Vercel)
+5. Une fois déployé, note l'URL générée (ex: `https://stage4eme-backend.onrender.com`)
 
-Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+> 💡 Le plan gratuit Render met le service en veille après 15 min d'inactivité (cold start de 30-60s à la relance).
+
+### Frontend → Vercel
+
+1. Crée un projet sur [Vercel](https://vercel.com), connecté à la branche `frontend` du repo
+2. Configure dans **Settings → Build and Deployment** :
+   - Build Command : `npm run vercel-build`
+   - Output Directory : `dist/frontendstage`
+3. Vérifie que `src/environments/environment.prod.ts` pointe vers l'URL du backend Render :
+
+```ts
+export const environment = {
+  production: true,
+  apiUrl: 'https://stage4eme-backend.onrender.com',
+  socketUrl: 'https://stage4eme-backend.onrender.com',
+  mapTileUrl: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png'
+};
+```
+
+4. (Optionnel) Ajoute un domaine personnalisé dans **Settings → Domains**
+
+### CORS
+
+Dans `main.ts` du backend, autorise le domaine du frontend déployé :
+
+```ts
+app.enableCors({
+  origin: [
+    'http://localhost:4200',
+    'https://ton-domaine.vercel.app',
+    /\.vercel\.app$/
+  ],
+  credentials: true,
+});
+```
+
+---
+
+## 📝 Auteur
+
+Développé par **Nour Bouslimi** dans le cadre d'un stage ingénieur.
