@@ -2,6 +2,7 @@ import { Component, OnInit } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { Mission } from '../../../core/models/mission.model';
 import { MissionService } from '../../../core/services/mission.service';
+import { MissionRatingStateService } from '../../../core/services/mission-rating-state.service';
 import { RatingService } from '../../../core/services/rating.service';
 import { ToastService } from '../../../shared/components/toast/toast.service';
 import { User } from '../../../core/models/user.model';
@@ -35,10 +36,10 @@ export class RatingComponent implements OnInit {
   rating = 0;
   selectedTags: string[] = [];
   comment = '';
-  ratingId: string | null = null;
   loading = true;
   submitting = false;
   submitted = false;
+  ratingLocked = false;
 
   availableTags: RatingTag[] = [
     { value: Appreciation.PONCTUEL, label: 'Ponctuel' },
@@ -65,6 +66,7 @@ export class RatingComponent implements OnInit {
     private route: ActivatedRoute,
     private router: Router,
     private missionService: MissionService,
+    private missionRatingStateService: MissionRatingStateService,
     private ratingService: RatingService,
     private toastService: ToastService
   ) {}
@@ -80,12 +82,12 @@ export class RatingComponent implements OnInit {
     this.missionService.getMissionById(this.missionId).subscribe({
       next: (mission) => {
         this.mission = mission;
-        this.ratingId = mission.notation?.id ?? null;
         this.rating = mission.notation?.note ?? 0;
         this.selectedTags = Array.isArray(mission.notation?.tags)
           ? mission.notation.tags.map((tag) => String(tag))
           : [];
         this.comment = mission.notation?.commentaire ?? '';
+        this.ratingLocked = !!mission.notation || this.missionRatingStateService.isMissionRated(this.missionId);
         this.loading = false;
       },
       error: () => {
@@ -117,6 +119,11 @@ export class RatingComponent implements OnInit {
   }
 
   submitRating(): void {
+    if (this.ratingLocked) {
+      this.toastService.warning('Cette mission a déjà été notée');
+      return;
+    }
+
     if (!this.isFormComplete()) {
       this.toastService.warning('Veuillez sélectionner une note et au moins un tag');
       return;
@@ -134,14 +141,7 @@ export class RatingComponent implements OnInit {
       commentaire: this.comment?.trim() || undefined
     };
 
-    const request$ = this.ratingId
-      ? this.ratingService.updateRating(this.ratingId, {
-          etoiles: this.rating,
-          appreciations: appreciationValues,
-          tags: appreciationValues,
-          commentaire: this.comment?.trim() || undefined
-        })
-      : this.ratingService.createRating(payload);
+    const request$ = this.ratingService.createRating(payload);
 
     // debug: log payload before sending
     // eslint-disable-next-line no-console
@@ -149,6 +149,8 @@ export class RatingComponent implements OnInit {
 
     request$.subscribe({
       next: () => {
+        this.missionRatingStateService.markMissionRated(this.missionId);
+        this.ratingLocked = true;
         this.loadMission();
         this.submitted = true;
         this.submitting = false;
@@ -174,18 +176,19 @@ export class RatingComponent implements OnInit {
   }
 
   deleteRating(): void {
-    if (!this.ratingId) {
+    if (!this.mission?.notation?.id) {
       return;
     }
 
     this.submitting = true;
-    this.ratingService.deleteRating(this.ratingId).subscribe({
+    this.ratingService.deleteRating(this.mission.notation.id).subscribe({
       next: () => {
-        this.ratingId = null;
+        this.missionRatingStateService.clearMissionRating(this.missionId);
         this.rating = 0;
         this.selectedTags = [];
         this.comment = '';
         this.submitted = false;
+        this.ratingLocked = false;
         this.submitting = false;
         this.toastService.success('Votre avis a été supprimé');
         this.loadMission();

@@ -108,7 +108,7 @@
               </button>
               <button
                 class="action-btn rate"
-                *ngIf="!mission.notation && (mission.livreurId || mission.livreur)"
+                *ngIf="canRateMission(mission)"
                 type="button"
                 (click)="rateMission(mission.id)"
                 mat-icon-button

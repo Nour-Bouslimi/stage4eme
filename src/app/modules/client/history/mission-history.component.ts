@@ -1,6 +1,9 @@
 import { Component, OnInit } from '@angular/core';
 import { Router } from '@angular/router';
+import { forkJoin, of } from 'rxjs';
+import { catchError, map } from 'rxjs/operators';
 import { MissionService } from '../../../core/services/mission.service';
+import { MissionRatingStateService } from '../../../core/services/mission-rating-state.service';
 import { ToastService } from '../../../shared/components/toast/toast.service';
 import { Mission, MissionCategory, MissionStatus } from '../../../core/models/mission.model';
 
@@ -62,6 +65,7 @@ export class MissionHistoryComponent implements OnInit {
 
   constructor(
     private missionService: MissionService,
+    private missionRatingStateService: MissionRatingStateService,
     private router: Router,
     private toastService: ToastService
   ) {}
@@ -75,9 +79,7 @@ export class MissionHistoryComponent implements OnInit {
 
     this.missionService.getMissions().subscribe({
       next: (missions) => {
-        this.missions = missions;
-        this.filterMissions();
-        this.loading = false;
+        this.enrichMissionsWithDetails(missions);
       },
       error: () => {
         this.loading = false;
@@ -167,6 +169,7 @@ export class MissionHistoryComponent implements OnInit {
     }
 
     return [
+      MissionStatus.EN_ATTENTE,
       MissionStatus.ACCEPTEE,
       MissionStatus.EN_ROUTE,
       MissionStatus.ARRIVEE,
@@ -181,7 +184,54 @@ export class MissionHistoryComponent implements OnInit {
   }
 
   rateMission(missionId: string): void {
+    const mission = this.missions.find((item) => item.id === missionId);
+    if (mission?.notation || this.missionRatingStateService.isMissionRated(missionId)) {
+      this.toastService.warning('Cette mission a déjà été notée');
+      return;
+    }
+
     this.router.navigate(['/client/rating', missionId]);
+  }
+
+  canRateMission(mission: Mission): boolean {
+    const isTerminalMission = mission.statut === MissionStatus.TERMINEE || mission.statut === MissionStatus.LIVREE;
+    return isTerminalMission && !mission.notation && !this.missionRatingStateService.isMissionRated(mission.id) && !!(mission.livreurId || mission.livreur);
+  }
+
+  private enrichMissionsWithDetails(missions: Mission[]): void {
+    const missionsToRefresh = missions.filter((mission) => this.shouldRefreshMission(mission));
+
+    if (!missionsToRefresh.length) {
+      this.missions = missions;
+      this.filterMissions();
+      this.loading = false;
+      return;
+    }
+
+    forkJoin(
+      missionsToRefresh.map((mission) =>
+        this.missionService.getMissionById(mission.id).pipe(
+          catchError(() => of(mission))
+        )
+      )
+    ).subscribe({
+      next: (refreshedMissions) => {
+        const refreshedById = new Map(refreshedMissions.map((mission) => [mission.id, mission]));
+        this.missions = missions.map((mission) => refreshedById.get(mission.id) ?? mission);
+        this.filterMissions();
+        this.loading = false;
+      },
+      error: () => {
+        this.missions = missions;
+        this.filterMissions();
+        this.loading = false;
+      }
+    });
+  }
+
+  private shouldRefreshMission(mission: Mission): boolean {
+    const isTerminalMission = mission.statut === MissionStatus.TERMINEE || mission.statut === MissionStatus.LIVREE;
+    return isTerminalMission && !mission.notation;
   }
 
   openEditModal(mission: Mission): void {

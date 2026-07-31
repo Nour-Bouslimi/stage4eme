@@ -1,16 +1,11 @@
 <div class="rating-page">
   <ng-container *ngIf="!loading && mission; else loadingState">
     <section class="rating-shell" [class.is-complete]="submitted">
-      <ng-container *ngIf="!submitted; else successState">
+      <ng-container *ngIf="!submitted && !ratingLocked; else ratingState">
         <header class="page-intro">
           <h1>Évaluer la mission</h1>
           <p>Partagez votre expérience avec {{ getDriverName() }}</p>
         </header>
-
-        <div class="notice" *ngIf="mission.notation && !ratingId">
-          <mat-icon color="warn">error</mat-icon>
-          <span class="notice-text">Mission déjà notée</span>
-        </div>
 
         <article class="mission-card">
           <div class="mission-main">
@@ -48,7 +43,7 @@
                 class="star-button"
                 *ngFor="let star of [1, 2, 3, 4, 5]"
                 (click)="setRating(star)"
-                [disabled]="mission.notation && !ratingId"
+                [disabled]="ratingLocked"
                 [attr.aria-label]="'Noter ' + star + ' étoile' + (star > 1 ? 's' : '')"
               >
                 <mat-icon>{{ star <= rating ? 'star' : 'star_outline' }}</mat-icon>
@@ -68,7 +63,7 @@
               *ngFor="let tag of availableTags"
               [class.selected]="isTagSelected(tag.value)"
               (click)="toggleTag(tag.value)"
-              [disabled]="mission.notation && !ratingId"
+              [disabled]="ratingLocked"
             >
               {{ tag.label }}
             </button>
@@ -87,10 +82,7 @@
 
         <div class="actions-row">
           <button type="button" class="btn-secondary" (click)="skipRating()">Passer</button>
-          <button type="button" class="btn-secondary" *ngIf="ratingId && !submitting" (click)="deleteRating()">
-            Supprimer l'avis
-          </button>
-          <button type="submit" class="btn-primary" [disabled]="submitting || ratingForm.invalid || !isFormComplete() || (mission.notation && !ratingId)">
+          <button type="submit" class="btn-primary" [disabled]="submitting || ratingForm.invalid || !isFormComplete() || ratingLocked">
             <span *ngIf="!submitting">Envoyer l'évaluation</span>
             <span *ngIf="submitting">Envoi...</span>
           </button>
@@ -98,8 +90,8 @@
       </form>
       </ng-container>
 
-      <ng-template #successState>
-        <div class="success-card">
+      <ng-template #ratingState>
+        <div class="success-card" *ngIf="submitted; else alreadyRatedState">
           <div class="success-icon">
             <mat-icon>star</mat-icon>
           </div>
@@ -110,6 +102,20 @@
           </button>
         </div>
       </ng-template>
+
+      <ng-template #alreadyRatedState>
+        <div class="success-card">
+          <div class="success-icon">
+            <mat-icon>star_border</mat-icon>
+          </div>
+          <h2>Mission déjà notée</h2>
+          <p>Vous avez déjà évalué ce livreur pour cette mission. Il n'est plus possible de noter une deuxième fois.</p>
+          <button type="button" class="btn-primary success-button" (click)="goHome()">
+            Retour à l'accueil
+          </button>
+        </div>
+      </ng-template>
+
     </section>
   </ng-container>
 

@@ -90,10 +90,12 @@
         </div>
 
         <div class="eta-distance">
-          <span>Arrivée estimée</span>
-          <strong>~{{ eta }} min</strong>
-          <small>Distance restante {{ getRemainingDistanceLabel() }}</small>
-          <small *ngIf="getTotalRouteDistanceLabel() !== '—'">Distance totale {{ getTotalRouteDistanceLabel() }}</small>
+          <span>Distance estimée</span>
+          <strong>{{ formatDistance(getMissionDistanceKm()) }} km</strong>
+          <small>Durée estimée ~{{ formatDuration(getMissionDurationMin()) }} min</small>
+          <small *ngIf="getTotalRouteDistanceLabel() !== '—' && getTotalRouteDistanceLabel() !== formatDistance(getMissionDistanceKm()) + ' km'">
+            Distance totale {{ getTotalRouteDistanceLabel() }}
+          </small>
         </div>
       </section>
 

@@ -257,6 +257,64 @@ const readMissionId = (mission: Partial<Mission> & Record<string, unknown>): str
   return '';
 };
 
+const toNumber = (value: unknown): number | undefined => {
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    return value;
+  }
+
+  if (typeof value === 'string' && value.trim()) {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : undefined;
+  }
+
+  return undefined;
+};
+
+const readNotation = (mission: Partial<Mission> & Record<string, unknown>): Notation | null => {
+  const existingNotation = mission.notation;
+  if (existingNotation && typeof existingNotation === 'object') {
+    const note = toNumber(existingNotation.note);
+    const commentaire = typeof existingNotation.commentaire === 'string' ? existingNotation.commentaire : undefined;
+    const tags = Array.isArray(existingNotation.tags)
+      ? existingNotation.tags.map((tag) => String(tag)).filter(Boolean)
+      : undefined;
+
+    return {
+      id: typeof existingNotation.id === 'string' ? existingNotation.id : undefined,
+      note,
+      commentaire,
+      tags
+    };
+  }
+
+  const note = toNumber(mission['note'] ?? mission['rating'] ?? mission['etoiles']);
+  const commentaire = typeof mission['commentaire'] === 'string'
+    ? mission['commentaire']
+    : typeof mission['comment'] === 'string'
+      ? mission['comment']
+      : undefined;
+  const tagsSource = mission['tags'] ?? mission['appreciations'] ?? mission['apprciations'];
+  const tags = Array.isArray(tagsSource)
+    ? tagsSource.map((tag) => String(tag)).filter(Boolean)
+    : undefined;
+  const notationId = typeof mission['notationId'] === 'string'
+    ? mission['notationId']
+    : typeof mission['ratingId'] === 'string'
+      ? mission['ratingId']
+      : undefined;
+
+  if (note === undefined && !commentaire && !tags?.length && !notationId) {
+    return null;
+  }
+
+  return {
+    id: notationId,
+    note,
+    commentaire,
+    tags
+  };
+};
+
 const categoryToApi = (value: string | null | undefined): string | undefined => {
   if (!value) {
     return undefined;
@@ -368,7 +426,7 @@ export function normalizeMission(mission: Partial<Mission> = {}): Mission {
     client,
     livreur: livreur ?? null,
     messages: mission.messages ?? [],
-    notation: mission.notation ?? null,
+    notation: readNotation(mission as Partial<Mission> & Record<string, unknown>),
     notifications: mission.notifications ?? [],
     clientId: mission.clientId ?? client.id,
     livreurId: mission.livreurId ?? livreur?.id,

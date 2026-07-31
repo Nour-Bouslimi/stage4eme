@@ -529,6 +529,12 @@ export class TrackingComponent implements OnInit, OnDestroy {
   }
 
   private updateRouteMetrics(): void {
+    const missionDuration = this.getMissionDurationMin(this.mission);
+    if (missionDuration != null) {
+      this.eta = missionDuration;
+      return;
+    }
+
     const routeDistance = this.getEffectiveRouteDistanceKm();
     if (routeDistance != null) {
       this.eta = this.estimateDurationFromDistance(routeDistance);
@@ -570,6 +576,7 @@ export class TrackingComponent implements OnInit, OnDestroy {
     this.mapMarkers = this.buildMapMarkers(mission);
     this.mapCenter = this.getMapCenter(mission);
     this.mapZoom = this.getMapZoom(mission);
+    this.eta = this.getMissionDurationMin(mission) ?? this.computeEta(mission);
 
     if (this.driverLocation) {
       this.refreshDriverRoute(mission);
@@ -736,6 +743,58 @@ export class TrackingComponent implements OnInit, OnDestroy {
     }
 
     return 12;
+  }
+
+  getMissionDistanceKm(): number | null {
+    if (!this.mission) {
+      return null;
+    }
+
+    const directValue = this.toNumber(this.mission.distanceKm ?? this.mission.distance);
+    if (directValue != null) {
+      return directValue;
+    }
+
+    return this.getEffectiveRouteDistanceKm();
+  }
+
+  getMissionDurationMin(mission: Mission | null = this.mission): number | null {
+    if (!mission) {
+      return null;
+    }
+
+    const directValue = this.toNumber(mission.dureeEstimee);
+    if (directValue != null) {
+      return directValue;
+    }
+
+    const distanceKm = this.getMissionDistanceKm();
+    if (distanceKm != null) {
+      return this.estimateDurationFromDistance(distanceKm);
+    }
+
+    return null;
+  }
+
+  formatDistance(value: number | null | undefined): string {
+    if (value == null || Number.isNaN(value)) {
+      return '--';
+    }
+
+    return new Intl.NumberFormat('fr-TN', {
+      minimumFractionDigits: 1,
+      maximumFractionDigits: 2
+    }).format(value);
+  }
+
+  formatDuration(value: number | null | undefined): string {
+    if (value == null || Number.isNaN(value)) {
+      return '--';
+    }
+
+    return new Intl.NumberFormat('fr-TN', {
+      maximumFractionDigits: 0
+    }).format(value);
   }
 
   private formatMissionDate(value: Date | string | null | undefined): string {
