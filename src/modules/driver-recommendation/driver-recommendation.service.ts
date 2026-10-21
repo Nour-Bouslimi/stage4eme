@@ -31,53 +31,7 @@ export class DriverRecommendationService {
     private readonly missionRepository: Repository<Mission>,
   ) {}
 
-  /* async recommendDrivers(mission: Mission): Promise<DriverScore[]> {
-    // 1. Récupérer tous les livreurs disponibles avec le bon véhicule
-    const candidates = await this.userRepository
-      .createQueryBuilder('u')
-      .where('u.role = :role', { role: 'LIVREUR' })
-      .andWhere('u.estActif = true')
-      .andWhere('u.statutDisponibilite = :statut', {
-        statut: StatutDisponibilite.DISPONIBLE,
-      })
-      .andWhere(
-        mission.typeVehiculeRequis
-          ? 'u.typeVehicule = :type'
-          : '1=1',
-        { type: mission.typeVehiculeRequis },
-      )
-      .andWhere(
-        mission.poidsEstime
-          ? 'u.poidsMaxKg >= :poids'
-          : '1=1',
-        { poids: mission.poidsEstime },
-      )
-      .andWhere(
-        mission.volumeEstime
-          ? 'u.volumeMaxM3 >= :volume'
-          : '1=1',
-        { volume: mission.volumeEstime },
-      )
-      .andWhere('u.latitudeActuelle IS NOT NULL')
-      .andWhere('u.longitudeActuelle IS NOT NULL')
-      .getMany();
 
-    this.logger.log(
-      `${candidates.length} livreurs candidats pour mission ${mission.id}`,
-    );
-
-    if (!candidates.length) return [];
-
-    // 2. Calculer le score pour chaque livreur
-    const scored = await Promise.all(
-      candidates.map((livreur) =>
-        this.scoreDriver(livreur, mission),
-      ),
-    );
-
-    // 3. Trier par score décroissant
-    return scored.sort((a, b) => b.score - a.score);
-  } */
 
   async recommendDrivers(mission: Mission): Promise<DriverScore[]> {
     const qb = this.userRepository
@@ -130,6 +84,7 @@ export class DriverRecommendationService {
     livreur: Utilisateur,
     mission: Mission,
   ): Promise<DriverScore> {
+    // Calcul de la distance entre le livreur et le point de ramassage
     const distanceKm = this.haversine(
       livreur.latitudeActuelle,
       livreur.longitudeActuelle,
@@ -156,14 +111,14 @@ export class DriverRecommendationService {
         }),
       ]);
 
-    // ── Calcul des scores partiels (0 → 1 chacun) ──
+    //  Calcul des scores partiels (0 -> 1 chacun) 
 
-    // Note moyenne /5 → /1
-    const noteScore = Math.min((livreur.noteMoyenne ?? 0) / 5, 1);
+    // Note moyenne /5 → /1 on a divisé par 5 pour normaliser la note sur une échelle de 0 à 1
+    const noteScore = Math.min((livreur.noteMoyenne ?? 0) / 5, 1); // livreur sans notes → score neutre
 
     // Taux d'acceptation
     const acceptanceScore =
-      totalMissions > 0 ? Math.min(missionsTerminees / totalMissions, 1) : 0.5; // livreur sans historique → score neutre
+      totalMissions > 0 ? Math.min(missionsTerminees / totalMissions, 1) : 0.5; // livreur sans historique -> score neutre
 
     // Similarité : missions terminées dans la même catégorie
     const similarityScore =

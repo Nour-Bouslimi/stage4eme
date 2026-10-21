@@ -16,28 +16,7 @@ export class VehicleSuggestionService {
   private groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 
   async suggestVehicle(description: string): Promise<VehicleSuggestion> {
-    /* const prompt = `Tu es un assistant logistique tunisien. Analyse ce besoin et retourne UNIQUEMENT un JSON valide, aucun texte autour.
-
-Besoin : "${description}"
-
-Règles de sélection (choisis EXACTEMENT une de ces valeurs) :
-- BICYCLETTE  : documents, très petits colis < 5kg,   < 0.02m³
-- SCOOTER     : colis légers < 20kg,  < 0.08m³  (courses, repas, pharmacie)
-- MOTO        : colis < 40kg,         < 0.15m³  (petits achats, colis moyens)
-- VOITURE     : objets < 100kg,       < 0.8m³   (petit électroménager, cartons)
-- PICKUP      : objets < 300kg,       < 2m³     (matériaux légers, plusieurs cartons)
-- FOURGONNETTE: objets < 600kg,       < 8m³     (meubles, déménagement partiel)
-- PETIT_CAMION: objets < 2000kg,      < 20m³    (déménagement complet, gros meubles)
-- GROS_CAMION : objets > 2000kg ou   > 20m³    (chantier, déménagement industriel)
-
-Format JSON attendu (respecte exactement les noms des clés) :
-{
-  "typeVehicule": "BICYCLETTE|SCOOTER|MOTO|VOITURE|PICKUP|FOURGONNETTE|PETIT_CAMION|GROS_CAMION",
-  "poidsMinKg": number,
-  "volumeMinM3": number,
-  "raison": "courte explication en français",
-  "confidence": "HIGH|MEDIUM|LOW"
-}`; */
+  
 
     const prompt = `Tu es un assistant logistique tunisien. Analyse ce besoin et retourne UNIQUEMENT un JSON valide, aucun texte autour.
 
