@@ -247,4 +247,4 @@ app.enableCors({
 
 ## 📝 Auteur
 
-Développé par **Nour Bouslimi** dans le cadre d'un stage ingénieur.
+Développé par **Nour El Houda Bouslimi** dans le cadre d'un stage ingénieur.
